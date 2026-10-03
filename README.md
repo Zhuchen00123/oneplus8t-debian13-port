@@ -2,15 +2,15 @@
 
 OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debian 13 arm64，内核尽量新。
 
-后续 DTBO 和既定 Debian 持久部署已获持续授权。`7.2.0-kebab-debian13-r1+` 已完成触摸报文长度修复、578 模块重构建及 USB DHCP 集成，正在成组核验和部署；实机结果见 [r1 记录](docs/persistent-r1-20261003.md)。下方旧组和单次授权说明是历史状态。
+**当前阶段：Debian 13 / `7.2.0-kebab-debian13-r1+` 已持久部署到 A 槽，USB DHCP、SSH、真实终端、根文件系统读写及正常重启通过。手机当前保留运行 Linux。** 用户已持续授权既定 DTBO / boot_a / super 部署。已处理短按电源键误关机和重启时钟基准；Wi-Fi 按用户要求稍后配置。仍有两条启动 DSI 时钟警告，触摸事件、充电及长期负载未验收。[r1 实机记录](docs/persistent-r1-20261003.md)
 
-**当前阶段：本机 Linux 7.2 RAM 启动、USB SSH 和 UFS 枚举已实机通过，持久 Debian 13 尚未部署。** 原厂 DTBO 下首次启动失败，单独授权的社区空 DTBO 对照成功；已先恢复原厂 DTBO、再确认 ColorOS 正常启动。Windows USB 描述符修正已进入源脚本，既有封存 boot/rootfs 仍须在下一组重构建。触摸日志洪泛、Wi-Fi、存储 I/O 和持续负载仍待验证。入口：[实机成功与回退](docs/ram-boot-success-20261003.md)、[服务器移植](docs/debian-server-port.md)。
+历史 RAM 阶段：原厂 DTBO 下首次启动失败，单独授权的社区空 DTBO 对照成功；先恢复原厂 DTBO、再确认 ColorOS 正常启动。旧封存 boot/rootfs 保持原样，r1 已成组重构建并部署。[RAM 成功与回退](docs/ram-boot-success-20261003.md)、[服务器集成历史](docs/debian-server-port.md)
 
 2026-10-03 已确认设备是 KB2000 / ColorOS 14.0.0.602，Bootloader 已解锁。临时 root 实测屏幕 Samsung AMB655X、DCS ID `A5 05 01`，有效序列号按厂商规则解码日期 2020-10-08；**证据支持原厂规格的三星面板，但不能证明从未换屏或完成真伪认证**。[屏幕实测](docs/panel-evidence.md)
 
 社区已具备较完整的显示、触摸、GPU、Wi-Fi 和蓝牙基础。选取最新可用的 SM8250 7.2.0 分支与固定社区补丁作为构建基线，同时追踪 Linux 7.3-rc5。社区成功机型为 KB2003，KB2000 仍需逐项验证。[调查与来源](docs/community-status.md)
 
-已完成调查、源码复现、主机构建验证、Bootloader 解锁、临时 root 取证及主线 RAM 启动。26 个指定原厂分区已备份并通过校验，共 9,154,465,792 字节；本机固件也已归档并校验。仅执行过授权的 dtbo_a 对照及原厂恢复，未刷 boot/super/recovery 或永久安装 root。原厂备份来自运行中的 Android，不保证跨分区原子一致，也不包含全盘/GPT/用户数据。救援环境成功不等于持久 Debian 服务器已部署。
+已完成调查、源码复现、主机构建验证、Bootloader 解锁、临时 root 取证、主线 RAM 启动及 r1 持久部署。26 个指定原厂分区已备份并通过校验，共 9,154,465,792 字节；本机固件也已归档并校验。实际 Linux 部署只写 super / dtbo_a / boot_a，没有切槽、写 recovery / vbmeta / NV、清空 userdata 或永久安装 Android root。原厂备份来自运行中的 Android，不保证跨分区原子一致，也不包含全盘/GPT/用户数据。
 
 已在 Debian 13 WSL 完成 `7.2.0-kebab-debian13+` 的 Image、Image.gz、DTB 和 578 个模块构建，模块 vermagic 全部一致，ARM64 架构及输出 SHA-256 已核验。产物入口：[内核清单](artifacts/7.2.0-kebab-debian13+/f6ac9e9c86d0-064fa50f8341/kernel/kernel-manifest.json)。
 

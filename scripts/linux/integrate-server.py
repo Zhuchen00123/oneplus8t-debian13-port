@@ -139,6 +139,10 @@ Storage=persistent
 SystemMaxUse=64M
 RuntimeMaxUse=16M
 ''')
+    write('/etc/systemd/logind.conf.d/90-kebab-server.conf','''[Login]
+# A phone's short power-key press should not shut down a headless server.
+HandlePowerKey=ignore
+''')
     write('/etc/ssh/sshd_config.d/90-kebab.conf','''PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin no

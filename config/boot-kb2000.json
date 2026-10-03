@@ -22,7 +22,8 @@
   "usb_network": {"function": "rndis", "device_ipv4": "192.168.8.1/24", "host_ipv4": "192.168.8.2/24"},
   "stock_dtbo_with_mainline_dtb": "stock_dtbo_attempt_remained_fastboot; same_RAM_boot_with_community_raw_noop_dtbo_started_Linux; OEM_ABL_internal_failure_path_unconfirmed",
   "temporary_mainline_boot_test": "7.2.0-kebab-debian13+_verified_by_ACM_and_USB_SSH_20261003; UFS_enumerated; phone_storage_unmounted; stock_Android_return_verified_after_DTBO_restore",
-  "partition_flash": "authorized_dtbo_a_experiment_and_stock_dtbo_a_restore_executed; other_partition_writes_not_authorized_or_executed",
+  "partition_flash": "ongoing_user_authorization; r1 super_dtbo_a_boot_a_deployed_and_persistent_Debian_verified; no_other_partitions_written_or_slot_switched",
+  "persistent_linux_boot_test": "r1 Debian13 on super /dev/sda15; USB DHCP_SSH_real_PTY_IO_normal_reboot verified; boot_a/dtbo_a exact candidate prefix SHA256 read back; WiFi deferred",
   "dtbo_experiment": {
     "target": "dtbo_a",
     "authorized": true,

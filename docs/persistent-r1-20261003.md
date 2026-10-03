@@ -26,8 +26,36 @@
 
 ## 验证状态
 
-当前 r1 已完成主机打包；持久手机部署尚未执行。后续记录必须分别列明 Fastboot 实际写入、Linux kernelrelease、根 UUID/设备、USB DHCP/SSH、Wi-Fi 和 I/O/负载。此前 RAM 成功不能代替本组验收。
+当前 r1 已完成持久手机部署，手机留在 Linux；不是一次临时 fastboot boot。实际通过 USB DHCP/SSH、真实终端、根文件系统读写及正常重启。Wi-Fi 按用户“先验证 USB SSH，Wi-Fi 稍后配置”延期。
 
 封存校验已通过：全部持久组文件 SHA-256、boot/fstab UUID、USB/fsck/固件内容；rootfs 578、server initramfs 200、RAM initramfs 8 模块实际字节均与新内核一致，实际持久 initramfs USB 脚本与修正源码一致。最初非 root 的 cpio 解包因设备节点权限失败，保留原目录并在新的 WSL root 审计目录完成；未忽略此失败或沿用不完整结果。
 
 新 RAM/服务器成组快照：`backups/persistent-r1-20261003-220740-832/`，54 文件复制后逐份 hash 一致；完整内核源码快照 `backups/kernel-20261003-215257-924571348/` 已校验。刷写前 Fastboot 实读 product=kona、slot=a、unlocked=yes、is-userspace=no，super=7 GiB、boot_a=96 MiB、dtbo_a=24 MiB。原厂 boot_a / dtbo_a / whole-super sparse 输入重新核验通过。
+
+## 实机结果与操作入口
+
+本次只在 Bootloader Fastboot 向 `super`、`dtbo_a`、`boot_a` 写入，各步 Sending/Writing 均返回 OKAY。super 以 256 MiB 上限拆成五段；未切槽或写其他分区。持久 boot 45,617,152 字节，SHA-256 `f899299d2b9663e78f0e0553e26d99d95170a4b3ed2f557778abd8d9f78450d5`；DTBO 284 字节，SHA-256 `08f1551f1dd69a5799d3440c0dff7c183cbadad0764dd0ef7a21a1757661077f`。在已启动 Linux 中先核验 GPT 标签/分区大小，再回读这两个候选的确切字节范围，hash 与输入一致；这是候选前缀校验，不宣称分区剩余字节被清零。根文件系统已产生正常运行写入，不宣称整个 super 当前 hash 仍等于原镜像。
+
+| 项目 | 本机结果 |
+|---|---|
+| 系统/内核 | Debian 13，`7.2.0-kebab-debian13-r1+` |
+| 根文件系统 | `/dev/sda15`，ext4 `rw,noatime`，上述 UUID，约 2.7 GiB 可用 |
+| USB | Microsoft 内置 RNDIS 驱动状态 OK，ACM COM3；主机自动 DHCP 得到 `192.168.8.2/24`，设备 `192.168.8.1/24` |
+| SSH | `debian` 公钥登录与 sudo 成功；密码/root SSH 禁用；真实 `/dev/pts/0` 通过 |
+| 存储 | 64 MiB 随机文件 fsync 写入、直接读取通过；正常重启后 hash 保持；验证后删除测试文件 |
+| 持久启动 | 两次主动 `systemctl reboot` 后，boot ID 改变，USB DHCP/严格主机密钥 SSH/根 UUID 正常恢复 |
+| 网络/服务 | ssh、systemd-networkd、USB gadget、logind 正常，无 failed unit；wlan0 和 ath11k 固件出现，未配置 Wi-Fi 认证 |
+| 温度 | 短时测试后 CPU 约 34–36°C，电池约 32°C；不代表长期负载或充电通过 |
+| 触摸/内核 | 本次采样无旧 invalid-length 洪泛、无活动 Oops/panic；触摸输入事件未测，DSI PLL 重复 disable/unprepare 两条启动 WARNING 仍存在 |
+
+一轮额外关机已明确定位：用户短按电源键，对应 logind 日志 `Power key pressed short`、`Powering off` 及正常关机流程，未发现该轮内核崩溃。已在手机配置 `HandlePowerKey=ignore`，重载后实时 DBus 属性返回 ignore；同一改动进入主机构建脚本。修改后没有再次要求用户实按测试，不能把物理复测标为通过。硬件强制关机流程不受 logind 策略控制。
+
+RTC 实读为 1970 年，原先每次重启 systemd 回到包构建基准日期。已用主机 UTC 校准并保存 `/var/lib/systemd/timesync/clock`；再次正常重启后系统使用该文件的时刻下限。该标准机制见 [systemd v257 手册源码](https://github.com/systemd/systemd/blob/v257/man/systemd-timesyncd.service.xml)。这是保存时钟基准，不能计入断电时间或代替联网 NTP；NTP 与 Wi-Fi 留待后续配置。时钟种子和忽略电源键是手机运行后配置，不在原封存 r1 rootfs 镜像中，恢复该候选后须重设。
+
+首次 SSH 在指定源地址的直接 USB 链路上记录首次见到的主机密钥，没有声称带外认证；后续连接及重启均强制核对保存的密钥。已创建并实测本机连接配置：
+
+```powershell
+ssh -F F:\codexprojects\oneplus8t\local\ssh\kebab-server.conf kebab
+```
+
+当前不恢复 Android，继续保留运行 Debian。长期稳定性、Wi-Fi 认证/DHCP/DNS、实际充电和触摸事件仍未验收；不是 24 小时稳定服务器认证。原始日志、主机密钥记录、写入日志和原始身份信息仅在 `local/persistent-r1-*` 保存。
