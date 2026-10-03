@@ -1,0 +1,30 @@
+# KB2000 解锁准备与屏幕取证
+
+日期：2026-10-03。用户指令：先解开 Bootloader，再尝试验证屏幕；主机已具备 gh。
+
+## 已核验与已保存
+
+- KB2000，ColorOS `KB2000_14.0.0.602(CN01)`，当前槽位 `_a`；ADB 授权有效。
+- `ro.boot.flash.locked=1`、vbmeta locked、verified boot green；`sys.oem_unlock_allowed=1` 仅表示允许解锁。
+- 已重启至 Fastboot，并只读核验：`product=kona`、`current-slot=a`、`unlocked=no`、`secure=yes`、`get_unlock_ability=1`；与此前 KB2000 ADB 取证一致。
+- 本地 `backups/phone-shared-preunlock-20261003-140933/` 已保存 250 个可读取文件，共 13,499,706 字节，清单记录每个文件的主机端 SHA-256。首次全目录复制失败后，19 项逐项补充复制均成功。
+- `Android/data`、`Android/obb`、应用私有数据、账号和原厂分区不属于已完成备份。共享文件副本不能作为完整手机恢复保障。同盘副本未异地保存。
+- ADB shell 无 root；原厂 boot 分区读权限被拒绝。此前的项目、源码、构建产物备份不包含手机原厂镜像。
+
+## 操作范围与恢复边界
+
+1. 使用指定序列号的 ADB 重启至 bootloader；用 fastboot 只读核验产品、槽位和锁定状态。
+2. 用户接受恢复出厂的数据丢失后，执行指定序列号的 `fastboot oem unlock`。手机若显示确认界面，需由用户按键确认。
+3. 解锁可能自动恢复出厂并重启。用户完成初始设置、重新开启 USB 调试并授权电脑后，重新读取锁定属性与屏幕节点。
+4. 本次不刷分区、不切换槽位、不使用 unlock_critical、不重新锁定。若取消，使用 `fastboot reboot` 返回现有 ColorOS。
+5. 解锁后的恢复目标为现有 ColorOS 出厂状态；个人共享文件可从本地副本复制回去，未备份的应用数据无法恢复。没有已核验的完整原厂救砖包或原厂分区镜像，不承诺完整救砖能力。
+
+## 屏幕判断限制
+
+Bootloader 解锁不会自动赋予 ADB root，也不会自动放开 SELinux。普通 ADB 若仍无法读取面板 ID/序列号，应如实记录；取得额外权限或使用 recovery 需另行准备并审核。面板型号匹配只能支持硬件兼容性判断，不能证明从未换屏。
+
+## 来源与当前状态
+
+[LineageOS 的 KB2000/KB2001/KB2003/KB2005 安装指南](https://wiki.lineageos.org/devices/kebab/install/variant1) 明确使用 `fastboot oem unlock`，并说明清除数据及手机确认、重新开启 USB 调试。仅采用解锁章节，本项目不执行其 LineageOS recovery/DTBO/vbmeta 安装步骤。
+
+当前状态：共享文件复制完成，手机停留在 Fastboot；尚未发出解锁命令，数据清除确认待完成。原厂分区备份仍未完成。

@@ -6,7 +6,7 @@
 
 备份照片、文档和应用允许导出的数据；核验恢复账号、2FA 与应用私有数据的恢复方式。Android 14 上不能把旧 `adb backup` 当作完整备份。官方/系统的本地备份也需要复制到电脑/外部介质并确认可读。
 
-Bootloader 解锁会清除用户数据。解锁、刷 recovery、切换槽位和刷镜像需在具体方案可审核后另行授权。当前不会为鉴定屏幕执行这些操作。[Android 官方规则](https://source.android.com/docs/core/architecture/bootloader/locking_unlocking)
+Bootloader 解锁会清除用户数据。2026-10-03 用户明确要求先解锁，再尝试屏幕取证；当前准备和执行状态见 [解锁记录](unlock-preflight.md)。该指令不包含刷 recovery、切换槽位和刷镜像。[Android 官方规则](https://source.android.com/docs/core/architecture/bootloader/locking_unlocking)
 
 ## 原厂分区备份
 
