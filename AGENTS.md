@@ -23,6 +23,7 @@
 - 主线救援 boot、独立社区空 DTBO 候选及带 578 个匹配模块的 Debian 基础 rootfs 已在主机准备，入口 `docs/linux-boot-preparation.md`。未在手机启动 Linux、未刷 DTBO/boot/super。原厂 19 个 DTBO 条目离线应用均失败；临时启动是否绕过它们、社区空 DTBO 是否被本机 ABL 接受均未验证。
 - 用户随后明确以 7.2 为主，参考 jfbobier 仓库移植为 Linux 服务器。主机服务器集成入口 `docs/debian-server-port.md`，最终组为 `artifacts/server-port-20261003/ready/`；4 GiB ext4/sparse、无线/GPU 和 59 个本机 OEM 文件、USB/SSH/Wi-Fi/QRTR/UCM 已集成。蜂窝/NV/扬声器不默认加载，Venus 保持禁用。用户明确授权一次 RAM 首启、不写分区；已执行，fastboot 返回 OKAY，但手机仍在 Bootloader，用户看到一直是 Fastboot 界面，Linux 未启动验证。已重启并确认原厂 ColorOS 完成启动，slot a、unlocked/orange、无临时 su。记录 `docs/ram-firstboot-20261003.md`。该授权未包含任何 DTBO/boot/super 刷写，后续分区操作须另行授权。
 - 首启前已实际核对 rootfs 578、server initramfs 200、RAM rescue 8 个模块的二进制内容与原内核组一致。原厂恢复组在 `artifacts/stock-recovery-20261003/`，whole-super sparse 往返到 7 GiB raw 的 hash 与原备份相同；仅主机格式验证，未实机恢复，不改变手机操作授权边界。
+- 用户随后明确回复“允许你btbo”，结合刚才的 DTBO 实验问题，已授权 `docs/ram-firstboot-20261003.md` 所列单次 dtbo_a 对照实验及原厂 dtbo_a 恢复：先实际验证按键回 Bootloader，只写社区空 dtbo_a，再临时启动同一封存 7.2 RAM boot，结束后先恢复原厂 dtbo_a 再回 Android。三个输入大小/hash 已重新通过；按键测试尚未收到完成结果，指定手机 Fastboot 也未检测到，故尚未刷写。无需再次申请这项已授予的权限；不得扩大为 boot/super/vbmeta/recovery/userdata 写入或切槽。
 
 ## 来源与移植方法
 
