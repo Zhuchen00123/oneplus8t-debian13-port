@@ -60,5 +60,43 @@
     "sha512_from_bringup_apkbuild": "26d48ebd04c43e993bd00f9c055d40daf87b4919332c974e3c0db236135b522415e3dcf4b512e4028cc42da63fe4639991c3870bcb977967846db590a0b950b7",
     "note": "recorded only; archive itself not downloaded or verified"
   },
+  "boot_preparation": {
+    "checked_at": "2026-10-03",
+    "kernel_and_bringup_refs_rechecked_unchanged": true,
+    "tool_source": "Debian official signed trixie/trixie-security packages; not an unverified AOSP master download",
+    "host_packages": {
+      "mkbootimg": "1:34.0.5-12",
+      "debootstrap": "1.0.141",
+      "qemu-user": "1:10.0.13+ds-0+deb13u1",
+      "qemu-user-static": "1:10.0.13+ds-0+deb13u1",
+      "cpio": "2.15+dfsg-2",
+      "gpgv": "2.4.7-21+deb13u1+b5"
+    },
+    "arm64_rescue_packages": {
+      "busybox-static": "1:1.37.0-6+b9",
+      "dropbear-bin": "2025.89-1~deb13u1"
+    },
+    "rootfs": {
+      "suite": "trixie",
+      "observed_version": "13.7",
+      "architecture": "arm64",
+      "mirrors": ["https://deb.debian.org/debian", "https://deb.debian.org/debian-security"],
+      "suites": ["trixie", "trixie-updates", "trixie-security"],
+      "components": ["main"],
+      "installed_package_count": 133,
+      "archived_authenticated_deb_count": 137,
+      "installed_packages_sha256": "4aefbabfb68ca38954aabab2f73810545ba9ea32cb106d618a520a24058d6793",
+      "manifest": "artifacts/boot-preparation-20261003/debian-base/rootfs-export-manifest.json",
+      "snapshot_note": "All input deb files are archived locally; later repository contents need not be identical"
+    },
+    "empty_dtbo": {
+      "bringup_commit": "2e5e065da8ea8d242ecc34bfe064b88257797aa9",
+      "source": "device/oneplus-kebab/sm8250-oneplus-kebab-empty.dts",
+      "source_sha512": "fa4866865dd9e6388b7ee2319954d2317245c5618a0ebd9250abae7d58e08aa4a248a6dd9a87a820b30615b8f9f6e5f66b6883a47f7f0d3d69bfffe3440f33b2",
+      "recipe": "Pinned device APKBUILD: dtc -I dts -O dtb; raw no-op DTB, not an empty Android DTBO table",
+      "license_from_apkbuild": "MIT",
+      "hardware_abl_compatibility_verified": false
+    }
+  },
   "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories"
 }
