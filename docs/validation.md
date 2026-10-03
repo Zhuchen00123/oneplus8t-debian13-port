@@ -10,6 +10,8 @@
 - 面板型号/序列号、设备树和分区读取均被系统拒绝；原厂屏身份与原厂分区备份仍未完成。
 - 用户确认清空数据后执行 fastboot oem unlock；重新连接实读 flash.locked=0、vbmeta.device_state=unlocked、verifiedbootstate=orange、slot=_a，ColorOS 正常启动，Bootloader 解锁已验证。
 - 解锁后 ADB 仍为 UID 2000，8 个面板/显示/命令行节点仍 Permission denied；屏幕身份未确认。补充节点读取遭遇 device not found，单独记录为连接中断。
+- 用户重新开启 USB 调试后 ADB 恢复，完整复查 16 项：9 项 Permission denied、7 项 No such file or directory，无成功面板读取；再次验证 unlocked/orange。最新原始证据与 SHA-256 清单位于 `local/device-20261003-143138-003/`。
+- 最新证据的 9 个文件 SHA-256 复核通过，并与解锁原始记录一同复制到 `backups/device-evidence-20261003-143248/`，共 22 个文件；证据副本再次核验。此备份不包含分区镜像，未提交或上传隐私日志。
 - 未执行 root、刷写镜像、切槽或重新锁定。
 - 解锁前保存 250 个可读取共享文件，共 13,499,706 字节；19 项补充复制均成功，250 个主机端 SHA-256 再次复核通过。应用私有数据和原厂分区不在该备份中。
 

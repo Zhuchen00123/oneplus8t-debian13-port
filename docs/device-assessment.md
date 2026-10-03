@@ -27,6 +27,8 @@
 
 ADB 仍为 UID 2000 / SELinux shell 域；重新读取下述 8 个面板/显示/命令行节点，仍全部 Permission denied。SurfaceFlinger 仍报告 1080×2400、60/120 Hz 和 QCM 标识。解锁没有使实际面板 ID 或序列号可读，原厂身份仍未确认。补充节点读取时 USB 连接中断，device not found 不能归类为面板权限拒绝或节点不存在。
 
+用户重新开启调试后 ADB 已恢复。最新复核位于 `local/device-20261003-143138-003/`：解锁属性不变，原先 8 个节点仍拒绝读取；补充 `/proc/devinfo/display` 也拒绝读取。4 个旧 fb0 路径、2 个 oppo_display 路径和 `oplus_display/panel_info` 共 7 个路径不存在，不能据此判断面板真假。此轮 16 项读取已完成，仍无实际面板 ID/序列号。
+
 ## 屏幕判断
 
 **目前不能确认屏幕是否原厂，也不能确认是否换过屏。**
