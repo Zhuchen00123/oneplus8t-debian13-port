@@ -50,6 +50,14 @@ def main():
         assert 'etc/systemd/system/multi-user.target.wants/qrtr-ns.service' in names
         assert 'etc/wpa_supplicant/wpa_supplicant-wlan0.conf' not in names
         assert 'etc/systemd/network/20-kebab-wifi.network' in names
+        usb = read('usr/local/libexec/kebab-usb-gadget')
+        for attribute, value in (('class', '0xef'), ('subclass', '0x04'), ('protocol', '0x01')):
+            assert f"printf '{value}\\n' > \"$g/functions/rndis.usb0/{attribute}\"".encode() in usb
+        assert usb.index(b'"$g/configs/c.1/01-network"') < usb.index(b'"$g/configs/c.1/02-serial"')
+        network = read('etc/systemd/network/10-kebab-usb.network')
+        for option in (b'DHCPServer=yes', b'PoolOffset=2', b'PoolSize=1', b'EmitRouter=no', b'EmitDNS=no'):
+            assert option in network
+        assert b'Name=usb0' in read('etc/systemd/network/05-kebab-usb.link')
         sources=json.loads((out/'integration.json').read_text())['upstream_files']
         for source in sources:
             assert hashlib.sha256(read(source['destination'].lstrip('/'))).hexdigest()==source['sha256']

@@ -159,9 +159,11 @@ case "${1:-}" in prereqs) exit 0;; esac
             'authorized_public_key_sha256':sha(authorized),'private_ssh_keys_embedded':False,
             'ext4_readonly_check_passed':True,'sparse_roundtrip_sha256_verified':True,
             'proposed_rootfs_target':'super (actual /dev/block/sda15); overwrites Android logical partitions',
-            'installation_target_authorized':False,'temporary_linux_boot_authorized':False,
+            'phone_commands_in_builder':False,
+            'deployment_authorization_source':'User authorization recorded separately in AGENTS.md; this builder grants no device permissions',
             'hardware_boot_verified':False,'phone_deployment_executed':False,
-            'limitations':['KB2000 hardware untested','DTBO/ABL untested','USB/Wi-Fi/charging and sustained-load untested',
+            'limitations':['This sealed kernel/boot/rootfs group requires hardware verification; prior RAM results do not validate it',
+                           'USB DHCP/Wi-Fi/charging and sustained-load untested for this group',
                            'No modem/NV or Venus deployment; audio remains optional','Wi-Fi credentials not embedded']}
     (out/'server-manifest.json').write_text(json.dumps(result,indent=2)+'\n')
     (build/'server-packed.json').write_text(json.dumps(result,indent=2)+'\n')

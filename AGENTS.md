@@ -24,7 +24,7 @@
 - 用户随后明确以 7.2 为主，参考 jfbobier 仓库移植为 Linux 服务器。主机服务器集成入口 `docs/debian-server-port.md`，最终组为 `artifacts/server-port-20261003/ready/`；4 GiB ext4/sparse、无线/GPU 和 59 个本机 OEM 文件、USB/SSH/Wi-Fi/QRTR/UCM 已集成。蜂窝/NV/扬声器不默认加载，Venus 保持禁用。用户明确授权一次 RAM 首启、不写分区；已执行，fastboot 返回 OKAY，但手机仍在 Bootloader，用户看到一直是 Fastboot 界面，Linux 未启动验证。已重启并确认原厂 ColorOS 完成启动，slot a、unlocked/orange、无临时 su。记录 `docs/ram-firstboot-20261003.md`。该授权未包含任何 DTBO/boot/super 刷写，后续分区操作须另行授权。
 - 首启前已实际核对 rootfs 578、server initramfs 200、RAM rescue 8 个模块的二进制内容与原内核组一致。原厂恢复组在 `artifacts/stock-recovery-20261003/`，whole-super sparse 往返到 7 GiB raw 的 hash 与原备份相同；仅主机格式验证，未实机恢复，不改变手机操作授权边界。
 - 用户随后明确回复“允许你btbo”，授权单次 dtbo_a 对照及原厂恢复，按键回 Bootloader 已实测可用。实验现已完成：只写社区空 dtbo_a、临时启动同一 7.2 RAM boot，ACM/USB SSH 实读内核和 UFS，super=sda15/7 GiB；未挂载手机存储。RNDIS function EF/04/01 且网络先于 ACM 的 RAM 修正使微软内置驱动正常工作；主机静态 IP 设置被 Windows 权限拒绝，实际使用链路本地 SSH。用户拔下 USB 后成功从 Linux 按键返回 Fastboot；已先恢复原厂 24 MiB dtbo_a，再确认 ColorOS 完成启动，A 槽、无临时 su。原厂输入 hash 与 Fastboot 恢复成功已核验，手机端刷后 hash 未回读。本次单次授权已消耗，不涵盖后续 boot/super/vbmeta/recovery/userdata 写入或切槽。入口 `docs/ram-boot-success-20261003.md`。
-- 最新待办：Synaptics TCM 日志出现大量 invalid touch report length，不能宣称触摸或长期稳定性通过；主机 usb-gadget.sh 已固化描述符/顺序修正，但旧 rescue-final/server ready 封存镜像未更新。下一组须重构建并成组核验，持久 Debian、Wi-Fi 和负载仍待授权部署后实测。当前手机已回原厂 Android，不能直接把 RAM 修正视作持久系统通过。
+- 最新进展：TCM 完整四字节头计数及边界修复已导出锁定补丁，实际函数 ASan/UBSan 回归通过，旧代码被同套用例检出。r1 内核提交 `65dad81b2b498007e4972c45f94644f2f5d430f9`、`7.2.0-kebab-debian13-r1+` 已构建；新 RAM 组 `artifacts/boot-r1-20261003/rescue/` 和持久组 `artifacts/server-r1-20261003/ready/` 固化 USB 描述符/顺序修正，持久组增加 USB DHCP。新组 rootfs 578、server initramfs 200、RAM initramfs 8 模块实际字节均与新内核匹配，启动打包/固件/UUID/用户空间 SSH 检查已通过，源代码及产物成组快照已校验。触摸、USB DHCP、持久 Debian、Wi-Fi 和负载仍须实机验证，用户持续部署授权见下文；入口 `docs/persistent-r1-20261003.md`。旧 ready 组保持封存，不能混用。
 
 ## 来源与移植方法
 
@@ -38,6 +38,8 @@
 - 一次修改处理一个可验证问题；社区补丁保留作者与许可证。升级内核时检查重复补丁、DTS 漂移和模块兼容性。
 
 ## 设备操作边界
+
+- 2026-10-03 用户随后明确持续授权：“以后的dtbo和持久系统都不用单独授权，可以直接执行”。该用户指令覆盖后续 DTBO 测试及既定 Debian 持久部署所需的 dtbo_a、boot_a、super 写入和对应原厂恢复；不再为这些既定操作重复申请权限。执行前仍核验目标/槽位、输入 hash、备份和恢复流程，并保留日志。该授权不扩大为解锁/重新锁定、切槽、改分区布局、清空 userdata 或写 vbmeta/recovery/NV。先前“单次授权已消耗”的记录是历史范围，不能用来再次阻止已持续授权的操作。
 
 - 已授权的 ADB 只读调查、源码下载、构建和本地备份可继续执行。
 - 解锁/重新锁定 Bootloader、刷写/擦除任何分区、写 super、切换槽位、改分区布局或清除用户数据，必须在列明目标、备份和恢复方案后取得明确授权。

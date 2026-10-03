@@ -80,9 +80,18 @@
       "suite": "trixie",
       "observed_version": "13.7",
       "architecture": "arm64",
-      "mirrors": ["https://deb.debian.org/debian", "https://deb.debian.org/debian-security"],
-      "suites": ["trixie", "trixie-updates", "trixie-security"],
-      "components": ["main"],
+      "mirrors": [
+        "https://deb.debian.org/debian",
+        "https://deb.debian.org/debian-security"
+      ],
+      "suites": [
+        "trixie",
+        "trixie-updates",
+        "trixie-security"
+      ],
+      "components": [
+        "main"
+      ],
       "installed_package_count": 133,
       "archived_authenticated_deb_count": 137,
       "installed_packages_sha256": "4aefbabfb68ca38954aabab2f73810545ba9ea32cb106d618a520a24058d6793",
@@ -136,5 +145,17 @@
     "kb2000_coloros_abl_equivalence_verified": false,
     "compiled_or_deployed": false
   },
-  "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories"
+  "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories",
+  "local_kernel_patches": [
+    {
+      "file": "patches/local/0001-input-synaptics-tcm-fix-report-framing.patch",
+      "sha256": "1aa089192dd71f2b98249d72c6d07a3f08110d90d24326fc94cd5f922d9dbd7d",
+      "base_kernel_commit": "f6ac9e9c86d0c92ef6db1c4f5a4c3ccdc77d1d5a",
+      "kernel_commit": "65dad81b2b498007e4972c45f94644f2f5d430f9",
+      "input_driver": "drivers/input/touchscreen/synaptics_tcm_oncell.c",
+      "input_driver_sha256": "58851b8ee7ee0ef34686733efe02839e7785de33f06b0cce2f9ab80eb4377b32",
+      "role": "TCM full header accounting, malformed frame bounds and diagnostic rate limiting; no firmware or format changes",
+      "hardware_validated": false
+    }
+  ]
 }

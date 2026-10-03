@@ -89,9 +89,22 @@ RequiredForOnline=no
 [Network]
 Address=192.168.8.1/24
 DHCP=no
+DHCPServer=yes
 LinkLocalAddressing=no
 ConfigureWithoutCarrier=yes
 KeepConfiguration=static
+[DHCPServer]
+PoolOffset=2
+PoolSize=1
+EmitRouter=no
+EmitDNS=no
+EmitNTP=no
+''')
+    write('/etc/systemd/network/05-kebab-usb.link','''[Match]
+MACAddress=02:00:00:00:08:01
+[Link]
+NamePolicy=
+Name=usb0
 ''')
     write('/etc/systemd/network/05-kebab-wifi.link','''[Match]
 OriginalName=wl*
@@ -150,7 +163,7 @@ AllowUsers debian
         subprocess.run(['chroot',str(root),'systemctl','enable',unit],check=True)
     subprocess.run(['chroot',str(root),'systemctl','disable','systemd-networkd-wait-online.service'],check=True)
     subprocess.run(['chroot',str(root),'systemctl','set-default','multi-user.target'],check=True)
-    result = {'bringup_commit':actual,'upstream_files':upstream,'network':'USB 192.168.8.1/24; Wi-Fi DHCP after private credential provisioning',
+    result = {'bringup_commit':actual,'upstream_files':upstream,'network':'USB 192.168.8.1/24; DHCP offers host .2 without gateway/DNS; Wi-Fi DHCP after private credential provisioning',
               'alsa_ucm_integrated':True,'audio_autoload_disabled':True,'modem_autoload_disabled':True,
               'qrtr_tools_installed':True,'kernel_pd_mapper_enabled':True,'modem_nv_services_enabled':False,
               'hardware_boot_verified':False,'phone_deployment_executed':False}

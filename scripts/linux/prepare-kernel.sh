@@ -77,6 +77,23 @@ git -C "$kernel_dir" add arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
 git -C "$kernel_dir" -c user.name=Codex -c user.email=codex@localhost \
   commit -m 'arm64: dts: import pinned kebab bring-up board description'
 
+# Apply only project-local patches whose files and preimage are locked.
+python3 - "$project_dir" "$kernel_dir" <<'PY'
+import hashlib, json, pathlib, subprocess, sys
+project, kernel = map(pathlib.Path, sys.argv[1:])
+for entry in json.loads((project/'sources.lock.json').read_text()).get('local_kernel_patches', []):
+    patch = (project/entry['file']).resolve()
+    source = (kernel/entry['input_driver']).resolve()
+    if not patch.is_relative_to(project.resolve()) or not source.is_relative_to(kernel.resolve()):
+        raise SystemExit('Local patch path escapes its repository')
+    if hashlib.sha256(patch.read_bytes()).hexdigest() != entry['sha256']:
+        raise SystemExit('Local patch checksum mismatch')
+    if hashlib.sha256(source.read_bytes()).hexdigest() != entry['input_driver_sha256']:
+        raise SystemExit('Local patch preimage drifted; review upstream overlap first')
+    subprocess.run(['git', '-C', str(kernel), '-c', 'user.name=Codex',
+                    '-c', 'user.email=codex@localhost', 'am', str(patch)], check=True)
+PY
+
 mkdir -p -- "$output_dir"
 cp -- "$bringup_dir/kernel/config-postmarketos-qcom-sm8250.aarch64" "$output_dir/.config"
 make -C "$kernel_dir" O="$output_dir" ARCH=arm64 LLVM=1 olddefconfig
@@ -99,6 +116,7 @@ data = {
     'prepared_at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
     'project': project, 'base_commit': base, 'bringup_commit': bringup,
     'kernel_commit': git('rev-parse', 'HEAD'), 'community_patches': 21,
+    'local_patches': json.load(open(pathlib.Path(project)/'sources.lock.json')).get('local_kernel_patches', []),
     'config_sha256': hashlib.sha256((build/'out/.config').read_bytes()).hexdigest(),
     'target': 'KB2000 / Debian 13 arm64; hardware not yet validated',
     'clang': subprocess.check_output(['clang', '--version'], text=True).splitlines()[0],

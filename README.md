@@ -2,6 +2,8 @@
 
 OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debian 13 arm64，内核尽量新。
 
+后续 DTBO 和既定 Debian 持久部署已获持续授权。`7.2.0-kebab-debian13-r1+` 已完成触摸报文长度修复、578 模块重构建及 USB DHCP 集成，正在成组核验和部署；实机结果见 [r1 记录](docs/persistent-r1-20261003.md)。下方旧组和单次授权说明是历史状态。
+
 **当前阶段：本机 Linux 7.2 RAM 启动、USB SSH 和 UFS 枚举已实机通过，持久 Debian 13 尚未部署。** 原厂 DTBO 下首次启动失败，单独授权的社区空 DTBO 对照成功；已先恢复原厂 DTBO、再确认 ColorOS 正常启动。Windows USB 描述符修正已进入源脚本，既有封存 boot/rootfs 仍须在下一组重构建。触摸日志洪泛、Wi-Fi、存储 I/O 和持续负载仍待验证。入口：[实机成功与回退](docs/ram-boot-success-20261003.md)、[服务器移植](docs/debian-server-port.md)。
 
 2026-10-03 已确认设备是 KB2000 / ColorOS 14.0.0.602，Bootloader 已解锁。临时 root 实测屏幕 Samsung AMB655X、DCS ID `A5 05 01`，有效序列号按厂商规则解码日期 2020-10-08；**证据支持原厂规格的三星面板，但不能证明从未换屏或完成真伪认证**。[屏幕实测](docs/panel-evidence.md)

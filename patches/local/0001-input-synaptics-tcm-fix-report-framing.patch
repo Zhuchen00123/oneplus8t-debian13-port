@@ -1,0 +1,101 @@
+From 65dad81b2b498007e4972c45f94644f2f5d430f9 Mon Sep 17 00:00:00 2001
+From: Codex automation <codex@localhost>
+Date: Sat, 3 Oct 2026 21:43:11 +0800
+Subject: [PATCH] Input: synaptics_tcm_oncell: account for the full report
+ header
+
+The on-wire header contains marker, report code and two length bytes.
+The receive path counted only the first two bytes, truncating responses
+and touch payloads before their parser removed the four-byte header.
+
+Account for the full header in buffer limits, copies and touch dispatch.
+Reject an invalid marker, a short frame or incomplete touch objects before
+parsing. Rate limit malformed report diagnostics so they cannot bury early
+boot evidence. Keep the existing supported touch field format unchanged.
+
+Signed-off-by: Codex automation <codex@localhost>
+---
+ .../input/touchscreen/synaptics_tcm_oncell.c  | 40 +++++++++++++------
+ 1 file changed, 28 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/input/touchscreen/synaptics_tcm_oncell.c b/drivers/input/touchscreen/synaptics_tcm_oncell.c
+index 3142b7f72..25b3f7697 100644
+--- a/drivers/input/touchscreen/synaptics_tcm_oncell.c
++++ b/drivers/input/touchscreen/synaptics_tcm_oncell.c
+@@ -356,17 +356,28 @@ struct tcm_default_report_data {
+ static int tcm_handle_touch_report(struct tcm_data *tcm, char *buf, size_t len)
+ {
+ 	struct tcm_default_report_data *data;
++	size_t num_points;
++
++	if (len < REPORT_PEAK_LEN + sizeof(data->fps)) {
++		dev_err_ratelimited(&tcm->client->dev,
++				    "touch report too short: %zu\n", len);
++		return -EINVAL;
++	}
+ 	buf += REPORT_PEAK_LEN;
+ 	len -= REPORT_PEAK_LEN;
+ 
+ 	dev_dbg(&tcm->client->dev, "touch report len %zu\n", len);
+-	if ((len - 1) % 11)
+-		dev_err(&tcm->client->dev, "invalid touch report length\n");
++	if ((len - sizeof(data->fps)) % sizeof(data->points[0])) {
++		dev_err_ratelimited(&tcm->client->dev,
++				    "invalid touch report length: %zu\n", len);
++		return -EINVAL;
++	}
+ 
+ 	data = (struct tcm_default_report_data *)buf;
++	num_points = (len - sizeof(data->fps)) / sizeof(data->points[0]);
+ 
+ 	/* We don't need to report releases because we have INPUT_MT_DROP_UNUSED */
+-	for (int i = 0; i < (len - 1) / 11; i++) {
++	for (size_t i = 0; i < num_points; i++) {
+ 		u8 major_width, minor_width;
+ 
+ 		minor_width = data->points[i].width_x;
+@@ -423,27 +434,32 @@ static irqreturn_t tcm_report_irq(int irq, void *data)
+ 		return IRQ_HANDLED;
+ 	}
+ 
+-	/* Not present for REPORT_CONTINUED_READ */
+-	len = get_unaligned_le16(buf + sizeof(*header));
++	if (header->marker != 0xa5) {
++		dev_err_ratelimited(&tcm->client->dev,
++				    "invalid report marker: %#x\n", header->marker);
++		return IRQ_HANDLED;
++	}
+ 
+-	dev_dbg(&tcm->client->dev, "report %#x len %u\n", header->code, len);
+-	print_hex_dump_bytes("report: ", DUMP_PREFIX_OFFSET, buf, min(sizeof(buf), len + sizeof(*header)));
++	/* Length describes the payload after marker, code and the two-byte length. */
++	len = get_unaligned_le16(buf + sizeof(*header));
+ 
+-	if (len > sizeof(buf) - sizeof(*header)) {
+-		dev_err(&tcm->client->dev, "report too long\n");
++	if (len > sizeof(buf) - REPORT_PEAK_LEN) {
++		dev_err_ratelimited(&tcm->client->dev, "report too long: %u\n", len);
+ 		return IRQ_HANDLED;
+ 	}
++	dev_dbg(&tcm->client->dev, "report %#x len %u\n", header->code, len);
++	print_hex_dump_bytes("report: ", DUMP_PREFIX_OFFSET, buf, len + REPORT_PEAK_LEN);
+ 
+ 	/* Check if this is a read response or an indication. For indications
+ 	 * (user touched the screen) we just parse the report directly.
+ 	 */
+ 	if (completion_done(&tcm->response) && header->code == REPORT_TOUCH) {
+-		tcm_handle_touch_report(tcm, buf, len + sizeof(*header));
++		tcm_handle_touch_report(tcm, buf, len + REPORT_PEAK_LEN);
+ 		return IRQ_HANDLED;
+ 	}
+ 
+-	tcm->buf_size = len + sizeof(*header);
+-	memcpy(tcm->buf, buf, len + sizeof(*header));
++	tcm->buf_size = len + REPORT_PEAK_LEN;
++	memcpy(tcm->buf, buf, len + REPORT_PEAK_LEN);
+ 	complete(&tcm->response);
+ 
+ 	return IRQ_HANDLED;
+-- 
+2.47.3
+

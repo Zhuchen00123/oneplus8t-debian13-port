@@ -1,5 +1,7 @@
 # Debian 13 / Linux 7.2 服务器移植
 
+最新持续授权及 r1 入口：[持久部署 r1](persistent-r1-20261003.md)。用户已授权后续 DTBO 和既定持久系统部署，无须再逐次申请。本文下方的旧 ready 组与首启授权限制保留为历史记录，以 r1 记录和当前 AGENTS.md 为准。
+
 日期：2026-10-03。用户明确选择以 7.2 为主，重点参考 jfbobier 的 kebab bring-up。目标先是无桌面服务器：SSH、USB 网络、Wi-Fi、存储和持续运行；不以蜂窝、相机、音频作为首启门槛。
 
 最新实机状态：已通过单次 DTBO 对照，验证本机 Linux 7.2 RAM 启动、USB ACM/SSH 和 UFS 枚举；已恢复原厂 DTBO 并确认 ColorOS 正常启动。Windows USB 描述符修正已进入源脚本，但此文 ready 组仍含旧脚本、尚未重构建或部署。触摸日志洪泛、持久根文件系统、Wi-Fi 与服务器负载仍未验收。见 [成功与回退记录](ram-boot-success-20261003.md)。
