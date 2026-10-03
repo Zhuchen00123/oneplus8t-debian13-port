@@ -1,6 +1,8 @@
 # 备份与恢复
 
-当前原厂分区备份状态：**未完成**。Bootloader 已解锁，但 ADB shell 仍为 UID 2000；解锁前读取 boot_a 被系统拒绝，当前尚无可用的分区读取权限。项目源码备份与手机备份必须分别记录。
+当前原厂分区备份状态：**26 个指定分区已完成并校验**。通过已授权的临时 Magisk root 读取，清单 `backups/partitions-20261003-152513-342/manifest.json` 状态为 `verified_requested_partitions`，共 9,154,465,792 字节。每份镜像大小正确，设备读取前 SHA-256、主机 SHA-256 与设备读取后 SHA-256 全部一致。未包含 userdata/GPT/全部引导链；来自运行中的 Android，不保证跨分区原子一致。项目源码备份与手机备份分别记录，原始清单和镜像均不进 Git。
+
+所选范围：boot/dtbo/vbmeta/vbmeta_system/recovery 两个槽位、super、persist/persist_bkp、modem 两个槽位、modemst1/2、fsg/fsc、4 个 mdm1m9kefs、mdm_oem_dycnvbk/stanvbk、mdm1oemnvbktmp。boot_a 副本与本机构建的官方 OTA boot.img 相同；临时 root 未永久写入该启动分区。
 
 ## 解锁前
 
@@ -42,6 +44,8 @@ $parts = @('boot_a','boot_b','dtbo_a','dtbo_b','vbmeta_a','vbmeta_b',
 - 不在未完整恢复匹配签名引导链的状态重新锁定 Bootloader。
 
 2026-10-03 已从匹配本机指纹的厂商 OTA 提取 boot/recovery/dtbo/vbmeta，所选数据与输出镜像均通过 manifest SHA-256。来源、限制和临时 root 候选备份见 [准备记录](temporary-root-plan.md)。这些是官方包中的恢复资料，不是从手机读取的原厂分区备份；没有 EFS/NV/persist，也未验证整个 OTA 签名，不能标记完整救砖资料已齐备。
+
+随后取得临时 root，已另行读取上述实际原厂分区。主线移植固件归档位于 `firmware/kb2000-14.0.0.602-20261003-154007/`：467,082,752 字节、2,601 个 tar 条目，设备前后归档 hash 与主机 hash 一致，主机 tar 列表验证通过，符号链接保留且未跟随。副本 `backups/firmware-20261003-154349/` 再次校验；这验证传输一致性，不表示逐份固件签名或 Linux 兼容性已验证。校准/NV 仍仅属于这台手机，不混用其他设备。
 
 ## 项目备份
 

@@ -31,7 +31,7 @@ ADB 仍为 UID 2000 / SELinux shell 域；重新读取下述 8 个面板/显示/
 
 ## 屏幕判断
 
-**目前不能确认屏幕是否原厂，也不能确认是否换过屏。**
+**后续临时 root 取证已读出三星 AMB655X、实际 DCS ID `A5 05 01` 和有效面板序列号，按厂商规则解码生产日期为 2020-10-08。证据支持原厂规格的三星面板，仍不能证明从未更换或完成原厂真伪认证。** 完整判断见 [屏幕实测](panel-evidence.md)。以下保留普通 ADB 阶段的权限限制和证据，不能当作最新 root 读取仍失败。
 
 SurfaceFlinger 与 DisplayManager 都报告 1080×2400，60 Hz 和 120 Hz 两个模式，采样时 activeMode=120 Hz。系统也报告广色域/HDR。这些符合 OnePlus 8T 的公开规格，但来自驱动与显示服务，兼容替换屏也可能报告相同能力。[原机规格](https://www.oneplus.com/us/8t/specs)
 
@@ -55,13 +55,13 @@ HWC 的显示标识为 `manufacturerPnpId=QCM`、空名称、年份 2006。它�
 
 原厂 Android 14 的 OnePlusOSS 设备树将 20828 面板描述为 Samsung AMB655X；社区主线驱动也针对它。这是预期配置，**并非本机的实际读取结果**。[固定厂商 DTS](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8250/blob/0a301570ef70f6f9bfe1840451c9d41f5ddce6b8/vendor/qcom/proprietary/devicetree-4.19/20828/dsi-panel-oplus20828-samsung-amb655x-1080-2400-120fps.dtsi)
 
-如果需要可信的原厂鉴定，下一步是官方售后检查硬件标签、序列号及维修记录。以后在已经合法取得 root/恢复环境且无需为此清除数据时，也可进一步读取面板 ID/序列号；即使 ID 匹配，也不能排除换装同型号原厂屏。
+如果需要装配/更换历史或原厂真伪认证，需官方售后检查硬件标签、序列号及维修记录。后续已按用户授权取得临时 root 并读出面板响应；即使型号、ID 和日期合理，也不能排除换装同型号原厂屏。
 
 ## 分区取证与备份限制
 
-`/dev/block/by-name/` 可枚举，但读取 `boot_a` 被拒绝。本次没有实际原厂分区镜像；权限拒绝不能视为备份成功。
+解锁前 `/dev/block/by-name/` 可枚举，但读取 `boot_a` 被拒绝；当时没有分区镜像。后续取得用户授权的临时 root 后，26 个指定原厂分区已真实读取并通过大小及三次 hash 校验，清单见 [备份记录](backup-and-recovery.md)。boot_a 与对应官方 OTA boot 相同；原始镜像和含设备标识的 manifest 只存本地。
 
-此外 `/vendor/firmware`、`/vendor/firmware_mnt` 与其 image 目录均拒绝 shell 读取，尚未取得本机签名固件。
+普通 shell 无法读取 `/vendor/firmware`、`/vendor/firmware_mnt/image`。后续通过临时 root 已归档这两处和 `/odm/firmware`，设备前后/主机 SHA-256 一致；已取得本机固件副本，但没有逐文件验证签名或主线兼容性。
 
 本机关键映射：
 

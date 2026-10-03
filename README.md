@@ -2,11 +2,11 @@
 
 OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debian 13 arm64，内核尽量新。
 
-2026-10-03 已确认设备是 KB2000 / ColorOS 14.0.0.602，用户确认清空数据后已解锁 Bootloader，解锁属性已实读。屏幕报告 1080×2400、60/120 Hz；解锁后实际面板型号、序列号仍拒绝普通 ADB 读取，因此**尚不能确认原厂屏幕**。
+2026-10-03 已确认设备是 KB2000 / ColorOS 14.0.0.602，Bootloader 已解锁。临时 root 实测屏幕 Samsung AMB655X、DCS ID `A5 05 01`，有效序列号按厂商规则解码日期 2020-10-08；**证据支持原厂规格的三星面板，但不能证明从未换屏或完成真伪认证**。[屏幕实测](docs/panel-evidence.md)
 
 社区已具备较完整的显示、触摸、GPU、Wi-Fi 和蓝牙基础。选取最新可用的 SM8250 7.2.0 分支与固定社区补丁作为构建基线，同时追踪 Linux 7.3-rc5。社区成功机型为 KB2003，KB2000 仍需逐项验证。[调查与来源](docs/community-status.md)
 
-已完成调查、源码复现、主机构建验证和 Bootloader 解锁，见 [解锁记录](docs/unlock-preflight.md)。解锁前保存了可读取的共享文件；未刷写镜像，原厂分区备份尚未完成。构建成功也不等于 Debian 已在手机启动。
+已完成调查、源码复现、主机构建验证、Bootloader 解锁和临时 root 取证。26 个指定原厂分区已备份并通过校验，共 9,154,465,792 字节；本机固件也已归档并校验。未刷写镜像或永久安装 root。原厂备份来自运行中的 Android，不保证跨分区原子一致，也不包含全盘/GPT/用户数据。构建成功不等于 Debian 已在手机启动。
 
 已在 Debian 13 WSL 完成 `7.2.0-kebab-debian13+` 的 Image、Image.gz、DTB 和 578 个模块构建，模块 vermagic 全部一致，ARM64 架构及输出 SHA-256 已核验。产物入口：[内核清单](artifacts/7.2.0-kebab-debian13+/f6ac9e9c86d0-064fa50f8341/kernel/kernel-manifest.json)。
 
@@ -45,6 +45,6 @@ bash /mnt/f/codexprojects/oneplus8t/scripts/linux/build-kernel.sh ~/oneplus8t-bu
 
 阶段验证结果在 [validation.md](docs/validation.md)。手机部署的前置条件与恢复要求见 [备份说明](docs/backup-and-recovery.md)，Debian 路线见 [移植计划](docs/porting-plan.md)。
 
-受限屏幕节点的后续取证方案见 [临时 root 准备](docs/temporary-root-plan.md)：已提取匹配 ColorOS 构建的原厂 boot，并在本机生成、校验和备份 Magisk 临时启动候选镜像；是否已启动和取得权限以该文档的实测记录为准。
+受限屏幕节点的权限取得和返回原厂 boot 记录见 [临时 root](docs/temporary-root-plan.md)：匹配的原厂 boot 在本机修补并临时启动，UID 0 和实际分区备份已验证；未使用 Direct Install 或刷 recovery。
 
 `kernel/` 与 `dtb/` 构建模式分别导出清单，共享构建目录有互斥锁。早期未分模式的产物目录只作过程记录；以上链接为最终导出。

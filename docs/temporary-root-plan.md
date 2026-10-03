@@ -2,6 +2,8 @@
 
 日期：2026-10-03。用户在已解锁并完成普通 ADB 检查后要求“继续啊，怎么提供权限”。本阶段准备匹配原厂 boot 的 Magisk 临时启动，权限用于面板读取和本机原厂分区备份；永久 root、刷 recovery、刷其他分区、切槽及重新锁定不在范围内。
 
+最终状态：临时 root 已验证 UID 0；屏幕取证、26 个指定原厂分区备份、本机固件归档与校验均完成。已恢复 USB 亮屏原值 0 并正常重启回未改写的原厂 boot；实测启动完成、ADB UID 2000、su 不再存在于 PATH 或临时目录，Bootloader 仍 unlocked。管理应用保留，未永久安装 root。
+
 ## 已完成准备
 
 - ColorOS `KB2000_14.0.0.602(CN01)`，系统及 bootimage 指纹均为 `OnePlus/OnePlus8T_CH/OnePlus8T:14/UKQ1.230924.001/R.1983865_1_2:user/release-keys`，安全补丁 2024-08-05；ADB UID 2000，无 su。
@@ -35,11 +37,17 @@
 
 Magisk 的 `/debug_ramdisk/magisk` 和 su 链接已出现，但 ColorOS 的默认 PATH 不包含该位置。第一次 `/debug_ramdisk/su -c id` 返回退出码 13 / Permission denied，尚不能标记诊断 shell 已取得 root。打开管理应用并读取界面后发现手机停留在锁屏；已请求用户解锁、保持亮屏并处理 Shell 授权，不点击 Direct Install 或额外设置重启。
 
-分区备份工具增加 `-SuExecutable /debug_ramdisk/su` 支持，保留原有默认 `su`。PowerShell 语法检查通过；包含分号的路径在 ADB 调用前被参数校验拒绝。原始分区备份与 root 权限仍待用户授权后验证。
+分区备份工具增加 `-SuExecutable /debug_ramdisk/su` 支持，保留原有默认 `su`。PowerShell 语法检查通过；包含分号的路径在 ADB 调用前被参数校验拒绝。此时原始分区备份与 root 权限尚待用户授权，之后的成功实测见下文。
 
 用户打开管理器并报告额外设置提示后，观察到系统再次启动、原先 su 消失；临时环境已退出，未将此归因于未经核实的具体点击。重新核验并再次 `fastboot boot` 同一候选后，系统正常启动，`/debug_ramdisk/su` 再次出现且 PATH 可找到 `/product/bin/su`。Shell 的 id 请求仍立即返回退出码 13 / Permission denied；此时界面仍是锁屏，已要求用户解锁并检查超级用户页的 Shell 授权。26 个备份分区的 by-name 计划核对通过，无缺失路径，尚无分区镜像。
 
 为避免授权时自动熄屏，尝试保存并临时修改 USB 保持亮屏设置；ColorOS 拒绝 WRITE_SECURE_SETTINGS，修改未生效，原设置未改变。未关闭权限监控、SELinux 或绕过锁屏。原设置值只存本地日志。
+
+用户打开超级用户页的 Shell 授权开关后，`/debug_ramdisk/su -c id` 实测 UID 0、Magisk SELinux 域。已读出面板/触控型号、硬件 ID 和序列号，详情见 [屏幕实测](panel-evidence.md)。随后经 root 成功暂时设置 USB 保持亮屏为 2，并保留原值等待完成后恢复。
+
+26 个原厂分区备份最终完成：9,154,465,792 字节，逐项大小及设备前后/主机 SHA-256 一致，清单状态为 verified_requested_partitions，位于 `backups/partitions-20261003-152513-342/`。boot_a 副本与官方 OTA boot.img 完全一致，证明此轮诊断未永久写入该启动分区。运行中的 Android 备份不保证跨分区原子一致，也不表示完整全盘备份或恢复实测已完成。
+
+本机固件归档 467,082,752 字节、2,601 个条目，设备前后/主机 hash 一致，tar 列表和主机副本再次校验通过。root 面板证据与公开厂商解码源码最初另存 8 文件的本地备份，再加入 2 个退出验证记录，共 10 文件。随后成功恢复原亮屏设置并重启，最终无 su、UID 2000；正常开机和临时权限退出均已实测。无刷写镜像、切槽、关闭 SELinux 或重新锁定。
 
 ## 一手来源
 

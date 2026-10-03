@@ -7,16 +7,22 @@
 - ADB 已授权；机型 KB2000、Android 14 / ColorOS 14.0.0.602 已实读。
 - 解锁前 flash.locked=1、vbmeta.device_state=locked、verifiedbootstate=green、slot=_a 已实读。
 - SurfaceFlinger / DisplayManager 报告 1080×2400、60/120 Hz。
-- 面板型号/序列号、设备树和分区读取均被系统拒绝；原厂屏身份与原厂分区备份仍未完成。
+- 初次普通 ADB 阶段面板型号/序列号、设备树和分区读取均被系统拒绝；当时原厂屏身份与原厂分区备份未完成。
 - 用户确认清空数据后执行 fastboot oem unlock；重新连接实读 flash.locked=0、vbmeta.device_state=unlocked、verifiedbootstate=orange、slot=_a，ColorOS 正常启动，Bootloader 解锁已验证。
 - 解锁后 ADB 仍为 UID 2000，8 个面板/显示/命令行节点仍 Permission denied；屏幕身份未确认。补充节点读取遭遇 device not found，单独记录为连接中断。
 - 用户重新开启 USB 调试后 ADB 恢复，完整复查 16 项：9 项 Permission denied、7 项 No such file or directory，无成功面板读取；再次验证 unlocked/orange。最新原始证据与 SHA-256 清单位于 `local/device-20261003-143138-003/`。
 - 最新证据的 9 个文件 SHA-256 复核通过，并与解锁原始记录一同复制到 `backups/device-evidence-20261003-143248/`，共 22 个文件；证据副本再次核验。此备份不包含分区镜像，未提交或上传隐私日志。
 - 未执行 root、刷写镜像、切槽或重新锁定。
 - 解锁前保存 250 个可读取共享文件，共 13,499,706 字节；19 项补充复制均成功，250 个主机端 SHA-256 再次复核通过。应用私有数据和原厂分区不在该备份中。
-- 后续临时权限准备：原厂 fastbootd 不支持 fetch；已按范围从匹配指纹的官方 OTA 提取 boot/recovery/dtbo/vbmeta，操作数据和输出 manifest SHA-256 全部通过。官方 Magisk v30.7 在本机 UID 2000 工作目录生成候选，手机/主机 hash 相同，结构对比确认仅 ramdisk 改变、原厂内核/DTB/命令行等保留；候选尚未启动、root 尚未验证，详见 temporary-root-plan.md。
+- 临时权限准备阶段：原厂 fastbootd 不支持 fetch；已按范围从匹配指纹的官方 OTA 提取 boot/recovery/dtbo/vbmeta，操作数据和输出 manifest SHA-256 全部通过。官方 Magisk v30.7 在本机 UID 2000 工作目录生成候选，手机/主机 hash 相同，结构对比确认仅 ramdisk 改变、原厂内核/DTB/命令行等保留；此时尚未启动候选或验证 root，之后的实测如下，详见 temporary-root-plan.md。
 - 后续实测：官方管理应用安装成功；候选两次 fastboot boot 均返回 OKAY，系统启动完成并出现临时 Magisk su，SELinux 仍 Enforcing。期间一次重启退出临时环境，再次临时启动后 su 恢复；Shell 授权仍退出码 13 / Permission denied，未确认 UID 0，未生成原厂分区镜像。
-- Backup-Partitions 增加可选 SuExecutable 参数，以支持本机 `/debug_ramdisk/su` 路径。语法、注入字符串拒绝和 26 个 by-name 只读计划核验通过；新路径的真实镜像备份成功流程仍待 Shell 授权后验证。
+- Backup-Partitions 增加可选 SuExecutable 参数，以支持本机 `/debug_ramdisk/su` 路径。语法、注入字符串拒绝和 26 个 by-name 只读计划核验通过；当时仍待 Shell 授权，之后真实镜像备份成功流程已验证。
+- 用户开启 Shell 授权后，实测 UID 0 / Magisk SELinux 域，SELinux 保持 Enforcing。面板唤醒后读到 AMB655X/samsung1024、DCS `A5 05 01`、有效序列号与 60/120 Hz；依据固定厂商驱动解码生产日期 2020-10-08，完整序列号未提交，结论见 panel-evidence.md。
+- SuExecutable 路径的真实二进制备份已通过：26 个所选分区共 9,154,465,792 字节，每项设备前后/主机 SHA-256 相同、大小正确，最终状态 verified_requested_partitions。boot_a 与对应官方 OTA boot 相同；跨分区原子一致性与真实恢复仍未验证。
+- root 面板证据及厂商解码源码副本已保存至 `backups/panel-root-evidence-20261003-154203/`，最初 8 个文件，随后加入 2 个退出 root/设置恢复记录，最终 10 个文件。副本逐项核验。原始序列号、分区镜像、校准/NV 与所有隐私日志保持忽略，不上传。
+- 本机固件 tar 467,082,752 字节、2,601 条目，设备前后和主机 hash 相同、tar 列表正常；`backups/firmware-20261003-154349/` 的副本 hash 再次匹配。逐文件签名及主线兼容性未验证。
+- 诊断结束后恢复 USB 亮屏原值 0，并正常重启。最终 ColorOS 启动完成、UID 2000、PATH 无 su、`/debug_ramdisk/su` 不存在，Bootloader 仍 unlocked / orange、slot `_a`，临时 root 退出和设置恢复已实测。
+- 厂商公开序列号实现的末尾保留字段存在读取范围问题，日期字段仍在有效范围；未把完整 64 位返回值当作可信唯一硬件身份或原厂认证，限制记入 panel-evidence.md。
 
 ## 来源与主机
 

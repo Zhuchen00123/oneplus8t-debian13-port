@@ -35,6 +35,8 @@ Bootloader 解锁不会自动赋予 ADB root，也不会自动放开 SELinux。�
 
 ADB 仍为 UID 2000，8 个面板/显示/命令行节点仍 Permission denied，实际面板型号及序列号没有读出。SurfaceFlinger 仍报告 1080×2400、60/120 Hz、QCM，不能据此证明原厂屏。补充节点读取遇到 USB 连接中断，不能当作权限或硬件结论。
 
-当前原厂分区备份仍未完成；本次没有执行 root、刷 recovery、关闭 SELinux、刷写镜像、切槽或重新锁定。解锁阶段完成，屏幕身份仍未确认。
+解锁阶段结束时原厂分区备份仍未完成，尚未执行 root、刷 recovery、关闭 SELinux、刷写镜像、切槽或重新锁定；当时屏幕身份仍未确认。
 
 用户重新开启调试后连接恢复，已补齐此前中断的检查。最新证据 `local/device-20261003-143138-003/` 再次确认 unlocked/orange、UID 2000；原 8 个节点和补充 `/proc/devinfo/display` 均拒绝读取，其他 7 个旧路径不存在。普通 ADB 下此轮屏幕检查完成，仍不能确认原厂身份。继续读取受限面板信息需要另外准备带权限的环境；现有授权不包含 root 或刷 recovery。
+
+用户随后要求继续提供权限，已按 [临时 root 流程](temporary-root-plan.md) 在本机修补匹配的原厂 boot 并临时启动、取得 Shell 授权。后续 [屏幕实测](panel-evidence.md) 支持原厂规格的三星面板；26 个指定原厂分区及本机固件已备份、校验。最终重启退出临时 root，Bootloader 保持 unlocked；先前的“未取得权限/未备份”是解锁阶段历史记录。
