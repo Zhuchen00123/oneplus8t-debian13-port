@@ -2,7 +2,7 @@
 
 OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debian 13 arm64，内核尽量新。
 
-**当前阶段：Debian 13 / `7.2.0-kebab-debian13-r1+` 已持久部署到 A 槽，USB DHCP、SSH、真实终端、根文件系统读写及正常重启通过。手机当前保留运行 Linux。** 用户已持续授权既定 DTBO / boot_a / super 部署。已处理短按电源键误关机和重启时钟基准；Wi-Fi 按用户要求稍后配置。仍有两条启动 DSI 时钟警告，触摸事件、充电及长期负载未验收。[r1 实机记录](docs/persistent-r1-20261003.md)
+**当前阶段（2026-10-04）：Debian 13 / `7.2.0-kebab-debian13-r1+` 持久运行，USB DHCP/严格 SSH/根读写/正常重启通过。蓝牙地址服务卡住已修复并重启复验，Adreno 650 / Mesa GLES 绘制与像素回读通过。** 相机工具/IPA 已补齐但捕获缓冲分配失败；NFC 驱动、SSC 服务存在，功能未测。timesyncd 已启用但尚无联网同步；Wi-Fi 认证稍后配置。较长日志再次出现 TCM 无效触摸报文，DSI 警告仍在；音频、蜂窝/NV、触摸、充电和长期稳定性未验收。手机保留 Linux，本轮无分区刷写。[最新盘点](<docs/userspace-audit-r1-20261004.md>)、[r1 部署历史](<docs/persistent-r1-20261003.md>)。既定 dtbo_a/boot_a/super 部署及原厂恢复持续授权不变。
 
 历史 RAM 阶段：原厂 DTBO 下首次启动失败，单独授权的社区空 DTBO 对照成功；先恢复原厂 DTBO、再确认 ColorOS 正常启动。旧封存 boot/rootfs 保持原样，r1 已成组重构建并部署。[RAM 成功与回退](docs/ram-boot-success-20261003.md)、[服务器集成历史](docs/debian-server-port.md)
 
@@ -49,7 +49,7 @@ bash /mnt/f/codexprojects/oneplus8t/scripts/linux/build-kernel.sh ~/oneplus8t-bu
 
 阶段验证结果在 [validation.md](docs/validation.md)。手机部署的前置条件与恢复要求见 [备份说明](docs/backup-and-recovery.md)，Debian 路线见 [移植计划](docs/porting-plan.md)。
 
-最终服务器候选为 [成组清单](artifacts/server-port-20261003/ready/server-manifest.json)；`candidate/`、`final/`、`complete/` 是过程记录，不部署。首次硬件测试仍使用 [RAM 救援启动清单](artifacts/boot-preparation-20261003/rescue-final/boot-manifest.json)，并非先刷 server rootfs。构建脚本没有手机部署命令；生成镜像或空 DTBO 不代表已获准刷写。旧 [基础归档](artifacts/boot-preparation-20261003/debian-base/rootfs-export-manifest.json) 保留作复现输入。
+当前持久部署来自 [r1 成组清单](<artifacts/server-r1-20261003/ready/server-manifest.json>)；该封存镜像未包含 10-04 用户空间补项和运行后配置，本轮没有重新打包。旧 [服务器组](<artifacts/server-port-20261003/ready/server-manifest.json>)、[早期 RAM 组](<artifacts/boot-preparation-20261003/rescue-final/boot-manifest.json>) 仅作历史记录，不混用 boot/模块。旧 [基础归档](<artifacts/boot-preparation-20261003/debian-base/rootfs-export-manifest.json>) 保留作复现输入。构建脚本仅操作主机；设备写入遵守已有明确授权边界。
 
 受限屏幕节点的权限取得和返回原厂 boot 记录见 [临时 root](docs/temporary-root-plan.md)：匹配的原厂 boot 在本机修补并临时启动，UID 0 和实际分区备份已验证；未使用 Direct Install 或刷 recovery。
 

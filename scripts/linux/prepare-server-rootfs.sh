@@ -33,7 +33,14 @@ chroot "$rootfs" /usr/bin/env DEBIAN_FRONTEND=noninteractive apt-get "${apt_args
 chroot "$rootfs" /usr/bin/env DEBIAN_FRONTEND=noninteractive apt-get "${apt_args[@]}" \
   -o APT::Keep-Downloaded-Packages=true --no-install-recommends -y install \
   firmware-atheros firmware-qcom-soc wpasupplicant iw rfkill bluez \
-  alsa-ucm-conf alsa-utils qrtr-tools iputils-ping nftables curl rsync ethtool wireless-regdb systemd-resolved e2fsprogs
+  alsa-ucm-conf alsa-utils qrtr-tools iputils-ping nftables curl rsync ethtool wireless-regdb systemd-resolved e2fsprogs \
+  systemd-timesyncd libegl-mesa0 libgl1-mesa-dri mesa-utils-bin mesa-vulkan-drivers vulkan-tools \
+  v4l-utils libcamera-tools libcamera-ipa python3
+# Community kernel trusts upstream regdb keys, not Debian's signing key.
+# Select the paired signed database; do not disable signature verification.
+chroot "$rootfs" update-alternatives --set regulatory.db /lib/firmware/regulatory.db-upstream
+# Unprivileged headless GPU diagnostics need both DRM node groups.
+chroot "$rootfs" usermod -a -G video,render debian
 find "$rootfs/var/cache/apt/archives" -maxdepth 1 -type f -name '*.deb' -exec cp -- '{}' "$build/packages/" \;
 chroot "$rootfs" dpkg --audit
 chroot "$rootfs" dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\n' > "$build/packages.tsv"

@@ -54,6 +54,18 @@ def main():
     copy(a.bringup/'LICENSE','/usr/share/doc/kebab-community/COPYING')
     copy(device/'APKBUILD','/usr/share/doc/kebab-community/APKBUILD.reference')
     write('/usr/share/doc/kebab-community/SOURCE',f'https://github.com/jfbobier/Oneplus-8T-kebab-pmos-bringup\nCommit: {actual}\nDevice APKBUILD declares MIT; repository includes GPL-2.0. Original file headers retained.\n')
+    # Retain pinned originals; apply the bounded Debian/BlueZ adaptation locally.
+    adaptations = []
+    for name, target, mode in [
+        ('kebab-bluetooth-addr.sh', '/usr/local/libexec/kebab-bluetooth-addr', 0o755),
+        ('kebab-bluetooth-addr.conf', '/etc/systemd/system/kebab-bluetooth-addr@.service.d/10-debian-bounded.conf', 0o644),
+        ('test-gpu-headless.py', '/usr/local/libexec/kebab-test-gpu-headless.py', 0o755),
+    ]:
+        text = (project/'scripts/linux'/name).read_text()
+        write(target, text, mode)
+        adaptations.append({'source': name, 'destination': target,
+                            'sha256': hashlib.sha256(text.encode()).hexdigest()})
+    subprocess.run(['sh', '-n', str(root/'usr/local/libexec/kebab-bluetooth-addr')], check=True)
     # Keep the original RAM gadget script intact. A persistent initramfs can
     # leave an already bound gadget; the server service adopts that instance.
     write('/usr/local/libexec/kebab-usb-gadget',(project/'scripts/linux/usb-gadget.sh').read_text(),0o755)
@@ -160,14 +172,14 @@ AllowUsers debian
     for binary in ('kebab-server-usb','kebab-bluetooth-addr','kebab-dp-mode'):
         file = root/('usr/local/sbin/' if binary=='kebab-server-usb' else 'usr/bin/')/binary
         subprocess.run(['sh','-n',str(file)],check=True)
-    for unit in ('systemd-networkd.service','systemd-resolved.service','wpa_supplicant@wlan0.service','qrtr-ns.service'):
+    for unit in ('systemd-networkd.service','systemd-resolved.service','systemd-timesyncd.service','wpa_supplicant@wlan0.service','qrtr-ns.service'):
         # systemd-resolved is optional: networkd alone does not manage resolv.conf.
         if unit=='systemd-resolved.service' and not (root/'usr/lib/systemd/system'/unit).exists():
             continue
         subprocess.run(['chroot',str(root),'systemctl','enable',unit],check=True)
     subprocess.run(['chroot',str(root),'systemctl','disable','systemd-networkd-wait-online.service'],check=True)
     subprocess.run(['chroot',str(root),'systemctl','set-default','multi-user.target'],check=True)
-    result = {'bringup_commit':actual,'upstream_files':upstream,'network':'USB 192.168.8.1/24; DHCP offers host .2 without gateway/DNS; Wi-Fi DHCP after private credential provisioning',
+    result = {'bringup_commit':actual,'upstream_files':upstream,'local_adaptations':adaptations,'network':'USB 192.168.8.1/24; DHCP offers host .2 without gateway/DNS; Wi-Fi DHCP after private credential provisioning',
               'alsa_ucm_integrated':True,'audio_autoload_disabled':True,'modem_autoload_disabled':True,
               'qrtr_tools_installed':True,'kernel_pd_mapper_enabled':True,'modem_nv_services_enabled':False,
               'hardware_boot_verified':False,'phone_deployment_executed':False}

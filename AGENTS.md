@@ -27,6 +27,8 @@
 - r1 主机进展：TCM 完整四字节头计数及边界修复已导出锁定补丁，实际函数 ASan/UBSan 回归通过，旧代码被同套用例检出。r1 内核提交 `65dad81b2b498007e4972c45f94644f2f5d430f9`、`7.2.0-kebab-debian13-r1+` 已构建；新 RAM 组 `artifacts/boot-r1-20261003/rescue/` 和持久组 `artifacts/server-r1-20261003/ready/` 固化 USB 描述符/顺序修正，持久组增加 USB DHCP。新组 rootfs 578、server initramfs 200、RAM initramfs 8 模块实际字节均与新内核匹配，启动打包/固件/UUID/用户空间 SSH 检查已通过，源代码及产物成组快照已校验。旧 ready 组保持封存，不能混用。
 - 最新设备状态：持续授权下已实际刷 super、dtbo_a、boot_a，保持 A 槽，手机留在持久 Debian 13。USB 自动 DHCP `.2`、SSH/sudo/真实 PTY、可写 `/dev/sda15` 根 UUID、64 MiB fsync/直接读取/重启后同 hash 均通过；两次主动正常重启后仍能严格 SSH 连接。boot_a / dtbo_a 候选确切字节范围的设备回读 hash 与输入一致，不代表完整分区尾部或已运行 super 的全 hash 相同。额外一轮关机由用户短按电源键触发，logind 记录确认正常关机；已加载 HandlePowerKey=ignore，并写入主机构建脚本，物理短按复测未做。RTC 为 1970，系统时钟已校准并保存标准 clock epoch，重启通过；Wi-Fi/NTP 按用户要求稍后配置。当前采样无 TCM invalid-length 洪泛或活动 Oops/panic，仍有两条 DSI 时钟启动 WARNING，触摸事件、充电及长期负载未验收。时钟和 logind 手机运行后配置不在原 r1 封存镜像中。入口 `docs/persistent-r1-20261003.md`。后续 Linux 维护经已固定 USB 源地址/保存的 SSH 主机密钥连接，不把当前手机误当作仍在 Android。
 
+- 2026-10-04 最新维护：手机仍在上述持久 Debian r1；旧 Android/未启动 Linux/单次授权不足是历史阶段。蓝牙地址 oneshot 卡住已定位为 BlueZ 5.82 标准输入与未配置控制器查询兼容问题，采用外部超时/全局查询/异步重枚举等待，正常重启约 4 秒成功，未做无线配对。补齐 Mesa、Vulkan、相机工具/IPA、Python、timesyncd 共 140 个新增包，无升级/删除；GLES 硬件绘制和像素回读普通用户/重启后通过，Vulkan 仅枚举。相机 root 捕获仍缓冲分配失败零帧，NFC 仅驱动绑定、SSC 仅服务存在。regdb 已切换内核信任的 upstream 签名配对，未关闭校验；timesyncd 启用但尚未联网同步。较长日志已再次出现大量 TCM 无效报文，旧“无洪泛”仅早期窗口；DSI WARNING 仍在。Wi-Fi 认证、触摸/充电、音频、蜂窝/NV、长期稳定性未验收。本轮没有刷分区，也没有重打包原封存镜像；运行后私有配置已归档校验，构建配方已同步。入口 [最新盘点](<docs/userspace-audit-r1-20261004.md>)。
+
 ## 来源与移植方法
 
 - 优先读取 Linux 官方源码、SM8250 社区源码、OnePlusOSS 和维护者的一手记录。
