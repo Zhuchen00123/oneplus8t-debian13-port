@@ -39,6 +39,8 @@ $parts = @('boot_a','boot_b','dtbo_a','dtbo_b','vbmeta_a','vbmeta_b',
 - 恢复方案应写明要恢复的具体分区、顺序和槽位，逐个与 manifest 核对。项目不提供自动恢复/批量刷写脚本。
 - 不在未完整恢复匹配签名引导链的状态重新锁定 Bootloader。
 
+2026-10-03 已从匹配本机指纹的厂商 OTA 提取 boot/recovery/dtbo/vbmeta，所选数据与输出镜像均通过 manifest SHA-256。来源、限制和临时 root 候选备份见 [准备记录](temporary-root-plan.md)。这些是官方包中的恢复资料，不是从手机读取的原厂分区备份；没有 EFS/NV/persist，也未验证整个 OTA 签名，不能标记完整救砖资料已齐备。
+
 ## 项目备份
 
 `Backup-Project.ps1` 保存全部本地 Git refs 的 bundle、当前可跟踪/未忽略文件的 ZIP 快照、状态及 SHA-256。私密日志、固件、镜像和下载源码在忽略目录中，需按类别独立保存。源码的固定 Git 对象可另行用 `git archive` 导出；在 Windows 导出要用工具 `--output` 或原始二进制流，避免文字重定向损坏文件。

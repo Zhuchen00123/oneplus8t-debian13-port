@@ -45,4 +45,6 @@ bash /mnt/f/codexprojects/oneplus8t/scripts/linux/build-kernel.sh ~/oneplus8t-bu
 
 阶段验证结果在 [validation.md](docs/validation.md)。手机部署的前置条件与恢复要求见 [备份说明](docs/backup-and-recovery.md)，Debian 路线见 [移植计划](docs/porting-plan.md)。
 
+受限屏幕节点的后续取证方案见 [临时 root 准备](docs/temporary-root-plan.md)：已提取匹配 ColorOS 构建的原厂 boot，并在本机生成、校验和备份 Magisk 临时启动候选镜像；是否已启动和取得权限以该文档的实测记录为准。
+
 `kernel/` 与 `dtb/` 构建模式分别导出清单，共享构建目录有互斥锁。早期未分模式的产物目录只作过程记录；以上链接为最终导出。
