@@ -125,5 +125,16 @@
     "manifest": "artifacts/stock-recovery-20261003/recovery-manifest.json",
     "hardware_restore_tested": false
   },
+  "abl_control_flow_reference": {
+    "checked_at": "2026-10-03",
+    "url": "https://github.com/SHIFTPHONES/android_bootable_bootloader_edk2.git",
+    "branch": "sos-3.x",
+    "commit": "7d391d8b1059ed48259728cab004ca6f16ee3de2",
+    "path": "sources/abl-reference-7d391d8b1059",
+    "manifest": "sources/abl-reference-7d391d8b1059/source-manifest.json",
+    "role": "Read-only Qualcomm-derived ABL reference: OKAY precedes BootLinux; v2 DTB offset and failure paths",
+    "kb2000_coloros_abl_equivalence_verified": false,
+    "compiled_or_deployed": false
+  },
   "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories"
 }

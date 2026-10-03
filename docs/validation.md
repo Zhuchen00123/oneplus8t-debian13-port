@@ -9,6 +9,7 @@
 - 一次临时 boot：Sending OKAY 0.399s、Booting OKAY 0.092s；随后 getvar 仍可访问 Bootloader。用户确认屏幕一直为 Fastboot，主机没有新增 Linux RNDIS/ACM。不能宣称进入 Linux、SSH 可用或 UFS 已枚举。
 - 执行 `fastboot reboot`，ADB 核验 sys.boot_completed=1、原厂构建匹配、slot=_a、unlocked/orange、UID 2000、临时 su 不存在。原厂恢复已实测；本次没有 flash/erase/set_active 或主机网络配置。
 - 无 root 状态下 `/sys/fs/pstore` 列表 Permission denied，未读取内核日志。未确认失败原因，不能仅凭原厂 DTBO 离线不兼容宣布 DTBO 为根因。详细记录见 [RAM 首启](ram-firstboot-20261003.md)。
+- 首启失败后仅做主机排查：固定公开 Qualcomm 衍生 ABL 参考提交 7d391d8b1059ed48259728cab004ca6f16ee3de2，确认参考 CmdBoot 在 BootLinux 前回复 OKAY。按参考 v2 公式直接读取候选头，DTB 偏移 18,616,320 处实读 FDT magic，131,941 字节 DTB 在镜像内；候选 hash 不变。参考源码与 KB2000 OEM ABL 的等价性未确认，不宣称定位实机根因。
 
 ## 实机
 

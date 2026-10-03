@@ -40,3 +40,13 @@
 boot_a、recovery_a 和完整原厂 super 恢复素材也在独立恢复组，未改这些分区时不安排无故重刷。备份未包含全盘/GPT/完整引导链，仍在同盘，完整实机恢复未验证；不能描述为完整救砖保证。
 
 项目 [AGENTS.md](../AGENTS.md) 要求：“刷写/擦除任何分区……必须在列明目标、备份和恢复方案后取得明确授权。”本步骤会写 dtbo_a，故必须单独申请，不受首次 RAM 启动授权覆盖。
+
+## 首启失败后的主机端 ABL 排查
+
+固定公开的 SHIFTPHONES / Qualcomm 衍生 ABL 参考提交 `7d391d8b1059ed48259728cab004ca6f16ee3de2`，只下载、阅读源码，不编译或部署。源码和逐文件 hash 清单在忽略的 `sources/abl-reference-7d391d8b1059/`，来源进入 sources.lock.json。**这不是 KB2000 ColorOS 14 的已确认 ABL 源码**，下述代码不能替代本机日志或兼容性实测。
+
+- `CmdBoot()` 先执行 LoadImageAndAuth，再发送 FastbootOkay、停止 Fastboot USB，最后调用 BootLinux；因此 OKAY 先于内核移交，后续处理仍可能失败。[固定代码](https://github.com/SHIFTPHONES/android_bootable_bootloader_edk2/blob/7d391d8b1059ed48259728cab004ca6f16ee3de2/QcomModulePkg/Library/FastbootLib/FastbootCmds.c#L2874-L2899)
+- `BootLinux()` 在移交前检查压缩内核、DTB/DTBO、命令行和加载空间，出错会返回。DTBO 分支包含 GetSocDtb、GetBoardDtb、ApplyOverlay；设备树选择和 overlay 失败均是可能的早期退出点。[固定代码](https://github.com/SHIFTPHONES/android_bootable_bootloader_edk2/blob/7d391d8b1059ed48259728cab004ca6f16ee3de2/QcomModulePkg/Library/BootLib/BootLinux.c#L498-L622)
+- 对 header v2，该参考按 `page_size × (1 + kernel_pages + ramdisk_pages + second_pages + recovery_dtbo_pages)` 定位独立 DTB，不要求把 DTB 追加到 gzip 成员中。直接读取当前候选真实头部，计算出偏移 18,616,320，在该处实读 FDT magic `d00dfeed`；头部 DTB 长 131,941，完整位于镜像内，候选 SHA-256 与封存组一致。[固定 v2 分支](https://github.com/SHIFTPHONES/android_bootable_bootloader_edk2/blob/7d391d8b1059ed48259728cab004ca6f16ee3de2/QcomModulePkg/Library/BootLib/BootLinux.c#L471-L498)
+
+实际偏移核验报告 `local/abl-v2-offset-audit-20261003.json`。这排除了“按该参考 v2 公式找不到镜像里的 DTB”的格式问题；没有证明本机 ABL 采用同一公式、已选中该 DTB或内核已运行。未取得 DTBO 校验函数完整实现及本机日志，不能仅按变量名称推断原始空 DTB 在本机的具体路径。本轮不修改封存镜像，后续 DTBO 实验仍等待单独授权。
