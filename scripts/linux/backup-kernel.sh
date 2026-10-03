@@ -25,7 +25,8 @@ for file in sorted(dest.rglob('*')):
             files[str(file.relative_to(dest))] = hashlib.file_digest(stream, 'sha256').hexdigest()
 data = {
     'created_at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    'scope': 'complete committed kernel tree plus config and 22 applied commits as patches; not phone backup',
+    'scope': 'complete committed kernel tree plus config and applied commits as patches; not phone backup',
+    'patch_count': len(list((dest/'patches').glob('*.patch'))),
     'git_commit': subprocess.check_output(['git', '-C', sys.argv[2], 'rev-parse', 'HEAD'], text=True).strip(),
     'git_tree': subprocess.check_output(['git', '-C', sys.argv[2], 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
     'files_sha256': files,

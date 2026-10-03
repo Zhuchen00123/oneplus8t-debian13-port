@@ -53,6 +53,8 @@ HWC 的显示标识为 `manufacturerPnpId=QCM`、空名称、年份 2006。它�
 
 `/dev/block/by-name/` 可枚举，但读取 `boot_a` 被拒绝。本次没有实际原厂分区镜像；权限拒绝不能视为备份成功。
 
+此外 `/vendor/firmware`、`/vendor/firmware_mnt` 与其 image 目录均拒绝 shell 读取，尚未取得本机签名固件。
+
 本机关键映射：
 
 | 名称 | 实际目标 |

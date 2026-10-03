@@ -62,5 +62,6 @@
 - `scripts/Sync-Sources.ps1`：固定来源下载和核验，不重置已有改动。
 - `scripts/Backup-Partitions.ps1`：有权限时只读备份指定分区。
 - `scripts/Backup-Project.ps1`：管理仓库快照。
+- `scripts/Backup-BuildArtifacts.ps1`：按产物清单校验并保存内核/DTB/模块成组快照。
 - `scripts/linux/prepare-kernel.sh`、`build-kernel.sh`：仅在主机准备/构建。
 - `scripts/linux/backup-kernel.sh`：完整源码、配置与补丁快照。

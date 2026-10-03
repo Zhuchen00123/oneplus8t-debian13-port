@@ -8,6 +8,8 @@ OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debi
 
 当前阶段是调查、源码复现和主机构建验证。没有解锁、刷机或写入手机分区；原厂分区备份尚未完成。构建成功也不等于 Debian 已在手机启动。
 
+已在 Debian 13 WSL 完成 `7.2.0-kebab-debian13+` 的 Image、Image.gz、DTB 和 578 个模块构建，模块 vermagic 全部一致，ARM64 架构及输出 SHA-256 已核验。产物入口：[内核清单](artifacts/7.2.0-kebab-debian13+/f6ac9e9c86d0-064fa50f8341/kernel/kernel-manifest.json)。
+
 ## 目录
 
 | 路径 | 用途 |
@@ -42,3 +44,5 @@ bash /mnt/f/codexprojects/oneplus8t/scripts/linux/build-kernel.sh ~/oneplus8t-bu
 ```
 
 阶段验证结果在 [validation.md](docs/validation.md)。手机部署的前置条件与恢复要求见 [备份说明](docs/backup-and-recovery.md)，Debian 路线见 [移植计划](docs/porting-plan.md)。
+
+`kernel/` 与 `dtb/` 构建模式分别导出清单，共享构建目录有互斥锁。早期未分模式的产物目录只作过程记录；以上链接为最终导出。

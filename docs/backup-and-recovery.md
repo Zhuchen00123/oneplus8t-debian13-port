@@ -52,3 +52,9 @@ bash /mnt/f/codexprojects/oneplus8t/scripts/linux/backup-kernel.sh ~/oneplus8t-b
 ```
 
 它保存 Git 对象中的完整源码归档、构建配置、来源 metadata、22 个本地提交补丁与校验和，并检查 gzip 完整性和 tar 条目。它不包含手机镜像，也不声称保存了浅克隆基线以前的全部内核 Git 历史。
+
+已编译内核、DTB、模块和配置用单独的快照成组保存；工具先验证来源清单，再逐项复制并复核 SHA-256：
+
+```powershell
+& ./scripts/Backup-BuildArtifacts.ps1 -ArtifactDirectory ./artifacts/7.2.0-kebab-debian13+/f6ac9e9c86d0-064fa50f8341/kernel
+```
