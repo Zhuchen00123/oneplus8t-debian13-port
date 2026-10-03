@@ -86,3 +86,12 @@
 - 只读手机预检确认 KB2000/ColorOS 14.0.0.602、a、unlocked/orange、UID 2000/无 su、电量 100%；不再读取面板。原始日志仅 local/。本轮没有临时启动 Linux、分区写入、切槽、SELinux 或主机网卡修改。
 - 成组备份 `backups/server-20261003-193710-499/` 文件副本 hash 通过，原厂 boot_a/dtbo_a/recovery_a/super 再核对大小/hash 通过。原厂镜像复用既有位置，同盘副本不是独立介质或实际恢复验证。
 - 持久 rootfs 的 super 目的地只作方案，尚未获准。先执行有独立授权的 RAM 救援首启；DTBO 与持久分区各自单独授权。
+
+## 首启前模块二进制与原厂恢复格式
+
+- 已对实际服务器 rootfs 的 578 个模块逐文件核对压缩字节；服务器 initramfs 的 200 个模块、RAM 救援的 8 个模块逐一核对原始 ELF 字节，与固定内核组全部相同；6 个必需 USB 依赖齐全。硬件加载仍未测，原 Linux 候选没有被修改。
+- `Test-ModulePayloads.py` 9 项通过：usr-merge 路径、旧版本/路径逃逸拒绝、压缩格式变化、同版本数据变更、缺失/重复模块的真实 tar 输入拒绝。
+- `prepare-stock-recovery.py` 实际生成 boot_a/dtbo_a/recovery_a 副本及 whole-super sparse 7,481,440,240 字节。独立 framing/尺寸核验通过；simg2img 展开到 7,516,192,768 字节，hash 与原厂 super 一致；原备份转换前后 hash 不变。
+- `Test-StockSparse.py` 6 项通过，包含原生工具转换/解码及错误尺寸、截断、未知 chunk、错误 payload 长度、尾随数据拒绝。AOSP sparse schema 固定在来源锁定文件。
+- 仅验证主机文件；没有临时启动/刷写/切槽或新的手机命令。原厂恢复模式、下载分片、硬件恢复未验证；首次 RAM 启动仍等待明确授权。
+- Windows 对恢复组所有导出文件再次核对大小/SHA-256 通过。`backups/recovery-readiness-20261003-200643-068/` 保存恢复清单和模块核验报告的已核对元数据副本；镜像实体仍在 artifacts/ 和 WSL 原有位置，元数据快照不包含镜像实体，不是独立介质备份。

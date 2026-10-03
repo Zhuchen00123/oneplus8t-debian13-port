@@ -114,5 +114,16 @@
     "oem_firmware_scope": "Own verified KB2000 archive; ADSP/CDSP/SLPI/GPU zap split layout; no NV deployment",
     "phone_deployment_executed": false
   },
+  "recovery_format_reference": {
+    "checked_at": "2026-10-03",
+    "url": "https://github.com/aosp-mirror/platform_system_core.git",
+    "tag": "android-14.0.0_r1",
+    "commit": "e74a4ba9e0155495efc2bad8018167df160bf968",
+    "file": "libsparse/sparse_format.h",
+    "role": "Read-only Android sparse schema reference; no code vendored or executed",
+    "conversion_tool_debian_version": "1:34.0.5-12",
+    "manifest": "artifacts/stock-recovery-20261003/recovery-manifest.json",
+    "hardware_restore_tested": false
+  },
   "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories"
 }

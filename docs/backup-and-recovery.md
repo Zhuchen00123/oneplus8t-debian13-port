@@ -49,6 +49,21 @@ $parts = @('boot_a','boot_b','dtbo_a','dtbo_b','vbmeta_a','vbmeta_b',
 
 随后取得临时 root，已另行读取上述实际原厂分区。主线移植固件归档位于 `firmware/kb2000-14.0.0.602-20261003-154007/`：467,082,752 字节、2,601 个 tar 条目，设备前后归档 hash 与主机 hash 一致，主机 tar 列表验证通过，符号链接保留且未跟随。副本 `backups/firmware-20261003-154349/` 再次校验；这验证传输一致性，不表示逐份固件签名或 Linux 兼容性已验证。校准/NV 仍仅属于这台手机，不混用其他设备。
 
+### 原厂 super 恢复格式准备
+
+2026-10-03 已在主机用 `prepare-stock-recovery.py` 生成 `artifacts/stock-recovery-20261003/`。输入为实际已验证的 boot_a/dtbo_a/recovery_a/super 原厂备份，转换前后原文件 hash 不变；未使用其他型号镜像，没有读取 NV 或操作手机。
+
+whole-super sparse 为 7,481,440,240 字节，SHA-256 `fb2c62cb888897d8552a53b5d6fac61fc2ec5974dc7c3ae51d939352dadc4787`。独立 sparse framing/尺寸检查通过，simg2img 解码后与 7 GiB 原厂 super 的 hash `60f091b129aa2e090c6954689b7a520d98d34c0075712e0461c85c2c5c53155a` 一致。原始/解码副本留在 WSL `/home/zhuchen/oneplus8t-recovery-20261003/`，导出副本在 F 盘；独立介质状态未确认，实际恢复未测。
+
+```sh
+python3 /mnt/f/codexprojects/oneplus8t/scripts/linux/prepare-stock-recovery.py \
+  --partition-backup /mnt/f/codexprojects/oneplus8t/backups/partitions-20261003-152513-342 \
+  --work /home/zhuchen/oneplus8t-recovery-new \
+  --output /mnt/f/codexprojects/oneplus8t/artifacts/stock-recovery-new
+```
+
+工具只准备并校验主机文件，没有 Fastboot/ADB 或自动恢复命令；必须选择全新目录。手机恢复还需要确认实际模式、目标、槽位、下载上限和具体授权，不能把本次离线校验标记为“恢复成功”。
+
 ## 项目备份
 
 `Backup-Project.ps1` 保存全部本地 Git refs 的 bundle、当前可跟踪/未忽略文件的 ZIP 快照、状态及 SHA-256。私密日志、固件、镜像和下载源码在忽略目录中，需按类别独立保存。源码的固定 Git 对象可另行用 `git archive` 导出；在 Windows 导出要用工具 `--output` 或原始二进制流，避免文字重定向损坏文件。

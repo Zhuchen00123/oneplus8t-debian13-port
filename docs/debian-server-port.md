@@ -76,7 +76,7 @@ python3 "$P/scripts/linux/verify-server-candidate.py" "$P/artifacts/server-port-
 
 失败先按键返回 Bootloader、重启原厂 Android，不自动刷入镜像。原厂 DTBO/ABL 问题若阻挡，另行申请仅 dtbo_a 的方案，不能扩大本次临时启动授权。[首次启动及 DTBO 回退细节](linux-boot-preparation.md)
 
-恢复素材：已校验的原厂 boot_a / dtbo_a / recovery_a / super；原始清单 `backups/partitions-20261003-152513-342/manifest.json`。后续写 super 时需要原厂 super 的 sparse 转换与往返校验，完整恢复步骤尚未实际执行。26 份分区备份不含 GPT/完整启动链/用户数据，不是完整救砖保证。
+恢复素材：已校验的原厂 boot_a / dtbo_a / recovery_a / super；原始清单 `backups/partitions-20261003-152513-342/manifest.json`。原厂 super 的 sparse 转换与往返校验现已完成，独立恢复组在 `artifacts/stock-recovery-20261003/`；完整恢复步骤尚未在手机执行。26 份分区备份不含 GPT/完整启动链/用户数据，不是完整救砖保证。
 
 ## 验收边界
 
@@ -105,3 +105,13 @@ python3 "$P/scripts/linux/verify-server-candidate.py" "$P/artifacts/server-port-
 成组快照：`backups/server-20261003-193710-499/`，复制前/后 hash 通过；原厂 boot_a、dtbo_a、recovery_a、7 GiB super 在原备份位置重新大小/hash 验证通过。快照复用原厂恢复文件位置，不再次复制 super；仍在同一 F 盘，需要独立介质副本才能提供磁盘故障恢复保障。
 
 一次 WSL 多层引号使包安装准备误写主机 policy-rc.d，复制检查立即失败；确认该文件是本次新建后已清理，主机不再留此启动阻断文件。后续使用脚本文件调用，QA 私钥/挂载均清理。全程没有手机分区写入。
+
+## 首启前补充核验
+
+`verify-module-payloads.py` 对实际交付内容做二进制核验：根文件系统 578 个压缩模块与固定内核 modules.tar.gz 的相应文件完全一致；服务器 initramfs 中 200 个模块和 RAM 救援 initramfs 中 8 个模块解压后的 ELF 字节也全部一致，6 个必需 USB 依赖均包含。不是仅依据 kernelrelease/vermagic 作推断；仍未验证硬件加载。报告只存本地 `local/module-payload-audit-final-20261003.json`。正/负例覆盖旧版本路径、压缩变化、数据变更、缺失和重复条目，9 项通过。
+
+原厂恢复组 `artifacts/stock-recovery-20261003/recovery-manifest.json` 包含 boot_a/dtbo_a/recovery_a 副本和 whole-super sparse：7,481,440,240 字节，SHA-256 `fb2c62cb888897d8552a53b5d6fac61fc2ec5974dc7c3ae51d939352dadc4787`。解码成 7,516,192,768 字节 raw 后，SHA-256 与原厂 `super.img` 完全相同：`60f091b129aa2e090c6954689b7a520d98d34c0075712e0461c85c2c5c53155a`。
+
+格式核验独立检查 Android sparse v1 的 header/chunk framing、总块数与长度，6 项 malformed/truncated 正负例通过；转换/解码使用已锁定的 Debian Android libsparse 工具。格式依据：[AOSP 固定提交](https://github.com/aosp-mirror/platform_system_core/blob/e74a4ba9e0155495efc2bad8018167df160bf968/libsparse/sparse_format.h)。sparse 不是压缩包，体积仍接近 7 GiB；是否能在本机 Fastboot 模式恢复、分片传输上限和完整恢复顺序仍待取得授权后实测。
+
+本轮未重新生成或替换已封存的 Linux 候选，也未执行任何手机命令。补齐主机核验和恢复格式并不改变首次 RAM 启动需要明确授权的状态。
