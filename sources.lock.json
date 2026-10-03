@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-03",
+  "target": {
+    "device": "OnePlus 8T KB2000",
+    "distribution": "Debian 13 arm64",
+    "kernel_preference": "newest viable community-supported; track mainline"
+  },
+  "repositories": [
+    {
+      "id": "linux-sm8250",
+      "url": "https://gitlab.postmarketos.org/soc/qualcomm-sm8250/linux.git",
+      "ref": "sm8250-7.2.0",
+      "commit": "71f4068cb254730bcf334cde9bdd6ca183e4fcd0",
+      "path": "sources/linux",
+      "checkout_on_windows": false,
+      "role": "build baseline; close-to-mainline community fork; newest published sm8250 tag observed"
+    },
+    {
+      "id": "kebab-bringup",
+      "url": "https://github.com/jfbobier/Oneplus-8T-kebab-pmos-bringup.git",
+      "ref": "main",
+      "commit": "2e5e065da8ea8d242ecc34bfe064b88257797aa9",
+      "path": "sources/bringup",
+      "role": "21 kernel patches, consolidated DTS, config and userspace reference; tested by author on KB2003"
+    },
+    {
+      "id": "linux-upstream-reference",
+      "url": "https://github.com/torvalds/linux.git",
+      "ref": "master",
+      "commit": "e767a4ea70a3992c37ed604157d32f0dfbf9b1e3",
+      "release_candidate_ref": "v7.3-rc5",
+      "release_candidate_commit": "72d3fcf802c45d00b300f25b848a93c3a2bd7c7e",
+      "role": "comparison reference only; no kebab DTS in qcom directory at inspected master commit"
+    },
+    {
+      "id": "armbian-reference",
+      "url": "https://github.com/armbian/build.git",
+      "ref": "main",
+      "commit": "b3b1f3e5134f807342d452956b2c7b8afdfff34f",
+      "role": "Debian trixie integration reference; SM8250 current 6.18 and edge 6.19 observed"
+    },
+    {
+      "id": "oneplus-vendor-kernel-reference",
+      "url": "https://github.com/OnePlusOSS/android_kernel_oneplus_sm8250.git",
+      "ref": "oneplus/sm8250_u_14.0.0_op8t",
+      "commit": "846e71f228ad605c75b53064c4c165a1361a0bfe",
+      "role": "Android 14 vendor kernel reference; not mainline"
+    },
+    {
+      "id": "oneplus-vendor-dt-reference",
+      "url": "https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8250.git",
+      "ref": "oneplus/sm8250_u_14.0.0_op8t",
+      "commit": "0a301570ef70f6f9bfe1840451c9d41f5ddce6b8",
+      "role": "vendor display/device tree comparison; panel DT naming is not proof of actual screen"
+    }
+  ],
+  "source_archive": {
+    "url": "https://gitlab.postmarketos.org/soc/qualcomm-sm8250/linux/-/archive/sm8250-7.2.0/linux-sm8250-7.2.0.tar.gz",
+    "sha512_from_bringup_apkbuild": "26d48ebd04c43e993bd00f9c055d40daf87b4919332c974e3c0db236135b522415e3dcf4b512e4028cc42da63fe4639991c3870bcb977967846db590a0b950b7",
+    "note": "recorded only; archive itself not downloaded or verified"
+  },
+  "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories"
+}

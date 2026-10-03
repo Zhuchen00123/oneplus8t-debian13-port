@@ -1,0 +1,37 @@
+{
+  "assessed_at": "2026-10-03",
+  "model": "KB2000",
+  "adb_device": "OnePlus8T",
+  "codename": "kebab",
+  "board": "kona",
+  "soc": "SM8250",
+  "target_distribution": "Debian 13 trixie",
+  "target_architecture": "arm64",
+  "android_build": "KB2000_14.0.0.602(CN01)",
+  "android_version": "14",
+  "security_patch": "2024-08-05",
+  "bootloader_state": "locked",
+  "verified_boot_state": "green",
+  "observed_slot": "a",
+  "root_available": false,
+  "original_partition_backup": "not_completed",
+  "super_by_name_target_observed": "/dev/block/sda15",
+  "display": {
+    "resolution": [1080, 2400],
+    "reported_refresh_rates_hz": [60, 120],
+    "community_expected_panel": "Samsung AMB655X",
+    "actual_panel_model": "unreadable_without_additional_access",
+    "original_factory_screen": "unconfirmed",
+    "hardware_panel_serial_number": "permission_denied"
+  },
+  "community_hardware_validation_model": "KB2003",
+  "boot_image_reference": {
+    "source": "community deviceinfo; must verify against this device before deployment",
+    "header_version": 2,
+    "pagesize": 4096,
+    "base": "0x00000000",
+    "kernel_offset": "0x00008000",
+    "ramdisk_offset": "0x01000000",
+    "dtb_offset": "0x01f00000"
+  }
+}
