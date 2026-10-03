@@ -2,7 +2,7 @@
 
 时间：2026-10-03（Asia/Shanghai）。通过已授权 USB ADB 获取；详细原始记录只存 `local/device-20261003/`，不提交序列号。
 
-## 设备和解锁状态
+## 解锁前设备状态
 
 | 项目 | 实际读取 |
 |---|---|
@@ -19,7 +19,13 @@
 | ADB UID | 2000(shell)，SELinux shell 域 |
 | `command -v su` | 未找到 |
 
-结论：Bootloader 仍锁定。“允许 OEM 解锁”为 1 只表示允许执行解锁，不表示已经解锁。解锁会触发数据清除，需另行授权及先备份个人数据。[Android 官方说明](https://source.android.com/docs/core/architecture/bootloader/locking_unlocking)
+初次取证时 Bootloader 锁定。“允许 OEM 解锁”为 1 只表示允许执行解锁，不表示已经解锁。解锁会触发数据清除。[Android 官方说明](https://source.android.com/docs/core/architecture/bootloader/locking_unlocking)
+
+## 解锁后复核
+
+用户确认“解锁呗，没有重要数据”后，执行 `fastboot oem unlock`，用户在手机上完成确认并报告清空/启动。随后 ADB 恢复授权，实读 `ro.boot.flash.locked=0`、`ro.boot.vbmeta.device_state=unlocked`、`ro.boot.verifiedbootstate=orange`，当前槽位仍为 `_a`，ColorOS 构建不变。**Bootloader 解锁成功已验证。** 原始证据位于 `local/device-20261003-142327-248/`。
+
+ADB 仍为 UID 2000 / SELinux shell 域；重新读取下述 8 个面板/显示/命令行节点，仍全部 Permission denied。SurfaceFlinger 仍报告 1080×2400、60/120 Hz 和 QCM 标识。解锁没有使实际面板 ID 或序列号可读，原厂身份仍未确认。补充节点读取时 USB 连接中断，device not found 不能归类为面板权限拒绝或节点不存在。
 
 ## 屏幕判断
 
@@ -43,7 +49,7 @@ HWC 的显示标识为 `manufacturerPnpId=QCM`、空名称、年份 2006。它�
 /proc/cmdline
 ```
 
-显示 HAL 的 `IDisplayPanelFeature` 无法由 shell 获取，最近日志也没有可用面板型号；`dumpsys display.smomoservice` 未提供信息。没有修改 sysfs、SELinux、面板寄存器、显示设置、Bootloader 或分区。
+解锁前显示 HAL 的 `IDisplayPanelFeature` 无法由 shell 获取，最近日志也没有可用面板型号；`dumpsys display.smomoservice` 未提供信息。此后按授权解锁并恢复出厂；未修改 sysfs、SELinux、面板寄存器，也未刷写镜像或切槽。
 
 原厂 Android 14 的 OnePlusOSS 设备树将 20828 面板描述为 Samsung AMB655X；社区主线驱动也针对它。这是预期配置，**并非本机的实际读取结果**。[固定厂商 DTS](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8250/blob/0a301570ef70f6f9bfe1840451c9d41f5ddce6b8/vendor/qcom/proprietary/devicetree-4.19/20828/dsi-panel-oplus20828-samsung-amb655x-1080-2400-120fps.dtsi)
 

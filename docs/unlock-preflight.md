@@ -27,4 +27,12 @@ Bootloader 解锁不会自动赋予 ADB root，也不会自动放开 SELinux。�
 
 [LineageOS 的 KB2000/KB2001/KB2003/KB2005 安装指南](https://wiki.lineageos.org/devices/kebab/install/variant1) 明确使用 `fastboot oem unlock`，并说明清除数据及手机确认、重新开启 USB 调试。仅采用解锁章节，本项目不执行其 LineageOS recovery/DTBO/vbmeta 安装步骤。
 
-当前状态：共享文件复制完成，手机停留在 Fastboot；尚未发出解锁命令，数据清除确认待完成。原厂分区备份仍未完成。
+用户已确认："解锁呗，没有重要数据"，接受解锁清除数据。
+
+已在重新核验产品 `kona`、`unlocked=no` 后执行指定序列号的 `fastboot oem unlock`，返回 `OKAY`，退出码 0。紧随命令的只读查询仍为 `unlocked=no`，ADB 未列出设备；此时尚在等待手机确认，命令接收成功不能单独作为解锁完成证据。
+
+用户随后报告："手机正在清空或启动"。ADB 恢复连接后，`Get-DeviceInfo.ps1` 实读：`flash.locked=0`、`vbmeta.device_state=unlocked`、`verifiedbootstate=orange`、slot `_a`，ColorOS 构建不变。**解锁成功已验证。**
+
+ADB 仍为 UID 2000，8 个面板/显示/命令行节点仍 Permission denied，实际面板型号及序列号没有读出。SurfaceFlinger 仍报告 1080×2400、60/120 Hz、QCM，不能据此证明原厂屏。补充节点读取遇到 USB 连接中断，不能当作权限或硬件结论。
+
+当前原厂分区备份仍未完成；本次没有执行 root、刷 recovery、关闭 SELinux、刷写镜像、切槽或重新锁定。解锁阶段完成，屏幕身份仍未确认。

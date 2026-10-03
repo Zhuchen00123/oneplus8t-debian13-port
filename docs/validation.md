@@ -5,10 +5,13 @@
 ## 实机
 
 - ADB 已授权；机型 KB2000、Android 14 / ColorOS 14.0.0.602 已实读。
-- flash.locked=1、vbmeta.device_state=locked、verifiedbootstate=green、slot=_a 已实读。
+- 解锁前 flash.locked=1、vbmeta.device_state=locked、verifiedbootstate=green、slot=_a 已实读。
 - SurfaceFlinger / DisplayManager 报告 1080×2400、60/120 Hz。
 - 面板型号/序列号、设备树和分区读取均被系统拒绝；原厂屏身份与原厂分区备份仍未完成。
-- 未执行解锁、root、写入分区、切槽或重启。
+- 用户确认清空数据后执行 fastboot oem unlock；重新连接实读 flash.locked=0、vbmeta.device_state=unlocked、verifiedbootstate=orange、slot=_a，ColorOS 正常启动，Bootloader 解锁已验证。
+- 解锁后 ADB 仍为 UID 2000，8 个面板/显示/命令行节点仍 Permission denied；屏幕身份未确认。补充节点读取遭遇 device not found，单独记录为连接中断。
+- 未执行 root、刷写镜像、切槽或重新锁定。
+- 解锁前保存 250 个可读取共享文件，共 13,499,706 字节；19 项补充复制均成功，250 个主机端 SHA-256 再次复核通过。应用私有数据和原厂分区不在该备份中。
 
 ## 来源与主机
 
