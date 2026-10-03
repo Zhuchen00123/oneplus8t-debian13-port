@@ -57,7 +57,9 @@
 
 先保留原厂 recovery。若后续确需恢复环境，再核验可信镜像、固件版本并取得对应授权，先临时启动测试兼容性，再决定是否安装。原厂 recovery 的完整恢复能力同样未验证，不能当作全盘救砖保证。
 
-## 首次实机方案（尚未授权或执行）
+## 首次实机方案（一次 RAM 尝试已执行，未成功）
+
+2026-10-03 用户明确授权临时启动、不写分区。核验后执行一次下述流程，Sending/Booting 返回 OKAY；随后仍可访问 Bootloader，用户确认一直是 Fastboot 界面，未出现 Linux USB/SSH，UFS 未验收。已 `fastboot reboot` 并确认原厂 Android 完成启动；没有分区刷写或槽位变更。详细证据和后续方案见 [首次实机记录](ram-firstboot-20261003.md)。以下流程保留作记录，不表示自动获得第二次或分区写入授权。
 
 第一步建议仅临时加载 RAM 救援 boot，不改分区。执行前重新核对机型、构建、slot、root 退出、候选 hash、恢复副本和电量，并确认可按键返回 Bootloader。进入后只读核验 product、current-slot、unlocked、max-download-size；须仍对应 KB2000/kona、a、unlocked 且下载上限足够。状态改变则重新准备。
 

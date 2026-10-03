@@ -21,6 +21,6 @@
   "rescue_rootfs": "RAM initramfs only; no phone filesystem mounted",
   "usb_network": {"function": "rndis", "device_ipv4": "192.168.8.1/24", "host_ipv4": "192.168.8.2/24"},
   "stock_dtbo_with_mainline_dtb": "not_verified",
-  "temporary_mainline_boot_test": "not_authorized_or_executed",
+  "temporary_mainline_boot_test": "authorized_and_attempted_20261003; fastboot_boot_OKAY_but_bootloader_remained; Linux_boot_not_verified; stock_Android_return_verified",
   "partition_flash": "not_authorized_or_executed"
 }

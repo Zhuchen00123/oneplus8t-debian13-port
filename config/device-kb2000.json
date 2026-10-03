@@ -15,7 +15,7 @@
   "observed_slot": "a",
   "root_available": false,
   "screen_forensics_completed": true,
-  "current_phase": "debian13_kernel72_server_integrated_host_only_hardware_pending",
+  "current_phase": "debian13_kernel72_ram_boot_attempt_failed_bootloader; stock_android_restored_without_partition_writes",
   "temporary_magisk_root_verified": true,
   "original_partition_backup": "verified_requested_26_partitions",
   "original_partition_backup_manifest": "backups/partitions-20261003-152513-342/manifest.json",

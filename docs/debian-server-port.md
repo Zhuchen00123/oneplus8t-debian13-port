@@ -68,7 +68,9 @@ python3 "$P/scripts/linux/verify-server-candidate.py" "$P/artifacts/server-port-
 
 **这个目的地尚未获准写入。** 先通过 RAM 首启验证内核和 USB，再按真实枚举和日志决定持久部署。后续 boot_a、dtbo_a、super 的每项写入需列出目标、hash、恢复流程并取得明确授权；不顺带写 vbmeta/recovery/userdata。
 
-## 下一步：只临时启动 RAM 救援候选
+## 首次 RAM 实机结果
+
+用户已明确授权一次临时启动、不写分区。2026-10-03 已执行救援 `fastboot boot`，命令返回 OKAY，但手机仍在 Bootloader，用户确认一直显示 Fastboot；Linux USB 网络/串口均未出现，SSH、内核运行和 UFS 枚举没有通过。已重启并验证原厂 ColorOS 完成启动，仍是 A 槽、unlocked/orange，无临时 su，没有刷写分区。原始证据仅存 local/；详细记录及候选 DTBO 对照方案见 [RAM 首启记录](ram-firstboot-20261003.md)。下述旧方案保留为此次尝试的范围说明，DTBO 等后续分区写入仍须另行授权。
 
 候选仍是既有 `artifacts/boot-preparation-20261003/rescue-final/boot-rescue.img`，18,751,488 字节，SHA-256 `f339e7d993c8c4d3bf6527e706c4219c0d6da7d07bd569331cba54def057260f`。它只在 RAM 运行，不挂载手机存储，不启动 DSP/蜂窝或 NV 服务；不会直接运行持久服务器 rootfs。
 

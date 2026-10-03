@@ -2,6 +2,14 @@
 
 日期：2026-10-03。
 
+## Linux 7.2 首次 RAM 实机尝试
+
+- 用户明确授权一次 `fastboot boot`，限定不写分区。救援镜像与 boot_a/dtbo_a/recovery_a 恢复副本再次校验通过；设备 KB2000、ColorOS 14.0.0.602、A 槽、unlocked/orange、无临时 su、电量 100%。
+- Bootloader 实读 product=kona、current-slot=a、unlocked=yes、is-userspace=no、max-download-size=805306368（十进制字节）。候选 18751488 字节、SHA-256 f339e7d993c8c4d3bf6527e706c4219c0d6da7d07bd569331cba54def057260f。
+- 一次临时 boot：Sending OKAY 0.399s、Booting OKAY 0.092s；随后 getvar 仍可访问 Bootloader。用户确认屏幕一直为 Fastboot，主机没有新增 Linux RNDIS/ACM。不能宣称进入 Linux、SSH 可用或 UFS 已枚举。
+- 执行 `fastboot reboot`，ADB 核验 sys.boot_completed=1、原厂构建匹配、slot=_a、unlocked/orange、UID 2000、临时 su 不存在。原厂恢复已实测；本次没有 flash/erase/set_active 或主机网络配置。
+- 无 root 状态下 `/sys/fs/pstore` 列表 Permission denied，未读取内核日志。未确认失败原因，不能仅凭原厂 DTBO 离线不兼容宣布 DTBO 为根因。详细记录见 [RAM 首启](ram-firstboot-20261003.md)。
+
 ## 实机
 
 - ADB 已授权；机型 KB2000、Android 14 / ColorOS 14.0.0.602 已实读。
