@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][ValidatePattern('^[A-Za-z0-9_]+$')][string[]]$Partition,
     [string]$ExpectedModel = 'KB2000',
     [ValidateSet('Direct', 'Su')][string]$RootMode = 'Direct',
+    [ValidatePattern('^(su|/[A-Za-z0-9_./-]+)$')][string]$SuExecutable = 'su',
     [ValidateRange(30, 7200)][int]$TimeoutSeconds = 3600,
     [switch]$Plan
 )
@@ -16,7 +17,7 @@ if (@($Partition | Sort-Object -Unique).Count -ne $Partition.Count) { throw 'Dup
 
 function Read-Privileged([string]$Command) {
     # Partition names are validated above; commands contain no user shell code.
-    if ($RootMode -eq 'Su') { $Command = "su -c '$Command'" }
+    if ($RootMode -eq 'Su') { $Command = "$SuExecutable -c '$Command'" }
     $result = Invoke-AdbRead -Serial $Serial -Command $Command -TimeoutSeconds $TimeoutSeconds
     if ($result.ExitCode -ne 0) { throw "Read failed: $($result.Stderr.Trim())" }
     $result.Stdout.Trim()
@@ -63,7 +64,7 @@ try {
         if ($beforeHash -notmatch '^[a-f0-9]{64}$') { throw "Invalid device hash for $($item.Name)" }
         $partial = Join-Path $directory ($item.Name + '.img.partial')
         $command = 'cat ' + $item.RemotePath
-        if ($RootMode -eq 'Su') { $command = "su -c '$command'" }
+        if ($RootMode -eq 'Su') { $command = "$SuExecutable -c '$command'" }
         $result = Invoke-CapturedProcess -FilePath (Get-Command adb -ErrorAction Stop).Source `
             -ArgumentList @('-s', $Serial, 'exec-out', $command) -BinaryDestination $partial -TimeoutSeconds $TimeoutSeconds
         if ($result.ExitCode -ne 0) { throw "Read failed: $($result.Stderr.Trim())" }

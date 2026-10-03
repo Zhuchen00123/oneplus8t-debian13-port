@@ -31,7 +31,15 @@
 5. 获取临时 root 可能创建 Magisk 的应用数据、日志及运行状态文件，不表示手机全程零写入。磁盘上的启动分区保持原厂镜像；正常重启可回到原厂 boot，管理应用和相关数据可能保留。
 6. 若临时镜像不能启动，先返回 bootloader 使用指定序列号的 `fastboot reboot` 或强制重启回原厂系统。没有分区刷写时不自动执行恢复刷写；若仍异常，另行调查并提出具体恢复方案。
 
-当前状态：候选镜像生成、核验和主机备份完成；管理应用安装结果待手机处理，候选尚未启动，root 尚未验证。
+管理应用安装已返回 Success，包 `com.topjohnwu.magisk` 已核验。再次检查匹配构建、指纹、槽位和候选 hash 后，执行指定序列号的 `fastboot boot`，发送与 Booting 均返回 OKAY。系统 `sys.boot_completed=1`，ADB 重新连接，slot `_a`、unlocked 保持不变，SELinux Enforcing。
+
+Magisk 的 `/debug_ramdisk/magisk` 和 su 链接已出现，但 ColorOS 的默认 PATH 不包含该位置。第一次 `/debug_ramdisk/su -c id` 返回退出码 13 / Permission denied，尚不能标记诊断 shell 已取得 root。打开管理应用并读取界面后发现手机停留在锁屏；已请求用户解锁、保持亮屏并处理 Shell 授权，不点击 Direct Install 或额外设置重启。
+
+分区备份工具增加 `-SuExecutable /debug_ramdisk/su` 支持，保留原有默认 `su`。PowerShell 语法检查通过；包含分号的路径在 ADB 调用前被参数校验拒绝。原始分区备份与 root 权限仍待用户授权后验证。
+
+用户打开管理器并报告额外设置提示后，观察到系统再次启动、原先 su 消失；临时环境已退出，未将此归因于未经核实的具体点击。重新核验并再次 `fastboot boot` 同一候选后，系统正常启动，`/debug_ramdisk/su` 再次出现且 PATH 可找到 `/product/bin/su`。Shell 的 id 请求仍立即返回退出码 13 / Permission denied；此时界面仍是锁屏，已要求用户解锁并检查超级用户页的 Shell 授权。26 个备份分区的 by-name 计划核对通过，无缺失路径，尚无分区镜像。
+
+为避免授权时自动熄屏，尝试保存并临时修改 USB 保持亮屏设置；ColorOS 拒绝 WRITE_SECURE_SETTINGS，修改未生效，原设置未改变。未关闭权限监控、SELinux 或绕过锁屏。原设置值只存本地日志。
 
 ## 一手来源
 

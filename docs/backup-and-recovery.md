@@ -14,6 +14,8 @@ Bootloader 解锁会清除用户数据。2026-10-03 用户明确要求先解锁�
 
 先用 `-Plan` 显示要读的名称与目标。计划不表示镜像已备份；执行版要求 root、设备型号匹配、每个分区存在且可读取，完成时核对字节数以及两端 SHA-256。读取超时或哈希不符会中止，`.partial` 文件不能当作恢复镜像。
 
+本机临时 Magisk 环境把 su 放在 `/debug_ramdisk/su`，ColorOS 默认 PATH 未包含该目录。取得用户授权并验证 UID 0 后，可使用 `-RootMode Su -SuExecutable /debug_ramdisk/su`；该参数仅接受 `su` 或不含 shell 元字符的绝对路径，工具仍不自行提权或安装 root。
+
 ```powershell
 # 序列号从 adb devices -l 获取；恢复环境型号可能不同，要先调查再显式传入。
 $parts = @('boot_a','boot_b','dtbo_a','dtbo_b','vbmeta_a','vbmeta_b',

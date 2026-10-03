@@ -15,6 +15,8 @@
 - 未执行 root、刷写镜像、切槽或重新锁定。
 - 解锁前保存 250 个可读取共享文件，共 13,499,706 字节；19 项补充复制均成功，250 个主机端 SHA-256 再次复核通过。应用私有数据和原厂分区不在该备份中。
 - 后续临时权限准备：原厂 fastbootd 不支持 fetch；已按范围从匹配指纹的官方 OTA 提取 boot/recovery/dtbo/vbmeta，操作数据和输出 manifest SHA-256 全部通过。官方 Magisk v30.7 在本机 UID 2000 工作目录生成候选，手机/主机 hash 相同，结构对比确认仅 ramdisk 改变、原厂内核/DTB/命令行等保留；候选尚未启动、root 尚未验证，详见 temporary-root-plan.md。
+- 后续实测：官方管理应用安装成功；候选两次 fastboot boot 均返回 OKAY，系统启动完成并出现临时 Magisk su，SELinux 仍 Enforcing。期间一次重启退出临时环境，再次临时启动后 su 恢复；Shell 授权仍退出码 13 / Permission denied，未确认 UID 0，未生成原厂分区镜像。
+- Backup-Partitions 增加可选 SuExecutable 参数，以支持本机 `/debug_ramdisk/su` 路径。语法、注入字符串拒绝和 26 个 by-name 只读计划核验通过；新路径的真实镜像备份成功流程仍待 Shell 授权后验证。
 
 ## 来源与主机
 
