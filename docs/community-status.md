@@ -46,3 +46,9 @@ Armbian 的 board 配置明确包含 `trixie`，kernel family 配置仍指定 6.
 postmarketOS MR !6411 可读，2025-04-14 已提出改用主线并链接触摸/显示工作；MR !6867 正文被 Anubis 阻挡，搜索摘要提示启动回归，但未作为确定事实采用。[!6411](https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/6411)，[!6867](https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/6867)
 
 本次未验证发行版仓库当前发布包、社区镜像或实际固件的安全性。没有自动提交上游或对维护者发消息。
+
+## 用户选定 7.2 服务器路线后的补充
+
+用户已明确以 7.2 为主，参考本页固定的 jfbobier 仓库，先作为 Linux 服务器。Armbian 已查到 Debian 13/6.18.43 成套镜像，仅作为比较/集成参考；不替换当前内核，也不把其较旧的维护者功能记录或固件路径直接套到 7.2。
+
+7.2 固件与设备配方已在本机 Debian 用户空间集成：无线/GPU 通用固件取自签名 Debian 包，OEM 部分来自本机已校验归档，保留源码作者、Git 对象 hash 和许可参考。不启用实验 SDX55/NV 服务。当前是主机镜像验收完成，KB2000 硬件验证尚未开始。[服务器移植](debian-server-port.md)

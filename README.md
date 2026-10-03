@@ -2,7 +2,7 @@
 
 OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debian 13 arm64，内核尽量新。
 
-**当前阶段：屏幕取证已结束，进入主线 Linux 启动准备。** 已生成 7.2.0 RAM 救援 boot、独立的社区空 DTBO 候选和 Debian 13.7 arm64 基础 rootfs 归档（含 578 个匹配模块）。仅完成主机准备，未在手机启动或刷写。原厂 DTBO 离线检查存在兼容性阻碍，固件/音频/QRTR 集成与持久 rootfs 部署仍待完成。具体镜像、校验、TWRP 取舍和恢复流程见 [启动准备](docs/linux-boot-preparation.md)。
+**当前阶段：以 Linux 7.2 为主，完成 Debian 13 无桌面服务器的主机端集成。** 延续 jfbobier 的固定社区基线，生成成套 server boot、4 GiB ext4/sparse 根文件系统、578 个匹配模块，集成无线/GPU 通用固件、59 个本机 OEM 固件文件、USB/SSH/Wi-Fi、QRTR 和可选 ALSA UCM。未在手机启动或刷写；原厂 DTBO/ABL、网络、存储和持续运行仍待实机。入口：[服务器移植](docs/debian-server-port.md)。
 
 2026-10-03 已确认设备是 KB2000 / ColorOS 14.0.0.602，Bootloader 已解锁。临时 root 实测屏幕 Samsung AMB655X、DCS ID `A5 05 01`，有效序列号按厂商规则解码日期 2020-10-08；**证据支持原厂规格的三星面板，但不能证明从未换屏或完成真伪认证**。[屏幕实测](docs/panel-evidence.md)
 
@@ -47,7 +47,7 @@ bash /mnt/f/codexprojects/oneplus8t/scripts/linux/build-kernel.sh ~/oneplus8t-bu
 
 阶段验证结果在 [validation.md](docs/validation.md)。手机部署的前置条件与恢复要求见 [备份说明](docs/backup-and-recovery.md)，Debian 路线见 [移植计划](docs/porting-plan.md)。
 
-本轮最终候选为 [救援启动清单](artifacts/boot-preparation-20261003/rescue-final/boot-manifest.json)，Debian 基础归档为 [rootfs 导出清单](artifacts/boot-preparation-20261003/debian-base/rootfs-export-manifest.json)。`rescue/`、`rescue-v2/`、`rescue-v3/` 是过程记录，不用于部署。构建脚本没有手机部署命令；`dtbo-empty-community.img` 单独生成不代表已获准刷写。
+最终服务器候选为 [成组清单](artifacts/server-port-20261003/ready/server-manifest.json)；`candidate/`、`final/`、`complete/` 是过程记录，不部署。首次硬件测试仍使用 [RAM 救援启动清单](artifacts/boot-preparation-20261003/rescue-final/boot-manifest.json)，并非先刷 server rootfs。构建脚本没有手机部署命令；生成镜像或空 DTBO 不代表已获准刷写。旧 [基础归档](artifacts/boot-preparation-20261003/debian-base/rootfs-export-manifest.json) 保留作复现输入。
 
 受限屏幕节点的权限取得和返回原厂 boot 记录见 [临时 root](docs/temporary-root-plan.md)：匹配的原厂 boot 在本机修补并临时启动，UID 0 和实际分区备份已验证；未使用 Direct Install 或刷 recovery。
 

@@ -74,3 +74,15 @@
 - TWRP 未安装。官方目录最高为 3.7.0_11-0（2022-10-04），未验证 ColorOS 14 兼容性；保留原厂 recovery。
 - 成组备份损坏源的负例通过：在创建目标快照前拒绝。主机 mkbootimg/debootstrap/QEMU/cpio/gpgv 的 dpkg 文件校验无差异；无残留 QA 挂载。主机 Git 全局 autocrlf=true，但项目已有完整 LF 规则，本轮原样保留 `.gitattributes`，不改用户全局设置。
 - 本轮未临时启动 Linux、未刷写/擦除/切槽/重新锁定、未改 SELinux/主机网卡。镜像与后续恢复/授权范围见 [启动准备](linux-boot-preparation.md)。
+
+## Debian 13 / 7.2 服务器集成
+
+- 用户选择 7.2 主线、参考 jfbobier 社区方式，服务器优先。远程 main/tag 均仍为 `2e5e065da8ea8d242ecc34bfe064b88257797aa9`；保持已有内核及 578 模块，不运行社区刷机或 SSH 部署脚本。
+- 最终组 `artifacts/server-port-20261003/ready/`：boot 45,617,152 字节、initramfs 30,189,082 字节、4 GiB ext4 的 sparse 1,092,640,156 字节、文件树 tar 608,974,799 字节。UUID 与 boot cmdline/fstab 一致，AOSP 解包/逐模块 vermagic/5 阶段 e2fsck/sparse 往返 SHA-256 均通过。[完整 hash 与限制](debian-server-port.md)
+- Debian 签名包集成 firmware-atheros/firmware-qcom-soc `20250410-2`，7 个公共固件路径齐备；本机归档大小/SHA-256 再校验，ADSP/CDSP/SLPI/GPU zap 共 59 个文件，split ELF header/hash/各分段大小通过。未进行 OEM 签名密码学或实机加载验证。
+- 195 个已安装包；USB RNDIS/ACM、networkd/无线 DHCP/resolved、SSH 公钥、QRTR namespace、社区蓝牙地址与可选 UCM/DP helper 已集成。扬声器与蜂窝驱动不自动加载；无 NV/EFS/SIM PIN 自动化，Venus 驱动保持禁用。没有据此声称 Wi-Fi/音频/蜂窝实机可用。
+- 6 个 firmware 正/负例及 5 个 AOSP boot 正/负例通过。ARM64 OpenSSH 在私有 mount namespace/QEMU 下正确 key 可执行命令、错误 key 拒绝、密码禁用；QA 私钥和 /proc 挂载已清理。PTY 未测为通过，先前救援 PTY 失败记录仍有效。
+- 离线组验收通过：全部文件 hash、initramfs 必要 USB/固件/fsck、原始社区文件 hash、无 SSH host key 或 QA key、空 machine-id/D-Bus 关联、无 Wi-Fi 凭据。构建主机补齐 initramfs-tools-core 0.148.4 和 libsparse 1:34.0.5-12；不改全局软件源。
+- 只读手机预检确认 KB2000/ColorOS 14.0.0.602、a、unlocked/orange、UID 2000/无 su、电量 100%；不再读取面板。原始日志仅 local/。本轮没有临时启动 Linux、分区写入、切槽、SELinux 或主机网卡修改。
+- 成组备份 `backups/server-20261003-193710-499/` 文件副本 hash 通过，原厂 boot_a/dtbo_a/recovery_a/super 再核对大小/hash 通过。原厂镜像复用既有位置，同盘副本不是独立介质或实际恢复验证。
+- 持久 rootfs 的 super 目的地只作方案，尚未获准。先执行有独立授权的 RAM 救援首启；DTBO 与持久分区各自单独授权。

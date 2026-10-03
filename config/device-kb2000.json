@@ -15,7 +15,7 @@
   "observed_slot": "a",
   "root_available": false,
   "screen_forensics_completed": true,
-  "current_phase": "mainline_linux_boot_preparation_host_only",
+  "current_phase": "debian13_kernel72_server_integrated_host_only_hardware_pending",
   "temporary_magisk_root_verified": true,
   "original_partition_backup": "verified_requested_26_partitions",
   "original_partition_backup_manifest": "backups/partitions-20261003-152513-342/manifest.json",

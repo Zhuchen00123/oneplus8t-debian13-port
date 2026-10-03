@@ -21,6 +21,7 @@
 - 最新可用 SM8250 社区基线为 `sm8250-7.2.0`；最新主线参考为 `v7.3-rc5`。这些是本次调查快照，更新前重新查证。
 - KB2003 的成功记录不能当成 KB2000 / ColorOS 14 的测试结果。
 - 主线救援 boot、独立社区空 DTBO 候选及带 578 个匹配模块的 Debian 基础 rootfs 已在主机准备，入口 `docs/linux-boot-preparation.md`。未在手机启动 Linux、未刷 DTBO/boot/super。原厂 19 个 DTBO 条目离线应用均失败；临时启动是否绕过它们、社区空 DTBO 是否被本机 ABL 接受均未验证。
+- 用户随后明确以 7.2 为主，参考 jfbobier 仓库移植为 Linux 服务器。主机服务器集成入口 `docs/debian-server-port.md`，最终组为 `artifacts/server-port-20261003/ready/`；4 GiB ext4/sparse、无线/GPU 和 59 个本机 OEM 文件、USB/SSH/Wi-Fi/QRTR/UCM 已集成。蜂窝/NV/扬声器不默认加载，Venus 保持禁用。下一步 RAM 首启仍需明确授权；不能把“开始移植”解释为授权写 super 或其他分区。
 
 ## 来源与移植方法
 

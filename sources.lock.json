@@ -98,5 +98,21 @@
       "hardware_abl_compatibility_verified": false
     }
   },
+  "server_port": {
+    "checked_at": "2026-10-03",
+    "bringup_main_and_release_tag_rechecked": "2e5e065da8ea8d242ecc34bfe064b88257797aa9",
+    "release_tag": "kernel-7.2.0-r26",
+    "kernel_unchanged": "7.2.0-kebab-debian13+",
+    "firmware_atheros": "20250410-2",
+    "firmware_qcom_soc": "20250410-2",
+    "qrtr_tools": "1.1-2+b1",
+    "wireless_regdb": "2026.05.30-1~deb13u1",
+    "e2fsprogs_arm64": "1.47.2-3+b12",
+    "host_sparse_tools": "1:34.0.5-12",
+    "repository": "Debian signed trixie main/non-free-firmware plus trixie-security",
+    "manifest": "artifacts/server-port-20261003/ready/server-manifest.json",
+    "oem_firmware_scope": "Own verified KB2000 archive; ADSP/CDSP/SLPI/GPU zap split layout; no NV deployment",
+    "phone_deployment_executed": false
+  },
   "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories"
 }

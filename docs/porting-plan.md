@@ -1,6 +1,6 @@
 # Debian 13 移植路线
 
-目标：KB2000 / kebab 上运行 Debian 13 arm64，逐步采用最新可用内核。每个阶段保留日志、配置、提交、SHA-256 与可复现命令。
+目标：KB2000 / kebab 上运行 Debian 13 arm64，逐步采用最新可用内核。用户已选定以 7.2 为主、参考 jfbobier 仓库，先实现无桌面服务器。每个阶段保留日志、配置、提交、SHA-256 与可复现命令。
 
 ## 0. 屏幕阶段结束与恢复前置条件
 
@@ -34,7 +34,7 @@
 
 验收：boot.img、initramfs、rootfs、modules 的版本/路径一致；保留全部打包参数。不得包含默认公开密码、私钥或设备私密 NV。
 
-主机准备已完成 RAM 救援 boot/initramfs 与带匹配模块的 Debian 基础归档，尚未选择 rootfs 目的地或生成其块设备镜像/UUID；固件、ALSA UCM、QRTR 服务未集成。原厂 DTBO 19 个条目对当前主线 DTB 的单独 libfdt 应用全部失败，不能默认带原厂 DTBO 一定可启动；已按固定社区源码生成独立空覆盖候选，仅离线 no-op 校验通过，写入需单独授权。
+服务器主机阶段现已集成固件、ALSA UCM 与 QRTR namespace，生成带 UUID 的 4 GiB ext4/sparse 和配套 boot；候选目的地为 super，但尚未授权部署。无线/USB/SSH 优先；蜂窝/NV/扬声器不默认加载，音频与传感器实机集成仍未验收。[服务器移植及复现](debian-server-port.md)。原厂 DTBO 19 个条目离线应用失败、社区空覆盖 ABL 兼容性仍未实机；先授权 RAM 救援启动，再决定是否需要单独 dtbo_a 操作。
 
 ## 3. 实机启动和逐项验收
 
