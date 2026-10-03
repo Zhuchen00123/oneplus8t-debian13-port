@@ -2,7 +2,9 @@
 
 目标：KB2000 / kebab 上运行 Debian 13 arm64，逐步采用最新可用内核。每个阶段保留日志、配置、提交、SHA-256 与可复现命令。
 
-## 0. 屏幕与恢复前置条件
+## 0. 屏幕阶段结束与恢复前置条件
+
+2026-10-03 用户已要求屏幕取证到此结束，当前推进主线 Linux 准备，不再追加面板身份读取。最新主机准备、DTBO 障碍和首次启动/回退流程见 [启动准备](linux-boot-preparation.md)。
 
 已解锁并通过临时 root 读取三星 AMB655X、DCS ID 和面板序列号，证据支持原厂规格，装配/更换历史仍未确认。26 个指定原厂分区已备份、逐项大小及设备前后/主机 SHA-256 通过；本机固件归档也已取得，签名和 Linux 兼容性未逐文件验证。仍需离线/静止状态的跨分区一致性与实际恢复验证，不能视为全盘或完整救砖保证。后续分区写入仍需具体方案和单独授权。
 
@@ -26,11 +28,13 @@
 - 系统启动依赖包括 systemd、udev、initramfs-tools、kmod、SSH、USB gadget、网络配置、QRTR/rmtfs/tqftpserv/pd-mapper 与 ALSA UCM；按真实日志缩小必要服务集合。
 - Alpine APKBUILD 仅作构建/服务参考：转换依赖和文件布局，模块按 Debian 约定安装，明确新内核升级会如何更新 boot.img。
 - 来自自己设备的签名 ADSP/CDSP/SLPI/GPU/SDX55 固件只存 `firmware/`。不能用 KB2003 任意固件替换 KB2000 实机固件。
-- 构建 boot.img 前读取/解析本机原厂 boot image，确认 header、页大小、offset、dtb 和 cmdline。社区参数存于配置，但尚未实机核对。
+- 构建 boot.img 前读取/解析本机原厂 boot image，确认 header、页大小、offset、dtb 和 cmdline。2026-10-03 已核实匹配 OTA/boot_a 的 header v2、4096 页及全部地址，见 `config/boot-kb2000.json`；救援镜像使用自己的最小 cmdline，不照搬 Android 私有参数。
 - 初期使用最小 initramfs 提供 UFS、必要固件、USB gadget 和救援 shell。rootfs 的 UUID 在打包时生成并验证。
 - 在恢复方案明确前不自动写 super；临时 `fastboot boot` 本身也须确认 Bootloader/ABL 支持、所需 DTBO 状态和用户授权，不能假设一定可用。
 
 验收：boot.img、initramfs、rootfs、modules 的版本/路径一致；保留全部打包参数。不得包含默认公开密码、私钥或设备私密 NV。
+
+主机准备已完成 RAM 救援 boot/initramfs 与带匹配模块的 Debian 基础归档，尚未选择 rootfs 目的地或生成其块设备镜像/UUID；固件、ALSA UCM、QRTR 服务未集成。原厂 DTBO 19 个条目对当前主线 DTB 的单独 libfdt 应用全部失败，不能默认带原厂 DTBO 一定可启动；已按固定社区源码生成独立空覆盖候选，仅离线 no-op 校验通过，写入需单独授权。
 
 ## 3. 实机启动和逐项验收
 

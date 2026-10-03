@@ -14,6 +14,8 @@
   "verified_boot_state": "orange",
   "observed_slot": "a",
   "root_available": false,
+  "screen_forensics_completed": true,
+  "current_phase": "mainline_linux_boot_preparation_host_only",
   "temporary_magisk_root_verified": true,
   "original_partition_backup": "verified_requested_26_partitions",
   "original_partition_backup_manifest": "backups/partitions-20261003-152513-342/manifest.json",
@@ -31,12 +33,16 @@
   },
   "community_hardware_validation_model": "KB2003",
   "boot_image_reference": {
-    "source": "community deviceinfo; must verify against this device before deployment",
+    "source": "Measured matching OTA boot, byte-identical to verified boot_a backup; details in config/boot-kb2000.json",
     "header_version": 2,
     "pagesize": 4096,
     "base": "0x00000000",
     "kernel_offset": "0x00008000",
     "ramdisk_offset": "0x01000000",
-    "dtb_offset": "0x01f00000"
+    "dtb_offset": "0x01f00000",
+    "tags_offset": "0x00000100",
+    "layout_measured": true,
+    "mainline_linux_boot_verified": false,
+    "stock_dtbo_with_mainline_dtb_verified": false
   }
 }

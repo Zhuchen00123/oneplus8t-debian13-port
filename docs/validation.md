@@ -12,7 +12,7 @@
 - 解锁后 ADB 仍为 UID 2000，8 个面板/显示/命令行节点仍 Permission denied；屏幕身份未确认。补充节点读取遭遇 device not found，单独记录为连接中断。
 - 用户重新开启 USB 调试后 ADB 恢复，完整复查 16 项：9 项 Permission denied、7 项 No such file or directory，无成功面板读取；再次验证 unlocked/orange。最新原始证据与 SHA-256 清单位于 `local/device-20261003-143138-003/`。
 - 最新证据的 9 个文件 SHA-256 复核通过，并与解锁原始记录一同复制到 `backups/device-evidence-20261003-143248/`，共 22 个文件；证据副本再次核验。此备份不包含分区镜像，未提交或上传隐私日志。
-- 未执行 root、刷写镜像、切槽或重新锁定。
+- 解锁阶段结束时尚未执行 root、刷写镜像、切槽或重新锁定；后续授权的临时 root 实测另见下文。
 - 解锁前保存 250 个可读取共享文件，共 13,499,706 字节；19 项补充复制均成功，250 个主机端 SHA-256 再次复核通过。应用私有数据和原厂分区不在该备份中。
 - 临时权限准备阶段：原厂 fastbootd 不支持 fetch；已按范围从匹配指纹的官方 OTA 提取 boot/recovery/dtbo/vbmeta，操作数据和输出 manifest SHA-256 全部通过。官方 Magisk v30.7 在本机 UID 2000 工作目录生成候选，手机/主机 hash 相同，结构对比确认仅 ramdisk 改变、原厂内核/DTB/命令行等保留；此时尚未启动候选或验证 root，之后的实测如下，详见 temporary-root-plan.md。
 - 后续实测：官方管理应用安装成功；候选两次 fastboot boot 均返回 OKAY，系统启动完成并出现临时 Magisk su，SELinux 仍 Enforcing。期间一次重启退出临时环境，再次临时启动后 su 恢复；Shell 授权仍退出码 13 / Permission denied，未确认 UID 0，未生成原厂分区镜像。
@@ -45,7 +45,7 @@
 - PowerShell 与 Bash 语法检查通过；固定來源 Sync-Sources 在现有仓库上核验通过。
 - `tests/Test-HostTools.ps1` 全部通过：4096 字节包含全字节取值的输出完全一致，stderr 分离，超时终止；未提交修改、Unicode 新文件被快照保存，忽略文件被排除，bundle 在全新目录恢复为相同提交和原始内容。
 - Get-DeviceInfo 在本机执行成功；分区计划确认 boot_a=sde11、dtbo_a=sde17、super=sda15；实际备份模式在 UID 2000 时按预期提前拒绝，没有生成镜像。
-- 原始分区镜像成功读取及两端校验路径尚无具备权限的设备可测。
+- 初期没有具备权限的设备，原始分区成功读取路径当时未测；后续临时 root 下 26 个分区的真实读取与前后/主机校验已通过，见实机记录。
 - 内核 Image、Image.gz、全部模块及 DTB 完整构建成功。最终 ELF 为 ELF64 / AArch64，Image 的 ARM64 启动头 magic 为 ARMd。
 - 578 个已暂存模块逐一通过 vermagic 核验，统一为 `7.2.0-kebab-debian13+ SMP preempt mod_unload aarch64`；模块包移除了指向主机构建目录的 build/source 链接。
 - Image 46,465,536 字节，SHA-256 `dacddbd0622b19c370d37487f57f71fcf79044caec7897184042459f14dedbe7`；Image.gz 15,284,240 字节，SHA-256 `a8461a0c793b1324b6af051463e528f819fdabc6d3203e6e5012b191de2fa6de`。
@@ -56,5 +56,21 @@
 - 管理仓库 Git bundle / 工作树 ZIP 快照已生成并核验；真实源码、固件、日志、分区镜像没有进入 Git。
 - 完整内核源码快照 `backups/kernel-20261003-133027-886586819/` 已生成：压缩源码 337,961,632 字节、101,088 个 tar 条目、22 个提交补丁、构建配置与 metadata。gzip/tar 完整性通过，全部文件的 SHA-256 在 Windows 再次核验通过。只含本地已有历史；手机分区不在该备份内。
 - 构建产物成组快照 `backups/build-20261003-135806-926/` 已完成，包含 Image、DTB、模块、配置、清单与导出记录；每个副本 SHA-256 与核验清单一致。损坏来源文件的负例测试也通过：在创建备份目录前拒绝。
-- Debian rootfs、initramfs、boot.img 与实机启动：未执行。
-- 额外检查的 vendor 固件目录也返回 Permission denied，尚未提取本机签名固件。
+- 初次内核构建阶段尚未准备 Debian rootfs/initramfs/boot.img；本轮准备进展见下文，实机 Linux 启动仍未执行。
+- 普通 shell 初次读取 vendor 固件被拒绝；之后已通过授权的临时 root 取得并校验固件归档，见实机记录。
+
+## 主线 Linux 启动准备（主机阶段）
+
+- 用户结束屏幕取证；未继续读取面板节点。ADB 只读复核 KB2000、ColorOS 14.0.0.602、a、unlocked/orange、正常开机、UID 2000/无临时 su。
+- WSL 远程 refs 再查仍为固定 7.2.0 内核/bring-up 提交。本轮未升级或改动已构建内核。
+- 本机原厂 boot header v2、4096 页和地址解析成功，与 boot_a 备份 hash 一致；原厂 OS 编码 12.0.0/2024-08 保留，未作为 Debian 版本。
+- Debian 13.7 arm64 debootstrap/第二阶段成功；官方 Release 签名与包校验通过，133 已安装包、137 认证输入包（含被 security 更新替代的旧包）归档。rootfs 中 578 个模块逐项 vermagic 再次通过；基础 tar/gzip 完整性通过。尚未集成固件/ALSA UCM/QRTR，未选根文件系统分区或 UUID。
+- RAM rescue initramfs 为 ARM64 BusyBox/Dropbear及 8 个完整 USB 依赖模块，压缩模块已解压以兼容 BusyBox。镜像无客户端私钥/固件/NV，不挂载手机存储，密码及转发禁用，host key 在 RAM 动态生成。
+- 最终 boot 18,751,488 字节，SHA-256 `f339e7d993c8c4d3bf6527e706c4219c0d6da7d07bd569331cba54def057260f`；地址/版本与原厂一致，AOSP 独立解包内核、DTB、initramfs 的 hash 全相同。最终组只用 `rescue-final/`。
+- 原厂 DTBO 19 条单独 libfdt 应用到当前主线 DTB 全部失败，FDT_ERR_BADOFFSET/__symbols__ 诊断只存本地。社区空覆盖候选按锁定 Git 对象、APKBUILD SHA-512 和原始 dtc 配方生成，284 字节；离线覆盖后板级树不变。ABL 选择/临时 boot 路径/空覆盖接受均未实机验证，未刷 DTBO。
+- 5 个 AOSP 实际打包正/负例通过：正常 v2、内核载荷损坏拒绝、错误地址拒绝、截断 DTB 拒绝、不支持 header 拒绝。
+- QEMU loopback：ARM64 二进制、运行脚本语法、USB 模块依赖、非交互正确公钥 SSH、错误 key 拒绝、密码禁用通过。额外 PTY 探测失败（TIOCSCTTY/pts），保留记录，不标为通过；首次实机采用 SSH 命令采证，交互终端待测。USB/SM8250/ABL/UFS/内核启动没有被 QEMU user-mode 验证。
+- 26 个原厂分区共 9,154,465,792 字节主机大小/SHA-256 全量复核通过。`Backup-LinuxPreparation.ps1` 语法及真实 36 文件成组复制/副本 hash 验证通过，保存到 `backups/linux-preparation-20261003-175305-853/`；仍为同 F 盘副本，不代表独立介质或完整恢复实测。
+- TWRP 未安装。官方目录最高为 3.7.0_11-0（2022-10-04），未验证 ColorOS 14 兼容性；保留原厂 recovery。
+- 成组备份损坏源的负例通过：在创建目标快照前拒绝。主机 mkbootimg/debootstrap/QEMU/cpio/gpgv 的 dpkg 文件校验无差异；无残留 QA 挂载。主机 Git 全局 autocrlf=true，但项目已有完整 LF 规则，本轮原样保留 `.gitattributes`，不改用户全局设置。
+- 本轮未临时启动 Linux、未刷写/擦除/切槽/重新锁定、未改 SELinux/主机网卡。镜像与后续恢复/授权范围见 [启动准备](linux-boot-preparation.md)。

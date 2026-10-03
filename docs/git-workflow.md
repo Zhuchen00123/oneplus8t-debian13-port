@@ -5,7 +5,7 @@
 ## 分支与提交
 
 - `main`：已审核的项目状态。
-- 主题分支建议 `port/kebab-7.3`、`debian/initramfs`、`backup/device`；一个分支只处理明确目标。
+- 管理仓库主题分支使用 `codex/` 前缀，例如 `codex/kebab-7.3`、`codex/debian13-boot-prep`；一个分支只处理明确目标。内核独立仓库已有 `port/` 分支按原记录保留。
 - WSL 中的内核仓库保留纯 `baseline-sm8250-7.2.0` 标签，补丁在 `port/kebab-7.2-debian13` 分支按顺序提交。
 - 每阶段记录社区来源 SHA、自己修改、实际验证与未测试事项；升级时保留旧 refs。
 - 初始化提交如没有配置身份，使用单次 `Codex <codex@localhost>` 自动化身份，不修改全局 user.name/user.email。后续设置用户自己选择的身份。
@@ -13,7 +13,7 @@
 ```powershell
 git status --short --branch
 git diff --stat
-git switch -c debian/initramfs
+git switch -c codex/debian13-boot-prep
 # 明确列出要提交的文件；检查 git diff --cached 后再提交。
 git add config/debian13.config docs/porting-plan.md
 git diff --cached

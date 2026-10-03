@@ -32,6 +32,8 @@ Armbian 的 board 配置明确包含 `trixie`，kernel family 配置仍指定 6.
 
 ## 补丁与集成注意事项
 
+2026-10-03 启动准备阶段再次从 WSL 读取远程 refs：最高 SM8250 tag 仍为 7.2.0，bring-up main 仍为本项目固定提交。本轮保持内核基线；AOSP Git 端点直连不可达，打包工具改用已验证官方 Debian 软件源中的 mkbootimg `1:34.0.5-12`，没有声称已核验最新 AOSP master。原厂 DTBO 的 19 个条目与当前主线 DTB 的离线覆盖全部失败，社区空 DTBO 候选仅离线校验，KB2000/ABL 仍待实机；详见 [启动准备](linux-boot-preparation.md)。
+
 - 补丁、DTS、kernel config 和用户空间应一起固定。完整 DTS 覆盖可能遮蔽新版本的上游修正，升级时需要结构比较。
 - 实验仓库的 APKBUILD 使用 Alpine/postmarketOS 7.2.0；本项目复用其源码基础，另做 Debian 内核配置、模块打包、initramfs 与用户空间集成。
 - 社区 `kebab-build.sh` 默认刷机；`--no-flash` 仍通过 SSH 部署 APK/模块。不要用它进行“仅构建”任务。

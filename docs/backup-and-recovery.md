@@ -1,5 +1,7 @@
 # 备份与恢复
 
+2026-10-03 主线 Linux 准备阶段已再次复核全部 26 个原厂镜像的大小/SHA-256。新增成组快照 `backups/linux-preparation-20261003-175305-853/`：36 文件，含最终 RAM 救援候选、Debian 基础归档、原厂 boot_a/dtbo_a/recovery_a 恢复副本，源/副本均通过。没有新增手机写入或恢复实测；具体临时启动、DTBO 变更与回退边界见 [启动准备](linux-boot-preparation.md)。
+
 当前原厂分区备份状态：**26 个指定分区已完成并校验**。通过已授权的临时 Magisk root 读取，清单 `backups/partitions-20261003-152513-342/manifest.json` 状态为 `verified_requested_partitions`，共 9,154,465,792 字节。每份镜像大小正确，设备读取前 SHA-256、主机 SHA-256 与设备读取后 SHA-256 全部一致。未包含 userdata/GPT/全部引导链；来自运行中的 Android，不保证跨分区原子一致。项目源码备份与手机备份分别记录，原始清单和镜像均不进 Git。
 
 所选范围：boot/dtbo/vbmeta/vbmeta_system/recovery 两个槽位、super、persist/persist_bkp、modem 两个槽位、modemst1/2、fsg/fsc、4 个 mdm1m9kefs、mdm_oem_dycnvbk/stanvbk、mdm1oemnvbktmp。boot_a 副本与本机构建的官方 OTA boot.img 相同；临时 root 未永久写入该启动分区。
