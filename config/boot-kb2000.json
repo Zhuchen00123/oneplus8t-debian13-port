@@ -20,16 +20,28 @@
   "rescue_cmdline": "console=tty0 loglevel=7 ignore_loglevel panic=15 rdinit=/init",
   "rescue_rootfs": "RAM initramfs only; no phone filesystem mounted",
   "usb_network": {"function": "rndis", "device_ipv4": "192.168.8.1/24", "host_ipv4": "192.168.8.2/24"},
-  "stock_dtbo_with_mainline_dtb": "not_verified",
-  "temporary_mainline_boot_test": "authorized_and_attempted_20261003; fastboot_boot_OKAY_but_bootloader_remained; Linux_boot_not_verified; stock_Android_return_verified",
-  "partition_flash": "dtbo_a_control_experiment_and_stock_dtbo_a_restore_authorized_20261003; not_executed; other_partition_writes_not_authorized",
+  "stock_dtbo_with_mainline_dtb": "stock_dtbo_attempt_remained_fastboot; same_RAM_boot_with_community_raw_noop_dtbo_started_Linux; OEM_ABL_internal_failure_path_unconfirmed",
+  "temporary_mainline_boot_test": "7.2.0-kebab-debian13+_verified_by_ACM_and_USB_SSH_20261003; UFS_enumerated; phone_storage_unmounted; stock_Android_return_verified_after_DTBO_restore",
+  "partition_flash": "authorized_dtbo_a_experiment_and_stock_dtbo_a_restore_executed; other_partition_writes_not_authorized_or_executed",
   "dtbo_experiment": {
     "target": "dtbo_a",
     "authorized": true,
     "stock_restore_authorized": true,
-    "physical_bootloader_return_verified": false,
-    "write_executed": false,
+    "physical_bootloader_return_verified": true,
+    "write_executed": true,
+    "community_dtbo_hardware_boot_verified": true,
+    "stock_restore_fastboot_succeeded": true,
+    "stock_restore_device_hash_readback_verified": false,
+    "stock_android_boot_completed": true,
     "rescue_boot": "Same sealed 7.2 boot-rescue.img only",
-    "rollback": "Restore verified stock dtbo_a before returning to Android"
+    "rollback": "Original 24 MiB dtbo_a restored before Android reboot; ColorOS completion verified"
+  },
+  "usb_hardware_test": {
+    "acm_console_verified": true,
+    "original_rndis_host_driver_result": "Windows code 28; default function descriptor 02/06/00",
+    "ram_fix_verified": "RNDIS function EF/04/01; bcdDevice 0102; network linked before ACM; Microsoft rndiscmp.inf; adapter Up",
+    "ssh_test_addresses": {"device": "169.254.8.1/16", "host": "Windows automatic link-local; source-bound SSH"},
+    "host_static_address_attempt": "192.168.8.2/24 denied by Windows permissions; DHCP remained enabled; no host IP change",
+    "new_source_script_in_sealed_images": false
   }
 }

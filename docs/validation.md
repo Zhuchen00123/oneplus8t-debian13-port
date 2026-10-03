@@ -2,6 +2,13 @@
 
 日期：2026-10-03。
 
+## Linux 7.2 DTBO 对照成功及回退
+
+- 独立授权后仅写社区无操作 dtbo_a，再临时启动同一救援 boot；ACM 与 USB SSH 实读 7.2.0-kebab-debian13+、OnePlus 8T DT 模型、UFS 分区。super=sda15，7,516,192,768 字节。未挂载或进行手机存储内容 I/O。
+- RNDIS EF/04/01、bcdDevice=0102、网络接口先于 ACM 的 RAM 修正使微软内置驱动正常工作；公钥 SSH、严格 host key 验证和远程日志采集成功。主机静态 IP 设置被 Windows 权限拒绝，实际使用链路本地地址；DHCP 未改。
+- 用户拔下 USB 后从 Linux 按键返回 Fastboot 成功。原厂 24 MiB dtbo_a 先恢复、Fastboot 写入 OKAY，随后 ColorOS 完成启动、A 槽、unlocked/orange、无临时 su。原厂输入 hash 已核验，设备刷后 hash 回读未验证；其他分区未刷。
+- dmesg 被 30,387 条 Synaptics TCM invalid touch report length 消息覆盖，不能据此宣称触摸、早期启动日志或长期稳定性通过。源码 USB 修正尚未进入封存镜像。完整范围与证据入口见 [实机成功记录](ram-boot-success-20261003.md)。
+
 ## Linux 7.2 首次 RAM 实机尝试
 
 - 用户明确授权一次 `fastboot boot`，限定不写分区。救援镜像与 boot_a/dtbo_a/recovery_a 恢复副本再次校验通过；设备 KB2000、ColorOS 14.0.0.602、A 槽、unlocked/orange、无临时 su、电量 100%。

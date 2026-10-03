@@ -2,6 +2,8 @@
 
 日期：2026-10-03。用户明确选择以 7.2 为主，重点参考 jfbobier 的 kebab bring-up。目标先是无桌面服务器：SSH、USB 网络、Wi-Fi、存储和持续运行；不以蜂窝、相机、音频作为首启门槛。
 
+最新实机状态：已通过单次 DTBO 对照，验证本机 Linux 7.2 RAM 启动、USB ACM/SSH 和 UFS 枚举；已恢复原厂 DTBO 并确认 ColorOS 正常启动。Windows USB 描述符修正已进入源脚本，但此文 ready 组仍含旧脚本、尚未重构建或部署。触摸日志洪泛、持久根文件系统、Wi-Fi 与服务器负载仍未验收。见 [成功与回退记录](ram-boot-success-20261003.md)。
+
 ## 来源与当前边界
 
 本轮 WSL `git ls-remote` 核对 main 和 `kernel-7.2.0-r26` 均为 `2e5e065da8ea8d242ecc34bfe064b88257797aa9`。继续使用已有内核提交 `f6ac9e9c86d0c92ef6db1c4f5a4c3ccdc77d1d5a`、`7.2.0-kebab-debian13+` 和 578 个匹配模块；没有重新拼接或升级内核。

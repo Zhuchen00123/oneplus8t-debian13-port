@@ -2,6 +2,8 @@
 
 日期：2026-10-03。目标 KB2000 / ColorOS 14.0.0.602；只执行用户明确授权的一次临时启动，不写分区。
 
+后续已完成单独授权的 DTBO 对照：同一 RAM boot 成功运行 Linux 7.2，USB ACM/SSH 和 UFS 枚举通过；已先恢复原厂 DTBO、再验证 ColorOS 正常启动。详见 [实机成功与恢复记录](ram-boot-success-20261003.md)。下文保留首次失败及当时准备状态，不能作为当前未授权/未执行的结论。
+
 ## 实际结果
 
 救援候选 `artifacts/boot-preparation-20261003/rescue-final/boot-rescue.img`，18,751,488 字节，SHA-256 `f339e7d993c8c4d3bf6527e706c4219c0d6da7d07bd569331cba54def057260f`；执行前再次校验，原厂 boot_a/dtbo_a/recovery_a 恢复副本 hash 也重新通过。

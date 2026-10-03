@@ -15,7 +15,7 @@
   "observed_slot": "a",
   "root_available": false,
   "screen_forensics_completed": true,
-  "current_phase": "debian13_kernel72_ram_boot_attempt_failed_bootloader; stock_android_restored_without_partition_writes",
+  "current_phase": "kernel72_RAM_boot_USB_SSH_UFS_verified_with_community_DTBO; original_DTBO_restored_and_stock_Android_boot_verified; persistent_Debian_not_deployed",
   "temporary_magisk_root_verified": true,
   "original_partition_backup": "verified_requested_26_partitions",
   "original_partition_backup_manifest": "backups/partitions-20261003-152513-342/manifest.json",
@@ -42,7 +42,7 @@
     "dtb_offset": "0x01f00000",
     "tags_offset": "0x00000100",
     "layout_measured": true,
-    "mainline_linux_boot_verified": false,
+    "mainline_linux_boot_verified": true,
     "stock_dtbo_with_mainline_dtb_verified": false
   }
 }

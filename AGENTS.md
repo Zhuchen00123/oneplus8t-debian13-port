@@ -23,7 +23,8 @@
 - 主线救援 boot、独立社区空 DTBO 候选及带 578 个匹配模块的 Debian 基础 rootfs 已在主机准备，入口 `docs/linux-boot-preparation.md`。未在手机启动 Linux、未刷 DTBO/boot/super。原厂 19 个 DTBO 条目离线应用均失败；临时启动是否绕过它们、社区空 DTBO 是否被本机 ABL 接受均未验证。
 - 用户随后明确以 7.2 为主，参考 jfbobier 仓库移植为 Linux 服务器。主机服务器集成入口 `docs/debian-server-port.md`，最终组为 `artifacts/server-port-20261003/ready/`；4 GiB ext4/sparse、无线/GPU 和 59 个本机 OEM 文件、USB/SSH/Wi-Fi/QRTR/UCM 已集成。蜂窝/NV/扬声器不默认加载，Venus 保持禁用。用户明确授权一次 RAM 首启、不写分区；已执行，fastboot 返回 OKAY，但手机仍在 Bootloader，用户看到一直是 Fastboot 界面，Linux 未启动验证。已重启并确认原厂 ColorOS 完成启动，slot a、unlocked/orange、无临时 su。记录 `docs/ram-firstboot-20261003.md`。该授权未包含任何 DTBO/boot/super 刷写，后续分区操作须另行授权。
 - 首启前已实际核对 rootfs 578、server initramfs 200、RAM rescue 8 个模块的二进制内容与原内核组一致。原厂恢复组在 `artifacts/stock-recovery-20261003/`，whole-super sparse 往返到 7 GiB raw 的 hash 与原备份相同；仅主机格式验证，未实机恢复，不改变手机操作授权边界。
-- 用户随后明确回复“允许你btbo”，结合刚才的 DTBO 实验问题，已授权 `docs/ram-firstboot-20261003.md` 所列单次 dtbo_a 对照实验及原厂 dtbo_a 恢复：先实际验证按键回 Bootloader，只写社区空 dtbo_a，再临时启动同一封存 7.2 RAM boot，结束后先恢复原厂 dtbo_a 再回 Android。三个输入大小/hash 已重新通过；按键测试尚未收到完成结果，指定手机 Fastboot 也未检测到，故尚未刷写。无需再次申请这项已授予的权限；不得扩大为 boot/super/vbmeta/recovery/userdata 写入或切槽。
+- 用户随后明确回复“允许你btbo”，授权单次 dtbo_a 对照及原厂恢复，按键回 Bootloader 已实测可用。实验现已完成：只写社区空 dtbo_a、临时启动同一 7.2 RAM boot，ACM/USB SSH 实读内核和 UFS，super=sda15/7 GiB；未挂载手机存储。RNDIS function EF/04/01 且网络先于 ACM 的 RAM 修正使微软内置驱动正常工作；主机静态 IP 设置被 Windows 权限拒绝，实际使用链路本地 SSH。用户拔下 USB 后成功从 Linux 按键返回 Fastboot；已先恢复原厂 24 MiB dtbo_a，再确认 ColorOS 完成启动，A 槽、无临时 su。原厂输入 hash 与 Fastboot 恢复成功已核验，手机端刷后 hash 未回读。本次单次授权已消耗，不涵盖后续 boot/super/vbmeta/recovery/userdata 写入或切槽。入口 `docs/ram-boot-success-20261003.md`。
+- 最新待办：Synaptics TCM 日志出现大量 invalid touch report length，不能宣称触摸或长期稳定性通过；主机 usb-gadget.sh 已固化描述符/顺序修正，但旧 rescue-final/server ready 封存镜像未更新。下一组须重构建并成组核验，持久 Debian、Wi-Fi 和负载仍待授权部署后实测。当前手机已回原厂 Android，不能直接把 RAM 修正视作持久系统通过。
 
 ## 来源与移植方法
 

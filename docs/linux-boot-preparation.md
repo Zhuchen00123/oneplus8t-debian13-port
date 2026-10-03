@@ -8,6 +8,8 @@
 
 ## 准备状态
 
+后续实机已完成：社区空 DTBO 对照下，同一 RAM 救援 boot 成功运行 Linux 7.2，ACM/USB SSH/UFS 枚举通过；已恢复原厂 DTBO 并确认 ColorOS 完成启动。Windows RNDIS 的 RAM 修正和触摸日志洪泛见 [实机成功记录](ram-boot-success-20261003.md)。下列 rescue-final 是实际测试的原封存输入，未因源脚本修正而覆盖；首次失败及当时未验证状态保留为历史过程。
+
 | 项目 | 当前证据 |
 |---|---|
 | 本机 | KB2000、ColorOS 14.0.0.602、slot a、unlocked/orange、UID 2000、临时 su 已退出 |
