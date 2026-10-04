@@ -92,7 +92,8 @@ def main():
     device_path = 'device/oneplus-kebab/'
     source_name = 'sm8250-oneplus-kebab-empty.dts'
     def git_file(name):
-        return subprocess.check_output(['git', '-C', str(repository), 'show', bringup['commit']+':'+device_path+name])
+        return subprocess.check_output(['git', '-c', 'safe.directory='+str(repository.resolve()),
+                                        '-C', str(repository), 'show', bringup['commit']+':'+device_path+name])
     source = git_file(source_name)
     apkbuild = git_file('APKBUILD').decode()
     expected = re.search(r'^([a-f0-9]{128})  '+re.escape(source_name)+r'$', apkbuild, re.M)

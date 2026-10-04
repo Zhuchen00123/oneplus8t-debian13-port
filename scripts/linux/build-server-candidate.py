@@ -27,6 +27,8 @@ def main():
     p.add_argument('--kernel-artifacts',type=Path,required=True)
     p.add_argument('--stock-boot',type=Path,required=True)
     p.add_argument('--output-dir',type=Path,required=True)
+    p.add_argument('--rootfs-uuid',type=uuid.UUID,
+                   help='Explicit existing target UUID for an in-place boot/modules update; default generates a new UUID')
     a=p.parse_args()
     build=a.build_dir.resolve(); root=build/'rootfs'; kernel=a.kernel_artifacts.resolve()
     project=Path(__file__).resolve().parents[2]; out=a.output_dir.resolve()
@@ -76,7 +78,7 @@ def main():
     profile=json.loads((project/'config/boot-kb2000.json').read_text())
     if sha(a.stock_boot)!=profile['stock_boot_sha256']:
         raise ValueError('Measured stock boot input mismatch')
-    root_uuid=str(uuid.uuid4())
+    root_uuid=str(a.rootfs_uuid or uuid.uuid4())
     (root/'etc/fstab').write_text(f'UUID={root_uuid} / ext4 defaults,noatime 0 1\n')
     cfg=root/'etc/initramfs-tools/conf.d/kebab-server'
     # The target UUID is an offline image, so fsck cannot infer its type

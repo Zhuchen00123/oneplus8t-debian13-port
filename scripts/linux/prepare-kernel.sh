@@ -4,7 +4,9 @@
 set -euo pipefail
 
 project_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-build_dir=$(realpath -m -- "${1:?Usage: prepare-kernel.sh /path/to/fresh/linux-build-dir}")
+build_dir=$(realpath -m -- "${1:?Usage: prepare-kernel.sh /path/to/fresh/linux-build-dir [profile]}")
+profile=${2:-default}
+[[ "$profile" =~ ^[a-z0-9-]+$ ]] || { printf 'Invalid build profile.\n' >&2; exit 1; }
 kernel_dir="$build_dir/linux"
 output_dir="$build_dir/out"
 bringup_repo="$project_dir/sources/bringup"
@@ -27,16 +29,21 @@ fi
 rm -- "$case_probe/lower"
 rmdir -- "$case_probe"
 
-mapfile -t pinned < <(python3 - "$project_dir/sources.lock.json" <<'PY'
+mapfile -t pinned < <(python3 - "$project_dir/sources.lock.json" "$profile" <<'PY'
 import json, sys
-r = {x['id']: x for x in json.load(open(sys.argv[1], encoding='utf-8'))['repositories']}
+lock = json.load(open(sys.argv[1], encoding='utf-8'))
+r = {x['id']: x for x in lock['repositories']}
+selected = {} if sys.argv[2] == 'default' else lock['kernel_profiles'][sys.argv[2]]
 print(r['linux-sm8250']['commit'])
 print(r['kebab-bringup']['commit'])
+print(selected.get('config', 'config/debian13.config'))
 PY
 )
-[[ ${#pinned[@]} -eq 2 ]] || { printf 'Invalid source lock.\n' >&2; exit 1; }
+[[ ${#pinned[@]} -eq 3 ]] || { printf 'Invalid source lock/profile.\n' >&2; exit 1; }
 base_sha=${pinned[0]}
 bringup_sha=${pinned[1]}
+config_fragment=${pinned[2]}
+[[ "$config_fragment" =~ ^config/[A-Za-z0-9._-]+$ && -f "$project_dir/$config_fragment" ]] || { printf 'Invalid config fragment.\n' >&2; exit 1; }
 [[ $(git -C "$project_dir/sources/linux" rev-parse HEAD) == "$base_sha" ]] || { printf 'Kernel source pin mismatch.\n' >&2; exit 1; }
 [[ $(git -C "$bringup_repo" rev-parse HEAD) == "$bringup_sha" ]] || { printf 'Bring-up source pin mismatch.\n' >&2; exit 1; }
 # Consume only fixed Git objects. Existing source working-tree edits are
@@ -78,10 +85,12 @@ git -C "$kernel_dir" -c user.name=Codex -c user.email=codex@localhost \
   commit -m 'arm64: dts: import pinned kebab bring-up board description'
 
 # Apply only project-local patches whose files and preimage are locked.
-python3 - "$project_dir" "$kernel_dir" <<'PY'
+python3 - "$project_dir" "$kernel_dir" "$profile" <<'PY'
 import hashlib, json, pathlib, subprocess, sys
-project, kernel = map(pathlib.Path, sys.argv[1:])
-for entry in json.loads((project/'sources.lock.json').read_text()).get('local_kernel_patches', []):
+project, kernel = map(pathlib.Path, sys.argv[1:3])
+lock = json.loads((project/'sources.lock.json').read_text())
+entries = lock.get('local_kernel_patches', []) if sys.argv[3] == 'default' else lock['kernel_profiles'][sys.argv[3]]['local_patches']
+for entry in entries:
     patch = (project/entry['file']).resolve()
     source = (kernel/entry['input_driver']).resolve()
     if not patch.is_relative_to(project.resolve()) or not source.is_relative_to(kernel.resolve()):
@@ -99,24 +108,26 @@ cp -- "$bringup_dir/kernel/config-postmarketos-qcom-sm8250.aarch64" "$output_dir
 make -C "$kernel_dir" O="$output_dir" ARCH=arm64 LLVM=1 olddefconfig
 cd -- "$build_dir"
 "$kernel_dir/scripts/kconfig/merge_config.sh" -m -O "$output_dir" \
-  "$output_dir/.config" "$project_dir/config/debian13.config"
+  "$output_dir/.config" "$project_dir/$config_fragment"
 make -C "$kernel_dir" O="$output_dir" ARCH=arm64 LLVM=1 olddefconfig
 if grep -Eq '^CONFIG_(VIDEO_QCOM_VENUS|SND_SOC_TFA9872)=(y|m)$' "$output_dir/.config"; then
   printf 'Unsafe/conflicting driver enabled in final config.\n' >&2
   exit 1
 fi
 
-python3 - "$project_dir" "$build_dir" "$base_sha" "$bringup_sha" <<'PY'
+python3 - "$project_dir" "$build_dir" "$base_sha" "$bringup_sha" "$profile" <<'PY'
 import datetime, hashlib, json, pathlib, subprocess, sys
-project, build, base, bringup = sys.argv[1:]
+project, build, base, bringup, profile = sys.argv[1:]
 build = pathlib.Path(build)
+lock = json.load(open(pathlib.Path(project)/'sources.lock.json'))
+entries = lock.get('local_kernel_patches', []) if profile == 'default' else lock['kernel_profiles'][profile]['local_patches']
 def git(*args):
     return subprocess.check_output(['git', '-C', str(build/'linux'), *args], text=True).strip()
 data = {
     'prepared_at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
     'project': project, 'base_commit': base, 'bringup_commit': bringup,
     'kernel_commit': git('rev-parse', 'HEAD'), 'community_patches': 21,
-    'local_patches': json.load(open(pathlib.Path(project)/'sources.lock.json')).get('local_kernel_patches', []),
+    'local_patches': entries, 'build_profile': profile,
     'config_sha256': hashlib.sha256((build/'out/.config').read_bytes()).hexdigest(),
     'target': 'KB2000 / Debian 13 arm64; hardware not yet validated',
     'clang': subprocess.check_output(['clang', '--version'], text=True).splitlines()[0],

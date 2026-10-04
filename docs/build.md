@@ -24,7 +24,7 @@ bash "$PROJECT/scripts/linux/build-kernel.sh" "$BUILD" dtb
 bash "$PROJECT/scripts/linux/build-kernel.sh" "$BUILD" kernel
 ```
 
-要求全新源码目录。先核验上游 21 个补丁、DTS 与配置，再合并 Debian 配置。默认 local_kernel_patches 仅含 0001；其他补丁见 patches.md。build-kernel 检查源码提交、工作树和配置 hash，并锁住共享 Kbuild 目录。输出以 kernelrelease/commit/config 区分并保存 manifest。
+要求全新源码目录。先核验上游 21 个补丁、DTS 与配置，再合并 Debian 配置。默认 local_kernel_patches 仅含 0001；其他补丁见 patches.md。选择 `prepare-kernel.sh "$BUILD" r2` 可应用已锁定的四项显示/触摸修复及独立 r2 配置。build-kernel 检查源码提交、工作树和配置 hash，并锁住共享 Kbuild 目录。输出以 kernelrelease/commit/config 区分并保存 manifest。
 
 内核升级或额外补丁应用后必须更新构建元数据并重新生成 Image、DTB、全部模块和依赖它们的 initramfs。不能仅刷一个新 boot 后继续使用旧模块。
 
@@ -66,3 +66,5 @@ python3 scripts/linux/test-bluetooth-addr.py
 以上使用合成数据或模拟 btmgmt，不验证手机硬件。Test-TcmReports.py 与 test-tcm-protocol.c 需要对应已打补丁的内核源码，分别检查实际函数/共享解析头。Rescue/ServerUserspace 测试需要本地 rootfs、工具和隔离环境。
 
 部署是一项独立的设备操作，此仓库不提供批量刷写脚本。核验型号、分区标签、槽位、输入 hash 与备份恢复路径后，按设备所有者的实际授权范围执行。原厂整机恢复未作为本项目已通过的验收项。
+
+已有离线 rootfs 的新内核组可用 `install-kernel-group.py` 校验安装；rootfs 必须是独立构建目录，不能指向运行系统。`build-server-candidate.py --rootfs-uuid <本机已核对的 UUID>` 支持原位 boot/modules 升级时保持根 UUID，默认仍生成新 UUID。[r2 配方与限制](r2.md)。

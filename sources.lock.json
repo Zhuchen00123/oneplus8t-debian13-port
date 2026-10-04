@@ -99,5 +99,55 @@
       "documentation": "docs/patches.md"
     }
   ],
-  "privacy": "Text recipes only; no images, firmware, identity, credentials, raw evidence or original Git history"
+  "privacy": "Text recipes only; no images, firmware, identity, credentials, raw evidence or original Git history",
+  "kernel_profiles": {
+    "r2": {
+      "config": "config/debian13-r2.config",
+      "purpose": "Integrated AMB655X display and builtin KB2000 runtime-layout touch; matching modules/initramfs required",
+      "local_patches": [
+        {
+          "file": "patches/local/0001-input-synaptics-tcm-fix-report-framing.patch",
+          "sha256": "1aa089192dd71f2b98249d72c6d07a3f08110d90d24326fc94cd5f922d9dbd7d",
+          "input_driver": "drivers/input/touchscreen/synaptics_tcm_oncell.c",
+          "input_driver_sha256": "58851b8ee7ee0ef34686733efe02839e7785de33f06b0cce2f9ab80eb4377b32"
+        },
+        {
+          "file": "patches/local/0003-drm-panel-amb655x-dsc-slice-per-pkt.patch",
+          "sha256": "59ed5109e405f0cff330ce8437b8de0416120f0886081c862485137f8eecc19a",
+          "input_driver": "drivers/gpu/drm/panel/panel-samsung-amb655x.c",
+          "input_driver_sha256": "3a9b88861d35b743192fb1a097bfc46edadc13d134fa540cf22534b20ddb21dd"
+        },
+        {
+          "file": "patches/local/0004-drm-panel-amb655x-drive-reset-gpio.patch",
+          "sha256": "824bb7c0be8575a720f4c5d8228f866bf07a2761a8b847df1521c3585b5a221f",
+          "input_driver": "drivers/gpu/drm/panel/panel-samsung-amb655x.c",
+          "input_driver_sha256": "0ea39bb3c743aef0f8e94c2155626be727b4e81cd4c1ed1943a1513106f65dd5"
+        },
+        {
+          "file": "patches/local/0002-input-synaptics-tcm-runtime-layout-r2.patch",
+          "sha256": "faad78036fbd44d8691b96216de037335cc269d203306151906c562c2ed06b59",
+          "input_driver": "drivers/input/touchscreen/synaptics_tcm_oncell.c",
+          "input_driver_sha256": "5f0853d977ea496e41da54bdcbd057815b337a2d835e08115a95b9122a6065df"
+        }
+      ],
+      "validation": {
+        "kernel_commit": "e3f3f54911c5",
+        "kernelrelease": "7.2.0-kebab-debian13-r2+",
+        "rootfs_modules": 578,
+        "server_initramfs_modules": 200,
+        "rescue_initramfs_modules": 8,
+        "binary_module_payloads_verified": true,
+        "first_boot_usb_ssh_verified": true,
+        "builtin_touch_bound": true,
+        "physical_touch_validated": true,
+        "record": "docs/r2.md",
+        "two_simultaneous_contacts_verified": true,
+        "second_normal_reboot_verified": true,
+        "legacy_touch_service_disabled": true,
+        "controlled_idle_60s_events": 0,
+        "intermittent_ghost_touch_root_cause_resolved": false,
+        "long_term_touch_stability_validated": false
+      }
+    }
+  }
 }
