@@ -103,7 +103,7 @@ sudo -n systemd-run --unit=kebab-xfce-test --property=RuntimeMaxSec=20min \
 [ 4.131245] fb0: sys_fillrect: framebuffer is not in virtual address space.
 ```
 
-来源是 `drivers/video/fbdev/core/syscopyarea.c`、`sysimgblt.c`、`sysfillrect.c` 对 `screen_buffer` 为空时的告警：msm 的 DRM fbdev 模拟没有把缓冲映射进内核虚拟地址空间，所以 **fbcon 永远画不出启动日志**；加上控制台默认 600 s 后消隐（观察到 `blank=4`），即使面板正常也不会看到控制台内容。这条与面板链路无关，但必须连同修复。
+**第 6 轮更正**：告警条件不是缓冲为空，而是 `if (!(p->flags & FBINFO_VIRTFB))`（`sysfillrect.c:21`）——msm 的自定义 fbdev（`msm_fbdev.c`）在 `drm_fb_helper_fill_info()` 之后没有补上 `FBINFO_VIRTFB`，而它其实已经把 `fbi->screen_buffer = msm_gem_get_vaddr(bo)` 设好了。因此**告警是虚警：`sys_*` 仍会继续调用底层 `fb_fillrect()` 正常绘制**。实测：帧缓冲里有 119,521 个非零字节且随时间小幅变化，说明控制台确实在画。屏幕上看不到控制台文字的真实原因是 VT 状态——X 把 `tty7` 留在活动状态且该 VT 没有控制台，而控制台文字在 `tty1`；测试中 `chvt 1` 在当前环境未生效（活动 VT 仍报 `tty7`），VT 切换需另行排查。`vtcon1`（frame buffer device）`bind=1` 正常。
 
 ### 7.6 当前结论与下一步候选实验
 
@@ -234,8 +234,9 @@ sudo -n systemd-run --unit=kebab-xfce-test --property=RuntimeMaxSec=20min \
 
 ### 9.4 仍未修复的独立问题
 
-- fbcon 仍无法向 DRM 帧缓冲绘制（`sys_imageblit/sys_fillrect: framebuffer is not in virtual address space`），
-  内核控制台文字不会显示；
+- fbdev 的 `framebuffer is not in virtual address space` 告警仍在（msm fbdev 缺 `FBINFO_VIRTFB` 标志），
+  但已核实是虚警、`sys_*` 绘制照常执行；真正让"启动时看不到控制台文字"的是 VT 状态：X 退出后
+  `tty7` 仍为活动 VT 且其上没有控制台，`chvt 1` 在本环境未生效，需另行排查；
 - 面板 `vddio-supply`（`vreg_l14a_1p8`）仍未在驱动中申请，运行时用户计数 0；
 - 驱动只暴露 120 Hz 模式（`samsung_amb655x_mode` 为 `__maybe_unused`）；
 - 启动期 `DSI PLL(0) lock failed status=0x00000000` 与 `clk_core_disable/unprepare` WARNING 仍在
