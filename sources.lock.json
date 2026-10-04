@@ -146,6 +146,19 @@
     "compiled_or_deployed": false
   },
   "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories",
+  "candidate_kernel_patches": [
+    {
+      "file": "patches/local/0002-input-synaptics-tcm-runtime-layout-candidate.patch",
+      "sha256": "e3c5368e8a073c0247c4589d2d1671a376be2b0593fbe03c2a33fc348ac67f86",
+      "base_kernel_commit": "65dad81b2b498007e4972c45f94644f2f5d430f9",
+      "checked_at": "2026-10-04",
+      "status": "candidate; not automatically applied or persistently deployed",
+      "host_sanitizers_passed": true,
+      "temporary_module_probe_open_close_passed": true,
+      "physical_touch_validated": false,
+      "documentation": "docs/touch-protocol-r2-20261004.md"
+    }
+  ],
   "local_kernel_patches": [
     {
       "file": "patches/local/0001-input-synaptics-tcm-fix-report-framing.patch",
