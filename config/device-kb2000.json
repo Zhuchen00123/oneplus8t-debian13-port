@@ -16,7 +16,7 @@
   "root_available": false,
   "root_available_context": "Last stock Android check had no su; current persistent Linux has authorized debian sudo, recorded below",
   "screen_forensics_completed": true,
-  "current_phase": "persistent_Debian13_r2_builtin_display_touch_verified; gdut_wifi_internet_DNS_NTP_verified; Minecraft_Java_direct_IPv6_under_test",
+  "current_phase": "persistent_Debian13_r2_gdut_verified; server_base_health_enabled; charge_limit_80_not_enforced; MC_tunnel_deferred_to_separate_session",
   "persistent_linux": {
     "kernelrelease": "7.2.0-kebab-debian13-r2+",
     "candidate": "artifacts/server-r2-20261004/ready/",
@@ -48,7 +48,20 @@
     "wifi_association_and_dhcp_tested": true,
     "wifi_record": "docs/gdut-wifi-20261004.md",
     "wifi_https_internet_verified": true,
-    "ntp_network_synchronized": true
+    "ntp_network_synchronized": true,
+    "server_base": {
+      "record": "docs/server-base-20261004.md",
+      "health_timer_enabled": true,
+      "health_sample_interval_seconds": 60,
+      "health_monitor_read_only": true,
+      "requested_charge_limit_percent": 80,
+      "charge_limit_enforced": false,
+      "charge_control_backend": "unavailable_in_current_kernel",
+      "software_sleep_targets_masked": true,
+      "timezone": "Asia/Shanghai",
+      "post_configuration_reboot_tested": false,
+      "changes_in_sealed_r2_image": false
+    }
   },
   "temporary_magisk_root_verified": true,
   "original_partition_backup": "verified_requested_26_partitions",

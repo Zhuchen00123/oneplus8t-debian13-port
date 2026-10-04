@@ -1,0 +1,11 @@
+[Unit]
+Description=Sample Kebab server health every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=5s
+Unit=kebab-health.service
+
+[Install]
+WantedBy=timers.target

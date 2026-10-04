@@ -1,0 +1,8 @@
+{
+  "requested_charge_limit_percent": 80,
+  "battery_temperature_warning_c": 45,
+  "battery_low_warning_percent": 15,
+  "cpu_temperature_warning_c": 85,
+  "disk_free_warning_mib": 512,
+  "memory_available_warning_mib": 256
+}
