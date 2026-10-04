@@ -1,5 +1,5 @@
 {
-  "assessed_at": "2026-10-03",
+  "assessed_at": "2026-10-04",
   "model": "KB2000",
   "adb_device": "OnePlus8T",
   "codename": "kebab",
@@ -16,11 +16,15 @@
   "root_available": false,
   "root_available_context": "Last stock Android check had no su; current persistent Linux has authorized debian sudo, recorded below",
   "screen_forensics_completed": true,
-  "current_phase": "persistent_Debian13_kernel72_r1_USB_DHCP_SSH_rootfs_IO_and_normal_reboot_verified; phone_left_running_Linux; WiFi_deferred_by_user",
+  "current_phase": "persistent_Debian13_r2_builtin_display_touch_verified; intermittent_ghost_touch_cause_unresolved; WiFi_deferred",
   "persistent_linux": {
-    "kernelrelease": "7.2.0-kebab-debian13-r1+",
-    "candidate": "artifacts/server-r1-20261003/ready/",
-    "flashed_partitions": ["super", "dtbo_a", "boot_a"],
+    "kernelrelease": "7.2.0-kebab-debian13-r2+",
+    "candidate": "artifacts/server-r2-20261004/ready/",
+    "flashed_partitions": [
+      "super",
+      "dtbo_a",
+      "boot_a"
+    ],
     "slot_switched": false,
     "root_device": "/dev/sda15",
     "rootfs_uuid": "bc52fbbe-777b-47c8-84fc-ba56db7a8813",
@@ -34,9 +38,13 @@
     "systemd_saved_clock_epoch_reboot_verified": true,
     "wifi_authentication_tested": false,
     "sustained_load_24h_tested": false,
-    "touch_input_events_tested": false,
+    "touch_input_events_tested": true,
     "startup_dsi_clock_warnings": 2,
-    "record": "docs/persistent-r1-20261003.md"
+    "record": "docs/r2-integrated-20261004.md",
+    "builtin_touch_verified": true,
+    "two_simultaneous_contacts_verified": true,
+    "legacy_touch_service_disabled": true,
+    "intermittent_ghost_touch_root_cause_resolved": false
   },
   "temporary_magisk_root_verified": true,
   "original_partition_backup": "verified_requested_26_partitions",
@@ -44,8 +52,14 @@
   "original_partition_backup_atomic_across_partitions": false,
   "super_by_name_target_observed": "/dev/block/sda15",
   "display": {
-    "resolution": [1080, 2400],
-    "reported_refresh_rates_hz": [60, 120],
+    "resolution": [
+      1080,
+      2400
+    ],
+    "reported_refresh_rates_hz": [
+      60,
+      120
+    ],
     "community_expected_panel": "Samsung AMB655X",
     "actual_panel_model": "Samsung AMB655X; kernel report with DCS hardware response",
     "hardware_dcs_id": "A5 05 01",
