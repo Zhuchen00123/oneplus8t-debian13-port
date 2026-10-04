@@ -185,6 +185,26 @@
       "temporary_module_probe_open_close_passed": true,
       "physical_touch_validated": false,
       "documentation": "docs/touch-protocol-r2-20261004.md"
+    },
+    {
+      "file": "patches/local/0005-regulator-mp2762a-bounded-charge-test.patch",
+      "sha256": "14b45cce09bc0e75b5cad56912a1492aa8f8133190ef8bc1e137bfc7f5cdeddf",
+      "base_kernel_commit": "e3f3f54911c532ecb1359aafb5f394c63daa0bbd",
+      "candidate_kernel_commit": "ab77fc2f590584426315a10d47e4390f960f9f0a",
+      "checked_at": "2026-10-04",
+      "status": "isolated charge test candidate; not automatically applied to production r2 and not deployed",
+      "host_asan_ubsan_cases": 65813,
+      "r2_module_w1_build_passed": true,
+      "fixed_source_full_build_passed": true,
+      "candidate_kernel_commit": "8057ac760924359a0633dd52d24610cafd2d9628",
+      "candidate_kernelrelease": "7.2.0-kebab-debian13-r2-charge-candidate+",
+      "candidate_module_count": 578,
+      "candidate_payload_audit": "local/charge-candidate-20261004/module-payload-audit.json",
+      "candidate_artifact_group": "artifacts/server-charge-candidate-20261004/ready/",
+      "candidate_ram_group": "artifacts/boot-charge-candidate-20261004/rescue-final/",
+      "phone_hardware_validated": false,
+      "charge_limit_implemented": false,
+      "documentation": "docs/charge-control-candidate-20261004.md"
     }
   ],
   "local_kernel_patches": [
@@ -200,6 +220,21 @@
     }
   ],
   "kernel_profiles": {
+    "r2-charge-candidate": {
+      "extends": "r2",
+      "config": "config/debian13-r2-charge-candidate.config",
+      "purpose": "Opt-in MP2762A charge inhibit test with 30-second software restoration attempt; separate from production r2",
+      "additional_local_patches": [
+        {
+          "file": "patches/local/0005-regulator-mp2762a-bounded-charge-test.patch",
+          "sha256": "14b45cce09bc0e75b5cad56912a1492aa8f8133190ef8bc1e137bfc7f5cdeddf",
+          "input_driver": "drivers/regulator/mp2762-otg-regulator.c",
+          "input_driver_sha256": "4c0b5e2b2791800725bc37d14bea92a7c21880e8847d81c657fc90088038e2fc"
+        }
+      ],
+      "hardware_validated": false,
+      "charge_limit_implemented": false
+    },
     "r2": {
       "config": "config/debian13-r2.config",
       "purpose": "Integrated AMB655X display and builtin KB2000 runtime-layout touch; matching modules/initramfs required",

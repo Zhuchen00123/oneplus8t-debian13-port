@@ -1,0 +1,619 @@
+From ab77fc2f590584426315a10d47e4390f960f9f0a Mon Sep 17 00:00:00 2001
+From: Codex automation <codex@localhost>
+Date: Sun, 4 Oct 2026 16:50:01 +0800
+Subject: [PATCH] regulator: add bounded MP2762A charge inhibit test
+
+---
+ drivers/regulator/Kconfig                |   1 +
+ drivers/regulator/mp2762-charge-test.h   | 143 ++++++++++
+ drivers/regulator/mp2762-otg-regulator.c | 325 ++++++++++++++++++++++-
+ 3 files changed, 459 insertions(+), 10 deletions(-)
+ create mode 100644 drivers/regulator/mp2762-charge-test.h
+
+diff --git a/drivers/regulator/Kconfig b/drivers/regulator/Kconfig
+index 1c97d0808..10498c6fc 100644
+--- a/drivers/regulator/Kconfig
++++ b/drivers/regulator/Kconfig
+@@ -1892,6 +1892,7 @@ config REGULATOR_QCOM_LABIBB
+ config REGULATOR_MP2762_OTG
+ 	tristate "MP2762A OTG VBUS regulator"
+ 	depends on I2C
++	depends on POWER_SUPPLY
+ 	help
+ 	  OTG VBUS boost regulator on the Monolithic Power Systems MP2762A
+ 	  battery charger. Used on multi-cell phones where the PMIC's own
+diff --git a/drivers/regulator/mp2762-charge-test.h b/drivers/regulator/mp2762-charge-test.h
+new file mode 100644
+index 000000000..fd53e36b3
+--- /dev/null
++++ b/drivers/regulator/mp2762-charge-test.h
+@@ -0,0 +1,143 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef MP2762_CHARGE_TEST_H
++#define MP2762_CHARGE_TEST_H
++
++#ifdef __KERNEL__
++#include <linux/errno.h>
++#include <linux/types.h>
++#else
++#include <stdbool.h>
++#include <errno.h>
++#endif
++
++/* MP2762A Rev. 1.1, pp. 35-36 and 42. No watchdog/safety writes. */
++#define MP2762_CHARGE_CTRL 0x08
++#define MP2762_CHARGE_WDT 0x09
++#define MP2762_CHARGE_STATUS 0x13
++#define MP2762_CHARGE_COMMANDS 0xc0
++#define MP2762_CHARGE_OTG 0x20
++#define MP2762_CHARGE_ENABLE 0x10
++#define MP2762_CHARGE_SUSPEND 0x08
++#define MP2762_CHARGE_BATTFET 0x02
++#define MP2762_CHARGE_WDT_MASK 0x30
++#define MP2762_CHARGE_POWER_GOOD 0x02
++#define MP2762_CHARGE_UV 0xc0
++
++struct mp2762_charge_io {
++	void *context;
++	int (*read)(void *context, unsigned int reg);
++	int (*write)(void *context, unsigned int reg, unsigned int value);
++};
++
++struct mp2762_charge_test {
++	/* Includes a write whose result is uncertain after an I2C error. */
++	bool owned;
++	unsigned int saved_enable;
++};
++
++static inline int mp2762_charge_control_safe(unsigned int ctrl)
++{
++	if (ctrl > 0xff)
++		return -EINVAL;
++	if (ctrl & (MP2762_CHARGE_COMMANDS | MP2762_CHARGE_OTG |
++		    MP2762_CHARGE_SUSPEND))
++		return -EBUSY;
++	if (!(ctrl & MP2762_CHARGE_BATTFET))
++		return -ENODEV;
++	return 0;
++}
++
++static inline int mp2762_charge_inhibit(const struct mp2762_charge_io *io,
++				      struct mp2762_charge_test *test)
++{
++	int ctrl, wdt, status, ret, check;
++	unsigned int value;
++
++	/* Repeated requests cannot renew the test's restoration deadline. */
++	if (test->owned)
++		return -EBUSY;
++	ctrl = io->read(io->context, MP2762_CHARGE_CTRL);
++	if (ctrl < 0)
++		return ctrl;
++	ret = mp2762_charge_control_safe(ctrl);
++	if (ret)
++		return ret;
++	wdt = io->read(io->context, MP2762_CHARGE_WDT);
++	if (wdt < 0)
++		return wdt;
++	if (wdt > 0xff)
++		return -EINVAL;
++	/* Initial candidate does not alter or service an active watchdog. */
++	if (wdt & MP2762_CHARGE_WDT_MASK)
++		return -EOPNOTSUPP;
++	status = io->read(io->context, MP2762_CHARGE_STATUS);
++	if (status < 0)
++		return status;
++	if (status > 0xff)
++		return -EINVAL;
++	if (!(status & MP2762_CHARGE_POWER_GOOD) ||
++	    (status & MP2762_CHARGE_UV))
++		return -ENODEV;
++	if (!(ctrl & MP2762_CHARGE_ENABLE))
++		return -EALREADY;
++
++	value = ctrl & ~MP2762_CHARGE_ENABLE;
++	test->saved_enable = ctrl & MP2762_CHARGE_ENABLE;
++	/* An errored bus write may still reach the chip: keep recovery ownership. */
++	test->owned = true;
++	ret = io->write(io->context, MP2762_CHARGE_CTRL, value);
++	if (ret < 0)
++		return ret;
++	check = io->read(io->context, MP2762_CHARGE_CTRL);
++	if (check < 0)
++		return check;
++	return (unsigned int)check == value ? 0 : -EIO;
++}
++
++static inline int mp2762_charge_restore(const struct mp2762_charge_io *io,
++				      struct mp2762_charge_test *test)
++{
++	int ctrl, ret, check;
++	unsigned int value;
++
++	/* auto cannot enable a charger that this test did not disable. */
++	if (!test->owned)
++		return 0;
++	ctrl = io->read(io->context, MP2762_CHARGE_CTRL);
++	if (ctrl < 0)
++		return ctrl;
++	ret = mp2762_charge_control_safe(ctrl);
++	if (ret)
++		return ret;
++	value = (ctrl & ~MP2762_CHARGE_ENABLE) | test->saved_enable;
++	if (value != (unsigned int)ctrl) {
++		ret = io->write(io->context, MP2762_CHARGE_CTRL, value);
++		if (ret < 0)
++			return ret;
++		check = io->read(io->context, MP2762_CHARGE_CTRL);
++		if (check < 0)
++			return check;
++		if ((unsigned int)check != value)
++			return -EIO;
++	}
++	test->owned = false;
++	return 0;
++}
++
++static inline int mp2762_charge_auto(const struct mp2762_charge_io *io,
++				   struct mp2762_charge_test *test)
++{
++	int ctrl, ret;
++
++	if (test->owned)
++		return mp2762_charge_restore(io, test);
++	/* Do not claim AUTO if firmware has already disabled charging. */
++	ctrl = io->read(io->context, MP2762_CHARGE_CTRL);
++	if (ctrl < 0)
++		return ctrl;
++	ret = mp2762_charge_control_safe(ctrl);
++	if (ret)
++		return ret;
++	return ctrl & MP2762_CHARGE_ENABLE ? 0 : -EOPNOTSUPP;
++}
++#endif
+diff --git a/drivers/regulator/mp2762-otg-regulator.c b/drivers/regulator/mp2762-otg-regulator.c
+index e2ff22e96..ba7152cc6 100644
+--- a/drivers/regulator/mp2762-otg-regulator.c
++++ b/drivers/regulator/mp2762-otg-regulator.c
+@@ -8,15 +8,19 @@
+  * driving VBUS: the PMIC's own OTG boost exists to lift a single cell to
+  * 5 V and cannot be used with an 8.6 V pack.
+  *
+- * Only the OTG boost is modelled here. Charging itself is handled by the
+- * bootloader/firmware and reported through a separate fuel gauge, so this
+- * driver deliberately exposes a regulator and nothing else.
++ * Charging remains firmware-configured. The optional charge test only
++ * inhibits charging for 30 seconds, then attempts to restore its original
++ * enable bit. It never configures voltage/current, watchdog or protections.
+  */
+ 
+ #include <linux/bitops.h>
+ #include <linux/gpio/consumer.h>
+ #include <linux/i2c.h>
+ #include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/power_supply.h>
++#include <linux/workqueue.h>
++#include "mp2762-charge-test.h"
+ #include <linux/regulator/driver.h>
+ #include <linux/regulator/of_regulator.h>
+ 
+@@ -44,11 +48,25 @@
+  */
+ #define MP2762_OTG_ENABLE_TIME_US	1200000
+ 
++/* Immutable at runtime; default mode cannot write through charge_behaviour. */
++static bool allow_charge_test;
++module_param(allow_charge_test, bool, 0400);
++MODULE_PARM_DESC(allow_charge_test, "Allow bounded 30s charge inhibit test (default false)");
++#define MP2762_CHARGE_TEST_SECONDS 30
++
+ struct mp2762_otg {
+ 	struct i2c_client *client;
+ 	struct gpio_desc *otg_gate_gpio;
+ 	struct regulator_dev *rdev;
+ 	unsigned int ilim_ua;
++	struct mutex lock;
++	struct power_supply *psy;
++	struct mp2762_charge_io charge_io;
++	struct mp2762_charge_test charge_test;
++	struct delayed_work restore_work;
++	bool stopping;
++	bool ready;
++	int charge_error;
+ };
+ 
+ static int mp2762_read(struct i2c_client *c, u8 reg)
+@@ -68,13 +86,18 @@ static int mp2762_update(struct i2c_client *c, u8 reg, u8 mask, u8 val)
+ 	if (old < 0)
+ 		return old;
+ 
++	/* REG08 also contains self-clearing command bits, never replay them. */
++	if (reg == MP2762_REG08_CTRL && (old & MP2762_CHARGE_COMMANDS))
++		return -EBUSY;
++	if ((u8)((old & ~mask) | (val & mask)) == old)
++		return 0;
+ 	ret = i2c_smbus_write_byte_data(c, reg, (u8)((old & ~mask) | (val & mask)));
+ 	if (ret < 0)
+ 		dev_err(&c->dev, "reg 0x%02x write failed: %d\n", reg, ret);
+ 	return ret;
+ }
+ 
+-static int mp2762_otg_enable(struct regulator_dev *rdev)
++static int mp2762_otg_enable_unlocked(struct regulator_dev *rdev)
+ {
+ 	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
+ 	int ret;
+@@ -115,7 +138,7 @@ static int mp2762_otg_enable(struct regulator_dev *rdev)
+ 	return ret;
+ }
+ 
+-static int mp2762_otg_disable(struct regulator_dev *rdev)
++static int mp2762_otg_disable_unlocked(struct regulator_dev *rdev)
+ {
+ 	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
+ 
+@@ -125,7 +148,7 @@ static int mp2762_otg_disable(struct regulator_dev *rdev)
+ 			     MP2762_REG08_OTG_EN, 0);
+ }
+ 
+-static int mp2762_otg_is_enabled(struct regulator_dev *rdev)
++static int mp2762_otg_is_enabled_unlocked(struct regulator_dev *rdev)
+ {
+ 	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
+ 	int val = mp2762_read(chg->client, MP2762_REG08_CTRL);
+@@ -142,7 +165,7 @@ static int mp2762_otg_is_enabled(struct regulator_dev *rdev)
+  * register access inside the window where the charger is known to be
+  * responsive.
+  */
+-static int mp2762_otg_set_current_limit(struct regulator_dev *rdev,
++static int mp2762_otg_set_current_limit_unlocked(struct regulator_dev *rdev,
+ 					int min_uA, int max_uA)
+ {
+ 	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
+@@ -161,20 +184,78 @@ static int mp2762_otg_set_current_limit(struct regulator_dev *rdev,
+ 	 * before chg->rdev is assigned and while the boost is off; that case
+ 	 * is covered by .enable. A later runtime change takes effect at once.
+ 	 */
+-	if (chg->rdev && mp2762_otg_is_enabled(rdev) > 0)
++	if (chg->rdev && mp2762_otg_is_enabled_unlocked(rdev) > 0)
+ 		return mp2762_update(chg->client, MP2762_REG07_OTG_ILIM,
+ 				     MP2762_REG07_OTG_ILIM_MASK, sel);
+ 
+ 	return 0;
+ }
+ 
+-static int mp2762_otg_get_current_limit(struct regulator_dev *rdev)
++static int mp2762_otg_get_current_limit_unlocked(struct regulator_dev *rdev)
+ {
+ 	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
+ 
+ 	return chg->ilim_ua;
+ }
+ 
++static int mp2762_otg_enable(struct regulator_dev *rdev)
++{
++	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
++	int ret;
++
++	mutex_lock(&chg->lock);
++	if (chg->charge_test.owned || chg->stopping)
++		ret = -EBUSY;
++	else
++		ret = mp2762_otg_enable_unlocked(rdev);
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
++static int mp2762_otg_disable(struct regulator_dev *rdev)
++{
++	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
++	int ret;
++
++	mutex_lock(&chg->lock);
++	ret = mp2762_otg_disable_unlocked(rdev);
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
++static int mp2762_otg_is_enabled(struct regulator_dev *rdev)
++{
++	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
++	int ret;
++
++	mutex_lock(&chg->lock);
++	ret = mp2762_otg_is_enabled_unlocked(rdev);
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
++static int mp2762_otg_set_current_limit(struct regulator_dev *rdev, int min_uA, int max_uA)
++{
++	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
++	int ret;
++
++	mutex_lock(&chg->lock);
++	ret = mp2762_otg_set_current_limit_unlocked(rdev, min_uA, max_uA);
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
++static int mp2762_otg_get_current_limit(struct regulator_dev *rdev)
++{
++	struct mp2762_otg *chg = rdev_get_drvdata(rdev);
++	int ret;
++
++	mutex_lock(&chg->lock);
++	ret = mp2762_otg_get_current_limit_unlocked(rdev);
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
+ static const struct regulator_ops mp2762_otg_ops = {
+ 	.enable = mp2762_otg_enable,
+ 	.disable = mp2762_otg_disable,
+@@ -194,10 +275,210 @@ static const struct regulator_desc mp2762_otg_desc = {
+ 	.enable_time = MP2762_OTG_ENABLE_TIME_US,
+ };
+ 
++
++static int mp2762_charge_read(void *context, unsigned int reg)
++{
++	struct mp2762_otg *chg = context;
++
++	return mp2762_read(chg->client, reg);
++}
++
++static int mp2762_charge_write(void *context, unsigned int reg,
++			       unsigned int value)
++{
++	struct mp2762_otg *chg = context;
++	int ret;
++
++	/* Defense in depth: the charge path has no general register writer. */
++	if (!allow_charge_test || reg != MP2762_CHARGE_CTRL ||
++	    value > 0xff || (value & MP2762_CHARGE_COMMANDS))
++		return -EPERM;
++	ret = i2c_smbus_write_byte_data(chg->client, reg, value);
++	if (ret < 0)
++		dev_err(&chg->client->dev, "charge test write failed: %d\n", ret);
++	return ret;
++}
++
++static void mp2762_charge_restore_work(struct work_struct *work)
++{
++	struct mp2762_otg *chg = container_of(to_delayed_work(work),
++					   struct mp2762_otg, restore_work);
++	int ret;
++
++	mutex_lock(&chg->lock);
++	ret = mp2762_charge_restore(&chg->charge_io, &chg->charge_test);
++	chg->charge_error = ret;
++	if (ret < 0 && !chg->stopping) {
++		dev_err_ratelimited(&chg->client->dev,
++			"charge restoration unverified (%d); retrying\n", ret);
++		mod_delayed_work(system_wq, &chg->restore_work, HZ);
++	}
++	mutex_unlock(&chg->lock);
++	power_supply_changed(chg->psy);
++}
++
++static int mp2762_charge_get_property(struct power_supply *psy,
++				     enum power_supply_property property,
++				     union power_supply_propval *value)
++{
++	struct mp2762_otg *chg = power_supply_get_drvdata(psy);
++	int ctrl, ret = 0;
++
++	if (property == POWER_SUPPLY_PROP_MODEL_NAME) {
++		value->strval = "MP2762A charge test";
++		return 0;
++	}
++	if (property != POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR)
++		return -EINVAL;
++	mutex_lock(&chg->lock);
++	ctrl = mp2762_read(chg->client, MP2762_CHARGE_CTRL);
++	if (ctrl < 0)
++		ret = ctrl;
++	else if ((ret = mp2762_charge_control_safe(ctrl)) == 0)
++		value->intval = ctrl & MP2762_CHARGE_ENABLE ?
++			POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO :
++			POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE;
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
++static int mp2762_charge_set_property(struct power_supply *psy,
++				     enum power_supply_property property,
++				     const union power_supply_propval *value)
++{
++	struct mp2762_otg *chg = power_supply_get_drvdata(psy);
++	bool was_owned;
++	int ret;
++
++	if (!allow_charge_test)
++		return -EPERM;
++	if (property != POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR)
++		return -EINVAL;
++	mutex_lock(&chg->lock);
++	if (chg->stopping) {
++		ret = -ESHUTDOWN;
++		goto out;
++	}
++	if (!chg->ready) {
++		ret = -EAGAIN;
++		goto out;
++	}
++	was_owned = chg->charge_test.owned;
++	switch (value->intval) {
++	case POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE:
++		ret = mp2762_charge_inhibit(&chg->charge_io, &chg->charge_test);
++		/* Arm even for ambiguous writes. Repeat requests never extend it. */
++		if (!was_owned && chg->charge_test.owned)
++			mod_delayed_work(system_wq, &chg->restore_work,
++				ret ? 0 : MP2762_CHARGE_TEST_SECONDS * HZ);
++		break;
++	case POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO:
++		ret = mp2762_charge_auto(&chg->charge_io, &chg->charge_test);
++		if (ret && chg->charge_test.owned)
++			mod_delayed_work(system_wq, &chg->restore_work, 0);
++		break;
++	default:
++		ret = -EINVAL;
++	}
++	chg->charge_error = ret;
++out:
++	mutex_unlock(&chg->lock);
++	power_supply_changed(psy);
++	return ret;
++}
++
++static int mp2762_charge_is_writeable(struct power_supply *psy,
++				     enum power_supply_property property)
++{
++	return allow_charge_test && property == POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR;
++}
++
++static enum power_supply_property mp2762_charge_properties[] = {
++	POWER_SUPPLY_PROP_MODEL_NAME,
++	POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR,
++};
++
++static const struct power_supply_desc mp2762_charge_desc = {
++	.name = "mp2762-charge-test",
++	.type = POWER_SUPPLY_TYPE_USB,
++	.properties = mp2762_charge_properties,
++	.num_properties = ARRAY_SIZE(mp2762_charge_properties),
++	.charge_behaviours = BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO) |
++		BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE),
++	.get_property = mp2762_charge_get_property,
++	.set_property = mp2762_charge_set_property,
++	.property_is_writeable = mp2762_charge_is_writeable,
++	.no_thermal = true,
++};
++
++static ssize_t charge_test_snapshot_show(struct device *dev,
++					struct device_attribute *attr, char *buf)
++{
++	struct mp2762_otg *chg = i2c_get_clientdata(to_i2c_client(dev));
++	int ctrl, wdt, status;
++	ssize_t ret;
++
++	mutex_lock(&chg->lock);
++	ctrl = mp2762_read(chg->client, MP2762_CHARGE_CTRL);
++	wdt = mp2762_read(chg->client, MP2762_CHARGE_WDT);
++	status = mp2762_read(chg->client, MP2762_CHARGE_STATUS);
++	if (ctrl < 0 || wdt < 0 || status < 0)
++		ret = ctrl < 0 ? ctrl : (wdt < 0 ? wdt : status);
++	else
++		ret = sysfs_emit(buf,
++			"reg08=0x%02x reg09=0x%02x reg13=0x%02x allow_test=%u owned=%u last_error=%d max_test_seconds=%u\n",
++			ctrl, wdt, status, allow_charge_test, chg->charge_test.owned,
++			chg->charge_error, MP2762_CHARGE_TEST_SECONDS);
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++static DEVICE_ATTR_RO(charge_test_snapshot);
++
++static struct attribute *mp2762_charge_attrs[] = {
++	&dev_attr_charge_test_snapshot.attr,
++	NULL,
++};
++static const struct attribute_group mp2762_charge_group = {
++	.attrs = mp2762_charge_attrs,
++};
++
++static void mp2762_charge_stop(struct mp2762_otg *chg)
++{
++	int ret;
++
++	mutex_lock(&chg->lock);
++	chg->stopping = true;
++	mutex_unlock(&chg->lock);
++	cancel_delayed_work_sync(&chg->restore_work);
++	mutex_lock(&chg->lock);
++	ret = mp2762_charge_restore(&chg->charge_io, &chg->charge_test);
++	if (ret)
++		dev_crit(&chg->client->dev,
++			 "charge restoration failed at stop: %d; state unknown\n", ret);
++	mutex_unlock(&chg->lock);
++}
++
++static void mp2762_otg_remove(struct i2c_client *client)
++{
++	mp2762_charge_stop(i2c_get_clientdata(client));
++}
++
++static void mp2762_charge_release(void *data)
++{
++	mp2762_charge_stop(data);
++}
++
++static void mp2762_otg_shutdown(struct i2c_client *client)
++{
++	mp2762_charge_stop(i2c_get_clientdata(client));
++}
++
+ static int mp2762_otg_probe(struct i2c_client *client)
+ {
+ 	struct device *dev = &client->dev;
+ 	struct regulator_config config = { .dev = dev };
++	struct power_supply_config psy_config = {};
++	int ret;
+ 	struct mp2762_otg *chg;
+ 
+ 	chg = devm_kzalloc(dev, sizeof(*chg), GFP_KERNEL);
+@@ -205,6 +486,12 @@ static int mp2762_otg_probe(struct i2c_client *client)
+ 		return -ENOMEM;
+ 
+ 	chg->client = client;
++	mutex_init(&chg->lock);
++	INIT_DELAYED_WORK(&chg->restore_work, mp2762_charge_restore_work);
++	chg->charge_io.context = chg;
++	chg->charge_io.read = mp2762_charge_read;
++	chg->charge_io.write = mp2762_charge_write;
++	i2c_set_clientdata(client, chg);
+ 	chg->ilim_ua = MP2762_OTG_ILIM_DEFAULT_UA;
+ 
+ 	chg->otg_gate_gpio = devm_gpiod_get(dev, "otg-gate", GPIOD_OUT_LOW);
+@@ -220,7 +507,22 @@ static int mp2762_otg_probe(struct i2c_client *client)
+ 		return dev_err_probe(dev, PTR_ERR(chg->rdev),
+ 				     "failed to register otg-vbus regulator\n");
+ 
+-	i2c_set_clientdata(client, chg);
++	/* Registration/probe does not initialize or write charger registers. */
++	psy_config.drv_data = chg;
++	psy_config.no_wakeup_source = true;
++	chg->psy = devm_power_supply_register(dev, &mp2762_charge_desc, &psy_config);
++	if (IS_ERR(chg->psy))
++		return dev_err_probe(dev, PTR_ERR(chg->psy),
++				     "failed to register charge test supply\n");
++	ret = devm_add_action_or_reset(dev, mp2762_charge_release, chg);
++	if (ret)
++		return ret;
++	ret = devm_device_add_group(dev, &mp2762_charge_group);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to register charge snapshot\n");
++	mutex_lock(&chg->lock);
++	chg->ready = true;
++	mutex_unlock(&chg->lock);
+ 	return 0;
+ }
+ 
+@@ -234,8 +536,11 @@ static struct i2c_driver mp2762_otg_driver = {
+ 	.driver = {
+ 		.name = "mp2762-otg-regulator",
+ 		.of_match_table = mp2762_otg_of_match,
++		.suppress_bind_attrs = true,
+ 	},
+ 	.probe = mp2762_otg_probe,
++	.remove = mp2762_otg_remove,
++	.shutdown = mp2762_otg_shutdown,
+ };
+ module_i2c_driver(mp2762_otg_driver);
+ 
+
+base-commit: e3f3f54911c532ecb1359aafb5f394c63daa0bbd
+-- 
+2.47.3
+

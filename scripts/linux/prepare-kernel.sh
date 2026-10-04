@@ -34,6 +34,10 @@ import json, sys
 lock = json.load(open(sys.argv[1], encoding='utf-8'))
 r = {x['id']: x for x in lock['repositories']}
 selected = {} if sys.argv[2] == 'default' else lock['kernel_profiles'][sys.argv[2]]
+if selected.get('extends'):
+    parent = lock['kernel_profiles'][selected['extends']]
+    selected = {**parent, **selected,
+                'local_patches': parent['local_patches'] + selected.get('additional_local_patches', [])}
 print(r['linux-sm8250']['commit'])
 print(r['kebab-bringup']['commit'])
 print(selected.get('config', 'config/debian13.config'))
@@ -89,7 +93,15 @@ python3 - "$project_dir" "$kernel_dir" "$profile" <<'PY'
 import hashlib, json, pathlib, subprocess, sys
 project, kernel = map(pathlib.Path, sys.argv[1:3])
 lock = json.loads((project/'sources.lock.json').read_text())
-entries = lock.get('local_kernel_patches', []) if sys.argv[3] == 'default' else lock['kernel_profiles'][sys.argv[3]]['local_patches']
+if sys.argv[3] == 'default':
+    entries = lock.get('local_kernel_patches', [])
+else:
+    selected = lock['kernel_profiles'][sys.argv[3]]
+    if selected.get('extends'):
+        parent = lock['kernel_profiles'][selected['extends']]
+        entries = parent['local_patches'] + selected.get('additional_local_patches', [])
+    else:
+        entries = selected['local_patches']
 for entry in entries:
     patch = (project/entry['file']).resolve()
     source = (kernel/entry['input_driver']).resolve()
@@ -120,7 +132,15 @@ import datetime, hashlib, json, pathlib, subprocess, sys
 project, build, base, bringup, profile = sys.argv[1:]
 build = pathlib.Path(build)
 lock = json.load(open(pathlib.Path(project)/'sources.lock.json'))
-entries = lock.get('local_kernel_patches', []) if profile == 'default' else lock['kernel_profiles'][profile]['local_patches']
+if profile == 'default':
+    entries = lock.get('local_kernel_patches', [])
+else:
+    selected = lock['kernel_profiles'][profile]
+    if selected.get('extends'):
+        parent = lock['kernel_profiles'][selected['extends']]
+        entries = parent['local_patches'] + selected.get('additional_local_patches', [])
+    else:
+        entries = selected['local_patches']
 def git(*args):
     return subprocess.check_output(['git', '-C', str(build/'linux'), *args], text=True).strip()
 data = {
