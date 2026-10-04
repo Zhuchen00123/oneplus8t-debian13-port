@@ -13,6 +13,7 @@
 ## 当前专题
 
 - [显示/触摸r2](r2-integrated-20261004.md)、[显示排查](xfce-desktop-20261004.md)、[触摸协议](touch-protocol-r2-20261004.md)
+- [全屏只读状态面板、按需XFCE与启停入口](status-panel-20261004.md)
 - [限充v1](charge-policy-v1-20261004.md)、[启动成功标记](boot-success-repair-20261004.md)
 - [扩容](storage-expansion-20261004.md)、[电源键](powerkey-screen-20261004.md)、[局部发热](local-heating-20261004.md)
 - [服务器基础](server-base-20261004.md)、[就绪盘点](server-readiness-20261004.md)

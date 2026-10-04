@@ -19,6 +19,7 @@
 | 数据盘 | 用户同意清空userdata=/dev/sda28；ext4按UUID挂载/srv，约220GiB可用 | 224.46GiB是分区容量；原Android userdata未备份，已格式化 |
 | 数据持久性 | 32MiB fsync、直接读回、重启同哈希、自动挂载通过；sda主备GPT哈希未变 | 原厂512KiB最小I/O对齐提示保留；4096-byte逻辑/物理对齐，性能未测 |
 | 显示/触摸 | 用户确认正常；单指/双指/抬起和r2重启验证通过 | 120Hz唯一暴露模式；间歇误触、边缘/掌拒与长期稳定性未验收 |
+| 全屏状态面板 | 用户确认显示切页正常；亮屏3秒刷新、熄屏暂停；面板enabled/active、XFCE手动入口与往返通过 | 联合重启/长期亮屏温升未验收；图形PSS约177MiB，扫描仍120Hz |
 | GPU | 普通用户Adreno GLES绘制/像素回读通过；Vulkan枚举 | 不等于完整Vulkan、视频编解码或游戏负载通过 |
 | 限充 | 80/75服务enabled/active；224秒实机续约、服务停止恢复、杀进程约90秒恢复通过 | full_charge_cycle_validated=false；物理周期、长期供电与热安全未验收 |
 | 当前停充 | 本轮99%时REG08=0x06、owned=1、有效租约、inhibit_readback_verified=true | 控制位读回不是USB功率测量或旁路供电证明 |
@@ -47,4 +48,4 @@
 
 [r2内建](r2-integrated-20261004.md)、[限充v1](charge-policy-v1-20261004.md)、[启动记账](boot-success-repair-20261004.md)、[扩容](storage-expansion-20261004.md)、[电源键](powerkey-screen-20261004.md)、[发热](local-heating-20261004.md)、[就绪盘点](server-readiness-20261004.md)。原始记录在local，固件/镜像/私有备份不上传。
 
-本轮仅整理文档与图表并只读复核，没有改手机配置、重启或启动新负载。
+上一轮文档/图表整理仅只读复核。随后按用户选择部署[全屏只读状态面板](status-panel-20261004.md)和按需XFCE入口，用户确认短时显示切页正常、未烫手，长期开启仍不确定；本次无重启、分区写入或充电/温控/网络/既有按键配置修改。
