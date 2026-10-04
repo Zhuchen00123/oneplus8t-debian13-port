@@ -2,9 +2,9 @@
 
 OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debian 13 arm64，内核尽量新。
 
-**当前阶段（2026-10-04）：Debian 13 / `7.2.0-kebab-debian13-r1+` 持久运行，USB DHCP/严格 SSH/根读写/正常重启通过。蓝牙地址服务卡住已修复并重启复验，Adreno 650 / Mesa GLES 绘制与像素回读通过。** 相机工具/IPA 已补齐但捕获缓冲分配失败；NFC 驱动、SSC 服务存在，功能未测。timesyncd 已启用但尚无联网同步；Wi-Fi 认证稍后配置。较长日志再次出现 TCM 无效触摸报文，DSI 警告仍在；音频、蜂窝/NV、触摸、充电和长期稳定性未验收。手机保留 Linux，本轮无分区刷写。[最新盘点](<docs/userspace-audit-r1-20261004.md>)、[r1 部署历史](<docs/persistent-r1-20261003.md>)。既定 dtbo_a/boot_a/super 部署及原厂恢复持续授权不变。
+**当前阶段（2026-10-04）：Debian 13 / `7.2.0-kebab-debian13-r1+` 持久运行，USB DHCP/严格 SSH/根读写/正常重启通过。蓝牙地址服务卡住已修复并重启复验，Adreno 650 / Mesa GLES 绘制与像素回读通过。** 相机工具/IPA 已补齐但捕获缓冲分配失败；NFC 驱动、SSC 服务存在，功能未测。timesyncd 已启用但尚无联网同步；Wi-Fi 认证稍后配置。较长日志再次出现 TCM 无效触摸报文，DSI 警告仍在；音频、蜂窝/NV、充电和长期稳定性未验收（触摸已修复并实机验收）。手机保留 Linux，本轮无分区刷写。[最新盘点](<docs/userspace-audit-r1-20261004.md>)、[r1 部署历史](<docs/persistent-r1-20261003.md>)。既定 dtbo_a/boot_a/super 部署及原厂恢复持续授权不变。
 
-触摸优先修复：已查明本机 TCM 是 7 字节前缀 + 7 字节对象，旧驱动布局不匹配；r2 候选通过 ASan/UBSan、匹配模块编译及三轮报告启停短测。长采集零事件，真实单指/双指/抬起尚未验收；原驱动已恢复，未部署候选或刷固件。[触摸协议记录](<docs/touch-protocol-r2-20261004.md>)。
+**触摸已修复并实机验收**：本机 TCM 是 7 字节前缀 + 7 字节对象布局，旧 builtin 驱动把 14/21 字节报文判为非法导致不可用；修正补丁按该布局解析，编译为模块 `tcm_r2_test.ko` 安装到 `/lib/modules/…/extra/`，由 `kebab-touch-fix.service` 开机时接管 `13-004b`。有界采集在真实触摸下录得 5,209 个事件、两指并存 tracking id，用户两次确认（部署后、重启后）桌面点按与拖动可用。内建（编入内核）路线因 ABL 拒绝该引导镜像而暂缓，原因未查明。[触摸协议记录](<docs/touch-protocol-r2-20261004.md>)。
 
 最小 XFCE 桌面已装：离线 161 包、不升级不删除、LightDM 保持禁用，默认仍是 `multi-user.target`。有界会话实测 Xorg modesetting + glamor（Adreno 650）在 `1080x2400@120Hz` 工作，XFCE 组件正常、整机约 750 MB 内存，并用 `XGetImage` 抓到 156,745 字节桌面帧（SHA-256 `cc82b3ef…b1255fe`）；**内屏黑屏已定位并修复**：厂商 dtbo 要求 `qcom,mdss-dsc-slice-per-pkt = 2`（驱动留 0 被当成 1）且面板 `reset-gpios` 从未被驱动，两处一起修正后面板开始应答 DCS 读（`actual_brightness` 由超时变为 39936）、`frame_done_cnt` 归零，用户实机确认看到白底+红条测试画面，同一内核上 XFCE 桌面在 `1080x2400@120Hz` 运行。[桌面安装与显示验证](<docs/xfce-desktop-20261004.md>)。
 

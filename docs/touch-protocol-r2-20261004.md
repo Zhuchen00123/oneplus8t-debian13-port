@@ -2,7 +2,11 @@
 
 ## 状态与边界
 
-**根因已取证、候选解析器及报告启停短测通过；真实触摸未验收，未持久部署。** 手机仍运行 Debian 13 / `7.2.0-kebab-debian13-r1+`，A 槽。原内核仓库保持提交 `65dad81b2b498007e4972c45f94644f2f5d430f9`，候选只导出为[补丁](<../patches/local/0002-input-synaptics-tcm-runtime-layout-candidate.patch>)，不进入自动应用清单。
+**根因已取证，真实触摸已在实机验收通过，并以"开机自动接管"的模块方式持久部署、重启后复验通过。** 手机运行 Debian 13 / `7.2.0-kebab-debian13-r1+`（`#4`，含黑屏修复），A 槽，`boot_a` 仍为黑屏修复镜像 `ccacb17a…c2b3dd`。
+
+解析修正仍是[补丁 0002](<../patches/local/0002-input-synaptics-tcm-runtime-layout-candidate.patch>)，本阶段把它编译为模块 `tcm_r2_test.ko`（SHA-256 `2a7d0e726638ac3f418285cf2206f6db764703f6cf97e92691d4d52f74cd0b2f`）安装到 `/lib/modules/7.2.0-kebab-debian13-r1+/extra/`，由新增的 `kebab-touch-fix.service` 开机时 `modprobe`，再把 builtin `synaptics-tcm` 从 `13-004b` 解绑、把修正驱动绑上去；本轮没有刷任何分区、没有写触摸固件或 NV。
+
+**内建（编入内核）路线的尝试与阻塞**：同一补丁编入内核得到提交 `32d0dc7c445a…`、引导镜像 `d6151db1…`（45,617,152 字节；仅内核段比可用镜像大 2,328 字节，其余头字段、偏移、总长一致；`gzip -t` 通过且解压 46,465,536 字节与 `Image` 完全一致）。写入 `boot_a` 后 ABL 报"系统文件被损坏，无法开机 / The current image(boot/recovery) have been destroyed"。相同 dd 写法此前两次（`5bfa275b…`、`ccacb17a…`）均可启动，**拒绝原因未查明**；已用 fastboot 刷回 `ccacb17a…` 恢复正常。因此本轮把触摸修复以模块方式落地，内核内建部署暂缓。
 
 本阶段没有刷分区、切槽、清空数据、写触摸固件、修改持久触摸配置或 NV。临时模块测试后卸载并恢复 builtin `synaptics-tcm`；加载未签名外部模块产生 O/E taint，恢复绑定不会清除 taint，正常重启才清除本次加载标记。原封存 r1 boot/rootfs 不变。
 
@@ -81,6 +85,18 @@ gcc -Wall -Wextra -Werror -fsanitize=address,undefined -g \
 
 ## 后续验收
 
-用户明确手机在手边后，再进行有提示的单指点按、跨区域滑动、双指移动、逐指抬起、全抬起及重复开关采集；记录实际坐标变化、独立 slot 和 tracking-id 释放，同时检查报文解析错误及恢复绑定。若有真实触摸而仍无事件，先取证 IRQ/原始帧，不把零事件当成功。通过后再提交实际内核改动、构建内核/DTB/模块/boot 成组产物，在既有授权范围内部署并复验。
+### 已完成（2026-10-04 实机）
+
+- 有界采集三轮（每轮 45 s），在用户实际触摸下第 0 轮录得 **5,209** 个事件、第 1 轮 40 个，收尾 `RESTORED_BIND synaptics-tcm CLEANUP_ERRORS []`；事件含 `ABS_MT_TRACKING_ID 0`、`ABS_MT_POSITION_X/Y`、`ABS_MT_TOUCH_MAJOR/MINOR`、`BTN_TOUCH 1/0`、`EV_SYN`，抬起有 `ABS_MT_TRACKING_ID -1`。
+- 部署后再次采集（150 s）录得**两个并存触点**（tracking 372/373），即多指同时上报。
+- **用户实机确认"触控能用了"**：桌面 `kebab-xfce-test.service` active、Xorg 运行、`DSI-1 1080x2400@120Hz`，点开始菜单、拖窗口有反应；**重启后再次确认"仍然能用"**。
+- 开机自动接管已核验：`journalctl -u kebab-touch-fix.service` 显示 `bound to tcm-r2-test`，`systemctl is-enabled` = enabled，重启后 `13-004b` 绑定为 `tcm-r2-test`。
+
+### 仍需注意
+
+- 日志里 `invalid configured touch report: length 14/21/28/35 error -22` 与 `failed to receive report: -71` 仍在刷屏；**观察证明它与可用性无关**（同一批报错在"可用"和"不可用"两种状态下都出现），输入走的是另一条已修正的解析路径。
+- 触摸精度、边缘区域、三指以上手势、掌拒、长时间稳定性未系统测量。
+- 内建部署被 ABL 拒绝所阻，模块接管需要 `kebab-touch-fix.service`；若后续要回到内核内建，先查清 ABL 拒绝原因。
+- 与本修复无关的遗留项不变：fbdev 缺 `FBINFO_VIRTFB` 的虚警、`vreg_l14a_1p8` 未申请、只暴露 120 Hz、启动期 DSI PLL probe 报错。
 
 本阶段项目快照入口为 [Git bundle](<../backups/project-touch-r2-candidate-20261004/project.bundle>)及[校验清单](<../backups/project-touch-r2-candidate-20261004/manifest.json>)，私有证据另存本地[归档校验清单](<../backups/touch-r2-private-evidence-20261004/manifest.json>)。它们是候选源码与调查证据备份，不是可启动 rootfs 或新的内核产物组；同盘副本仍需复制到外部介质。
