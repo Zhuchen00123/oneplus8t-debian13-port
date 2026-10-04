@@ -3,7 +3,7 @@
 复制下面内容到新会话：
 
 ```text
-请继续 OnePlus 8T 的 MC Java 服务端与 CNB 穿透工作。默认使用简体中文，先读取项目 AGENTS.md、README.md、docs/r2-integrated-20261004.md、docs/gdut-wifi-20261004.md 和本提示词，核对实际设备状态后执行。
+请继续 OnePlus 8T 的 MC Java 服务端与 CNB 穿透工作。默认使用简体中文，先读取项目 AGENTS.md、README.md、docs/project-status-20261004.md、docs/handover-20261004.md、docs/project-flows-20261004.md、docs/gdut-wifi-20261004.md 和本提示词，核对实际设备状态后执行。
 
 主项目：F:\codexprojects\oneplus8t
 参考方案：F:\codexprojects\mcfuwuqi\cnb-tunnel
@@ -12,10 +12,11 @@
 - MC Java 版，电脑 Java 客户端；尚未确定游戏版本、原版/插件/模组和玩家规模，请先核对我的既有 MC 项目，再澄清必要选择。
 - 手机直接连接 gdut 校园 Wi-Fi，进出流量使用校园网，不依赖电脑共享或蜂窝网络。
 - 暂时没有公网 VPS/设备，优先省钱。明确不试 playit 等免费中继平台，参考我自己的 cnb-tunnel 方案，经 WSS/443 主动出站。
-- 另一个会话正在处理电池、限充、温度及服务器基础配置。你只负责 MC 和隧道，不要改充电/电源/温度策略、基础监控、journald、SSH 密钥或 USB 管理配置，也不要在基础配置会话未确认前进行长时间游戏负载测试。
+- 另一个会话正在处理电池、限充、温度及服务器基础配置。你只负责 MC 和隧道，不要改充电/电源/温度策略、屏幕按键服务、基础监控、journald、SSH 密钥或 USB 管理配置，也不要在基础配置会话未确认前进行长时间游戏负载测试。
 - 已安装基础配置：kebab-health.timer每分钟只读采样，配置/etc/kebab/server-health.json、程序/usr/local/sbin/kebab-health、状态/run/kebab-health/status.json；新版MP2762A90秒租约与80/75策略已部署，真实续约/停止/进程丢失恢复及重启后高电量停充读回通过，完整物理80/75周期与长期负载未验收。四类软件休眠已masked，时区Asia/Shanghai。详情docs/server-base-20261004.md、docs/charge-policy-v1-20261004.md，这些文件属于基础配置会话，不要覆盖。旧r2封存镜像未重打包。
 
 实际设备状态：
+- kebab-powerkey-screen.service已enabled/active，短按电源键亮/灭经用户实测通过，logind仍ignore，启动先请求亮度0已配置但新增服务未独立重启验收。用户曾报告USB附近烫手，后确认当前不烫手；热根因与长期供电安全未验收。actual_brightness恒39936，不用它证明物理亮度或面板断电。详情docs/powerkey-screen-20261004.md、docs/local-heating-20261004.md，不改这些文件/服务。
 - KB2000 / SM8250，持久 Debian 13 arm64，运行 7.2.0-kebab-debian13-r2-charge-policy+，约 11 GiB 内存。A槽启动成功标记已修复、重启保留，不能根据旧记录反复重刷重置次数。
 - 显示和触摸修复已内建；旧 kebab-touch-fix.service 已禁用，绑定 synaptics-tcm。存在过间歇指针漂移，短测未再复现，不可称长期稳定。
 - 根分区是本机/dev/sda15，ext4已在原分区内扩至7GiB，df约6.9GiB、剩约3.9GiB。用户授权清空原userdata后，/dev/sda28已作为ext4数据盘按UUID自动挂载/srv，约220GiB可用，正常重启和32MiB直接读回通过。MC服务/世界/下载使用/srv下目录，服务设置RequiresMountsFor=/srv和ConditionPathIsMountPoint=/srv，避免缺盘时写满小系统盘。不要再次格式化、移动分区或覆盖fstab；先读docs/storage-expansion-20261004.md核对实际挂载。
@@ -38,7 +39,7 @@ CNB参考方案的已读信息：
 1. 当前基础配置会话仍在使用主项目工作树。请建立或复用独立工作树/checkout进行MC文件开发，不切换主项目当前工作树分支，也不要覆盖另一个会话的修改。
 2. 你负责独立MC/隧道脚本、服务文件和 docs/mc-* 记录；公共README/AGENTS/设备状态配置由主会话整合，不并行改这些文件。私有证据可用原项目 local/mc-cnb-20261004/，必须忽略。
 3. 先完成参考代码/现有来源审查和WSS接入可行性，再做ARM64客户端与本地回环测试，然后接CNB真实链路，最后用MC真实状态握手/玩家连接验收。按当前游戏版本选择Java，不盲用最新版。
-4. 安装/构建和手机部署分开。保留可回退备份，systemd资源边界和优雅停服/世界备份要明确，避免把世界填满仅1.7GiB空闲的根文件系统。MC协议、模组兼容性和实际延迟须验证，不能拿固定HTTP探针代替游戏验收。
+4. 安装/构建和手机部署分开。保留可回退备份，systemd资源边界和优雅停服/世界备份要明确，世界和下载放/srv，不依赖仅约3.9GiB空闲的系统盘。MC协议、模组兼容性和实际延迟须验证，不能拿固定HTTP探针代替游戏验收。
 5. 手机现有已授权维护可以继续；不得擅自切槽、写NV/vbmeta/recovery/userdata、刷分区或改硬件充电策略。需要学校或CNB网页登录时由我在官方页面操作，不要求我发送token或密码。
 6. 管理仓库是私有历史，不直接推送。已有公开脱敏仓库仅允许构建脚本/通用配置/补丁/思路，禁止上传可用镜像、固件、游戏世界、原始日志、身份与凭据；如需发布，独立白名单审核，不复制原历史。
 

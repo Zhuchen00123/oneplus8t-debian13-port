@@ -1,5 +1,7 @@
 # Debian 13 持久部署 r1
 
+> 阶段记录提示：这是持久r1部署及验收的阶段记录。当前运行r2-charge-policy，显示触摸已内建，限充、成功位、存储及按键服务有后续记录；保留本页证据，不混用旧组产物。 最新入口见[当前状态](project-status-20261004.md)与[交接](handover-20261004.md)。
+
 > 2026-10-04 更新入口：[用户空间盘点与补项](<userspace-audit-r1-20261004.md>)。下文是 10-03 阶段记录，不覆盖后续实测：蓝牙地址服务已修复并重启验证，GPU GLES 绘制/回读通过；相机仍零帧、NFC/SSC 未功能验收、NTP 未同步。较长日志再次出现 TCM 无效报文，旧“本次采样无洪泛”不能当成已解决。原封存 r1 镜像不含此次运行后补项。
 
 2026-10-03：用户明确持续授权“以后的dtbo和持久系统都不用单独授权，可以直接执行”。后续既定 DTBO 测试、`dtbo_a` / `boot_a` / `super` 部署和对应原厂恢复不再重复申请。此授权不扩展为切槽、重新锁定、清空 userdata、改分区布局或写 recovery / vbmeta / NV。
@@ -10,7 +12,7 @@
 - Synaptics TCM IRQ 原先只计 marker/code 两字节，漏计两字节长度。修正接收、复制及解析长度，拒绝短报文、越界和不完整对象，诊断限频；保留原有触摸字段格式。实际驱动函数在 GCC ASan/UBSan 下通过报文回归测试，同套测试检出旧代码错误。这不等于触摸已实机通过。
 - DTB SHA-256 与此前 RAM 成功组一致：`acf27ff2119adf524c5e171f413a2f6cca2b1b253f371380fd134a1ad49695ef`。
 - RAM boot：`artifacts/boot-r1-20261003/rescue/boot-rescue.img`，18,751,488 字节，SHA-256 `7910744e3a73d5988e2258bd2377243fc13e0b2c222632f07cc8aedc1351e2be`。
-- 持久组：`artifacts/server-r1-20261003/ready/`。4 GiB ext4；根 UUID `bc52fbbe-777b-47c8-84fc-ba56db7a8813`，boot/fstab 一致。AOSP 解包、ext4 只读 fsck 和 sparse 往返 hash 已由打包程序核验。
+- 持久组：`artifacts/server-r1-20261003/ready/`。4 GiB ext4；根 UUID `<ROOTFS_UUID>`（实际值留本地清单），boot/fstab 一致。AOSP 解包、ext4 只读 fsck 和 sparse 往返 hash 已由打包程序核验。
 - 保留 59 个本机 OEM 文件及无线/GPU 固件。USB 固化实测可用的 RNDIS EF/04/01 和网络先于 ACM 的顺序；networkd 在 `192.168.8.1/24` 为主机提供 `.2`，不提供默认网关或 DNS。USB DHCP 仍待实机验证。
 - 实际 ARM64 sshd 的正确公钥成功、错误公钥拒绝；禁用密码与 root SSH，用户 `debian` 可用 sudo。没有把 SSH 私钥、主机密钥或 Wi-Fi 密码装入镜像。
 

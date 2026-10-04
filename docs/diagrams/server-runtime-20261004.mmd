@@ -1,0 +1,35 @@
+flowchart LR
+    bootSlot["A槽引导：成功标记已修复"]
+    matchedBoot["加载同组内核与 initramfs"]
+    mountRoot["挂载7GiB系统盘"]
+    serverMode["systemd 服务器模式"]
+    dataMount["按UUID挂载 /srv"]
+    dataReady["数据盘约220GiB可用"]
+    usbSsh["USB SSH 管理"]
+    adminReady["密钥登录与维护已验证"]
+    chargePolicy["80停充／75恢复策略"]
+    leaseControl["CHG_EN读回与90秒租约"]
+    chargeAccepted["续约与异常恢复已验证"]
+    healthTimer["每分钟只读健康采样"]
+    ramStatus["RAM状态与变化告警"]
+    powerKey["短按电源键切屏服务"]
+    screenToggle["亮度请求0／512切换"]
+    screenAccepted["物理亮灭已确认；完全断电未验证"]
+    wifiConfig["校园 Wi-Fi 配置"]
+    networkGap["最近外网转门户，NTP未同步"]
+    futureMc["MC 与公网入口待部署"]
+    bootSlot --> matchedBoot --> mountRoot --> serverMode
+    serverMode --> dataMount --> dataReady
+    serverMode --> usbSsh --> adminReady
+    serverMode --> chargePolicy --> leaseControl --> chargeAccepted
+    serverMode --> healthTimer --> ramStatus
+    serverMode --> powerKey --> screenToggle --> screenAccepted
+    serverMode --> wifiConfig --> networkGap
+    dataReady -.->|"计划存放服务与世界文件"| futureMc
+    networkGap -.->|"恢复并验证后"| futureMc
+    classDef verified fill:#CDF4D3,stroke:#66D575
+    classDef partial fill:#FFE0C2,stroke:#FF9E42
+    classDef pending fill:#FFECBD,stroke:#FFC943
+    class bootSlot,dataReady,adminReady,chargeAccepted,ramStatus verified
+    class screenAccepted partial
+    class networkGap,futureMc pending

@@ -1,0 +1,45 @@
+flowchart LR
+    subgraph hostPrep ["主机准备"]
+        lockSources["锁定来源与补丁"]
+        buildDtb["先构建设备树"]
+        buildKernel["构建内核与同组模块"]
+        packImages["打包并核验引导组"]
+    end
+    subgraph deviceDeploy ["设备部署与恢复"]
+        scopeCheck{"目标在授权范围？"}
+        requestScope["列明目标与恢复方案"]
+        backupInputs["备份、槽位与输入核验"]
+        writeTarget["更新指定目标并回读"]
+        bootCheck{"启动与管理链路正常？"}
+        restoreBoot["按已核验方案恢复"]
+    end
+    subgraph currentPhase ["当前完成与后续验收"]
+        persistentLinux["持久 Debian 已运行"]
+        baseAccepted["显示触控、存储、限充与短按已验证"]
+        fixGaps["热问题、校园认证与校时待排查"]
+        deployMc["MC 与 443/WSS 方案待部署"]
+        loadTests["物理充电周期与游戏负载待验证"]
+        longRun["长期运行与备份恢复待验收"]
+    end
+    lockSources --> buildDtb --> buildKernel --> packImages --> scopeCheck
+    scopeCheck -->|"是"| backupInputs
+    scopeCheck -->|"否"| requestScope
+    requestScope -->|"明确授权后"| backupInputs
+    backupInputs --> writeTarget --> bootCheck
+    bootCheck -->|"通过"| persistentLinux
+    bootCheck -->|"失败"| restoreBoot
+    restoreBoot -.->|"核验输入后重试"| backupInputs
+    persistentLinux --> baseAccepted
+    baseAccepted -.-> fixGaps
+    fixGaps -.->|"前置问题处理后"| deployMc
+    deployMc -.-> loadTests
+    loadTests -.-> longRun
+    style hostPrep fill:#C2E5FF,stroke:#3DADFF
+    style deviceDeploy fill:#D9D9D9,stroke:#B3B3B3
+    style currentPhase fill:#C6FAF6,stroke:#5AD8CC
+    classDef verified fill:#CDF4D3,stroke:#66D575
+    classDef pending fill:#FFECBD,stroke:#FFC943
+    classDef recovery fill:#FFCDC2,stroke:#FF7556
+    class persistentLinux,baseAccepted verified
+    class fixGaps,deployMc,loadTests,longRun pending
+    class restoreBoot recovery

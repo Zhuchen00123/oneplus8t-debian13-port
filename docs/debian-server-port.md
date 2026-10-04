@@ -1,5 +1,7 @@
 # Debian 13 / Linux 7.2 服务器移植
 
+> 阶段记录提示：这是服务器初始集成与4GiB封存镜像的配方记录。当前运行r2-charge-policy，根ext4已增长至7GiB且新增/srv数据盘和维护服务；旧rootfs不等同于当前运行状态。 最新入口见[当前状态](project-status-20261004.md)与[交接](handover-20261004.md)。
+
 最新持续授权及 r1 入口：[持久部署 r1](persistent-r1-20261003.md)。用户已授权后续 DTBO 和既定持久系统部署，无须再逐次申请。本文下方的旧 ready 组与首启授权限制保留为历史记录，以 r1 记录和当前 AGENTS.md 为准。
 
 日期：2026-10-03。用户明确选择以 7.2 为主，重点参考 jfbobier 的 kebab bring-up。目标先是无桌面服务器：SSH、USB 网络、Wi-Fi、存储和持续运行；不以蜂窝、相机、音频作为首启门槛。
@@ -104,7 +106,7 @@ python3 "$P/scripts/linux/verify-server-candidate.py" "$P/artifacts/server-port-
 | debian13-server.tar.gz | 608,974,799 | `be78d21a53b1ff9dc2d576ce9c8b4dbdbcb412b5ea30e92c62360386c03c107c` |
 | server-authenticated-packages.tar.gz | 191,188,776 | `07d43b41ff4bbc230c6a4a4a010eca00710aae7461bc144528c4ed67dcabfabf` |
 
-根 UUID：`0c3633e6-842d-4fca-8803-742b7a0c61f1`；4 GiB raw ext4 SHA-256 `546e2406b0d0fcc204313fc51df42f9ba17b2c8dee51425348382da52fae2904`。raw 在 WSL 保存，Windows 交付为 sparse，往返 raw hash 相同。e2fsck 5 阶段通过；占用 308123 / 1048576 个 4096-byte 块。
+根 UUID：`<ROOTFS_UUID>`（实际值留本地清单）；4 GiB raw ext4 SHA-256 `546e2406b0d0fcc204313fc51df42f9ba17b2c8dee51425348382da52fae2904`。raw 在 WSL 保存，Windows 交付为 sparse，往返 raw hash 相同。e2fsck 5 阶段通过；占用 308123 / 1048576 个 4096-byte 块。
 
 `verify-server-candidate.py` 已实际通过全部 manifest hash、boot/fstab UUID、initramfs USB/fsck/OEM split 文件、rootfs 原始社区内容与固件、SSH/机器身份和 Wi-Fi 无凭据检查；`Test-FirmwareLayout.py` 6 项、`Test-BootImage.py` 5 项通过。ARM64 OpenSSH 正确 key 登录、错误 key 拒绝、密码禁用均通过，PTY 仍未宣称通过。
 
