@@ -1,0 +1,27 @@
+[Unit]
+Description=kebab MC CNB 反向隧道客户端（手机侧 / 对端 mcbridge client）
+Documentation=file:/usr/local/share/kebab-mc/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/kebab-mcbridge-client.env
+ExecStart=/usr/bin/python3 -u /usr/local/sbin/kebab-mcbridge-client.py
+# 客户端自己有 5 秒重连循环；这里再兜一层，防解释器级崩溃
+Restart=always
+RestartSec=5
+Nice=5
+SyslogIdentifier=kebab-mcbridge
+StandardOutput=journal
+StandardError=journal
+# 只做网络转发，不需要任何特权
+NoNewPrivileges=true
+PrivateTmp=true
+# 明确不碰充电/电源/温控：本单元不写 /sys、不加载模块
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/run
+
+[Install]
+WantedBy=multi-user.target

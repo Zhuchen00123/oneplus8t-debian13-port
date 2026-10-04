@@ -45,3 +45,6 @@ known_hosts
 *.sqlite
 *.pcap
 *.pcapng
+
+# MC 端到端联调的临时日志（.out/.err 不在 *.log 规则内）
+/mc/tests/e2e-logs/

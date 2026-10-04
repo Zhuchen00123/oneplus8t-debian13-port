@@ -1,0 +1,22 @@
+[Unit]
+Description=kebab CNB 中继保活 + 地址同步（单次执行）
+Documentation=file:/usr/local/share/kebab-mc/cnb-keepalive.md
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+# 凭据走两条通道：systemd 注入一次，脚本自己再 source 一次。
+# 开头的 "-" 表示文件缺失时忽略而不是让单元失败。
+EnvironmentFile=-/etc/kebab-cnb-keepalive.env
+ExecStart=/usr/local/sbin/kebab-cnb-keepalive.sh
+# 拉起环境时要等 START_SETTLE_SECONDS，留足余量
+TimeoutStartSec=180
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+# 脚本需要：1) 写 /run 下的状态文件；2) 改写客户端配置里的地址行。
+# ProtectSystem=full 会把 /etc 变只读，所以这里单独把那个文件放开。
+# 前面的 "-" 表示该文件不存在时忽略。
+ReadWritePaths=/run -/etc/kebab-mcbridge-client.env

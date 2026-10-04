@@ -1,0 +1,14 @@
+[Unit]
+Description=周期性触发校园网门户自动登录保活
+Documentation=file:/usr/local/share/kebab-mc/README.md
+
+[Timer]
+# 开机 45 秒后第一次跑（等 Wi-Fi 关联和 DHCP 完成），之后每 60 秒一次
+OnBootSec=45s
+OnUnitActiveSec=60s
+AccuracySec=5s
+# 服务跑完再算下一次，避免堆积
+Unit=kebab-portal-keeper.service
+
+[Install]
+WantedBy=timers.target

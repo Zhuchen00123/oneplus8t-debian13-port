@@ -1,0 +1,13 @@
+[Unit]
+Description=kebab CNB 中继保活定时器（每 2 分钟一轮）
+
+[Timer]
+# 开机后先等网络与客户端就位
+OnBootSec=90s
+# 之后每 2 分钟一轮。CNB 空闲回收是 10 分钟，2 分钟足够提前量。
+OnUnitActiveSec=120s
+AccuracySec=10s
+Unit=kebab-cnb-keepalive.service
+
+[Install]
+WantedBy=timers.target

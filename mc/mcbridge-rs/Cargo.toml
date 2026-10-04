@@ -1,0 +1,21 @@
+[package]
+name = "mcbridge"
+version = "1.0.0"
+edition = "2021"
+description = "Minecraft over WebSocket tunnel: CNB server + friend client"
+
+[dependencies]
+# 只有朋友端需要 TLS（连 wss://*.cnb.run）；Windows 下走系统 schannel，无需编译 C 代码。
+# Linux 侧的 serve/client 用 --no-default-features 编译，产出零依赖静态二进制。
+native-tls = { version = "0.2", optional = true }
+
+[features]
+default = []
+tls = ["native-tls"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

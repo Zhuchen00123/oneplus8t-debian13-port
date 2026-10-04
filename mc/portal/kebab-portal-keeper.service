@@ -1,0 +1,18 @@
+[Unit]
+Description=kebab 校园网门户自动登录保活（Dr.COM eportal，单次执行）
+Documentation=file:/usr/local/share/kebab-mc/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/kebab-portal-keeper.env
+ExecStart=/usr/bin/python3 /usr/local/sbin/kebab-portal-keeper.py
+Nice=10
+# 只发 HTTP 请求，不需要任何特权
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/run
+# 明确不碰充电/电源/温控/网络配置：本单元不写 /sys、不改接口设置
