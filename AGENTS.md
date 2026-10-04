@@ -33,6 +33,8 @@
 
 - 2026-10-04 XFCE 桌面：持久 Debian r1 离线安装 161 个包（`--no-download --no-remove --no-install-recommends`，0 升级/0 删除，`dpkg --audit` 干净），LightDM 显式禁用，默认仍 `multi-user.target`，SSH 与根分区不受影响。以 `systemd-run --unit=kebab-xfce-test --property=RuntimeMaxSec=20min` 有界运行 LightDM：Xorg modesetting + glamor 在 Adreno 650（日志 `glamor X acceleration enabled on FD650`）上工作，`DSI-1 1080x2400@120Hz` 为唯一模式，XFCE 4.20 组件齐全，整机内存约 750 MB／单元峰值 171.6 MB，`XGetImage` 只读抓到 1080x2400 桌面帧（PNG 156,745 字节，SHA-256 `cc82b3ef…b1255fe`）。**用户实机确认内屏仍然黑屏**：启动期 `DSI PLL(0) lock failed status=0x00000000`，DCS 读（0x52）返回 `-110`，强制 `xrandr` 关开输出后 DCS 写 0x51/0x53/0x9f 也超时并触发 DPU `frame done timeout`；面板上电写序列本身无报错，问题定位在 DSI/面板链路而非 XFCE 或安装。因此只可声明“渲染/合成/回读通过”，不得声明屏幕点亮；触摸真实操作本轮未取得用户确认，仍未验收。本轮无分区刷写、无触摸固件/NV/持久配置改动。入口 [桌面安装与显示验证](<docs/xfce-desktop-20261004.md>)。
 
+- 2026-10-04 黑屏第 5 轮排查：面板 `vddio-supply`（`vreg_l14a_1p8`）在 `panel-samsung-amb655x.c` 中从未被取用，运行时用户计数为 0；用临时模块 `panel-vddio-test`（`023528cd…9add6d`）强制拉高到 1 后面板行为无任何变化（读数仍失败、无 TE、仍黑），已 `rmmod` 复原。启动期 `DSI PLL(0) lock failed status=0x0` 属 probe 现象：两次 devcoredump 中 `dsi0_pll` `0x1b0`（`COMMON_STATUS_ONE`）读到 `0x51`，bit0=1 表示运行期 PLL 已锁定。停 X、取消控制台消隐后由用户态 `mmap(/dev/fb0)` 写入白底+红条（1080x2400/32bpp/pitch 4352），同时 `vsync` 计数 1993→2113 递增、`underrun 0`、`frame_done_cnt 0`，**用户实机确认仍然全黑**；面板对 DCS 读 0x52 始终 `Connection timed out`/`No data available`/`Invalid response cmd`，也不回 TE。另确认独立缺陷：`fb0: sys_imageblit/sys_fillrect: framebuffer is not in virtual address space`，fbcon 无法绘制 DRM 帧缓冲。结论：故障在 DSI 物理链路/面板上电初始化一侧；候选实验（面板取电+复位时序+DCS ID 校验、按原厂 dtbo 对齐 lane/时序、暴露 60Hz 模式、修 fbdev 映射）见 `docs/xfce-desktop-20261004.md`。本轮无分区刷写、无触摸固件/NV/持久配置改动，模块已卸载、现场已复原。
+
 ## 来源与移植方法
 
 - 优先读取 Linux 官方源码、SM8250 社区源码、OnePlusOSS 和维护者的一手记录。

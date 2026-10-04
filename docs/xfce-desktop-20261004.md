@@ -62,3 +62,61 @@ sudo -n systemd-run --unit=kebab-xfce-test --property=RuntimeMaxSec=20min \
 ## 6. 未验收项
 
 内屏物理输出、触摸、音频、蜂窝/NV、充电、长期稳定性均未验收；GPU/Vulkan 仍只到"GLES 绘制+回读通过、Vulkan 仅枚举"的水平。
+
+## 7. 黑屏深入排查（2026-10-04 第 5 轮）
+
+目标是把"面板没点亮"从软件层逐步隔离到物理链路层。全部操作可回退，无分区刷写。
+
+### 7.1 面板供电轨从未被取用（已证实，但不是唯一原因）
+
+- 设备树给面板声明了 `vddio-supply = <&vreg_l14a_1p8>`，但 `panel-samsung-amb655x.c` 全文没有任何 `regulator`/`supply` 取电代码。
+- 运行时证据：`/sys/kernel/debug/regulator/regulator_summary` 中 `vreg_l14a_1p8` 用户计数为 **0**（未使能）；同组其它显示相关轨道（`vreg_l9a_1p2`、`vreg_l5a_0p88`、`vreg_s4a_1p8` 等）均在使用中。
+- 用临时诊断模块 `panel-vddio-test`（`of_regulator_get()` 取 `vddio` 并 `regulator_enable()`）把该轨拉高：计数由 0→1，`is_enabled=1`；模块 `023528cd63a4e51a27fdf67dde65ba53ba2103edb512bd65cd5b31f9fb9add6d`。
+- 结果：**面板行为没有任何变化**（读数仍失败、仍无 TE、屏幕仍黑）。因此"缺电"是真实缺陷，但不足以解释黑屏。测试后已 `rmmod`，轨道回到 0 用户。
+
+### 7.2 直接写扫描输出缓冲仍然全黑（用户确认）
+
+- 停掉 X，确认 `card0-DSI-1` connected/enabled/dpms On、`crtc` 有 1080x2400 fb、控制台取消消隐（`/sys/class/graphics/fb0/blank=0`）。
+- 用户态 `mmap(/dev/fb0)`（1080x2400、32bpp、pitch 4352、10,444,800 字节）写入**白底 + 中间红条**，绕过 X/glamor 与合成器。
+- 同一时刻 DPU 在正常出帧：`encoder-0/status` 的 `vsync` 计数 1993→2113（约 30 次/秒），`underrun: 0`、`frame_done_cnt: 0`。
+- **用户实机确认：仍然全黑。** 说明故障在 DPU 之后（DSI 链路/面板一侧），与桌面、合成器或"没画东西"无关。
+
+### 7.3 已排除：PHY PLL 不是运行期阻塞点
+
+- 每次启动在 1.02 s 都有 `DSI PLL(0) lock failed, status=0x00000000`，调用点 `dsi_phy_driver_probe+0x330`（PHY probe 阶段），随后是 `clk_core_disable/unprepare` 的 WARNING。
+- 但两次 `/sys/kernel/debug/dri/0/kms` devcoredump（不同时间点）里 PLL 状态寄存器 `dsi0_pll` `0x1b0`（`COMMON_STATUS_ONE`）都读到 `0x00000051`，**bit0=1 即 PLL 已锁定**；`dsi0_ctrl`/`dsi0_lane` 寄存器也已按 DSC 4 lane 配置。
+- 结论：probe 期那条报错是探测顺序造成的现象，运行期 PLL 正常，不能当作黑屏根因。
+
+### 7.4 面板在 DSI 返回通道上完全不应答
+
+- 读 `/sys/class/backlight/ae94000.dsi.0/actual_brightness`（驱动内为 DCS 0x52 读）依次出现：`Connection timed out`、`No data available`，内核记录
+  `msm_dsi_host_cmd_rx:Invalid response cmd`；伴随 `mipi_dsi_set_maximum_return_packet_size` 也失败（`data0=0x2 ... ret=-110`）。
+- 命令模式面板的帧完成依赖面板 TE：X 运行期间持续 `frame done timeout` + `failed wait_for_idle ret:-110`，`vsync` 计数长时间停在 837 不动 → 面板没有回 TE。
+- 上电初始化写序列（prepare/on）自身**不报错**，那只是主机把字节推进 FIFO 的完成，不能证明面板收到。
+
+### 7.5 另一条独立缺陷：内核无法向 DRM 帧缓冲绘制
+
+每次启动都有：
+
+```
+[ 1.816291] fb0: sys_imageblit: framebuffer is not in virtual address space.
+[ 4.131245] fb0: sys_fillrect: framebuffer is not in virtual address space.
+```
+
+来源是 `drivers/video/fbdev/core/syscopyarea.c`、`sysimgblt.c`、`sysfillrect.c` 对 `screen_buffer` 为空时的告警：msm 的 DRM fbdev 模拟没有把缓冲映射进内核虚拟地址空间，所以 **fbcon 永远画不出启动日志**；加上控制台默认 600 s 后消隐（观察到 `blank=4`），即使面板正常也不会看到控制台内容。这条与面板链路无关，但必须连同修复。
+
+### 7.6 当前结论与下一步候选实验
+
+结论：**GPU/合成/回读正常，DPU 在出帧，PLL 锁定，面板供电已可强制打开，但面板既不回 DCS 也不回 TE、屏幕无任何可见输出。** 故障位于 DSI 物理链路或面板上电/初始化时序一侧。
+
+候选实验（都需要重新构建内核并部署 boot_a，仍在持续授权范围内，执行前会单独确认目标与回退）：
+
+1. 面板驱动按厂商时序处理供电与复位（取 `vddio`、驱动 `reset-gpios`、加足上电延时），并在 `prepare` 后读一次 DCS ID（0x04/0xDA）把链路是否通变成可判定证据；
+2. 用备份里的原厂 `dtbo_a` 反编译对齐 lane 映射/时序/供电（`data-lanes`、lane swap、panel 节点属性）；
+3. 暴露并测试驱动的 60 Hz 模式（当前 `samsung_amb655x_mode` 标记 `__maybe_unused`，只暴露 120 Hz），排除 800 MHz PLL 速率相关问题；
+4. 修复 fbdev 缓冲映射，使控制台能显示，作为"面板是否真的能显示"的独立判据。
+
+### 7.7 现场状态
+
+测试模块已卸载、`vreg_l14a_1p8` 恢复 0 用户、桌面临时单元停止、LightDM 保持禁用、默认 `multi-user.target`、SSH 正常、控制台取消消隐；本轮无分区刷写、无触摸固件/NV/持久配置改动。
+

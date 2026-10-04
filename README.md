@@ -8,6 +8,8 @@ OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debi
 
 最小 XFCE 桌面已装：离线 161 包、不升级不删除、LightDM 保持禁用，默认仍是 `multi-user.target`。有界会话实测 Xorg modesetting + glamor（Adreno 650）在 `1080x2400@120Hz` 工作，XFCE 组件正常、整机约 750 MB 内存，并用 `XGetImage` 抓到 156,745 字节桌面帧（SHA-256 `cc82b3ef…b1255fe`）；**但用户确认内屏仍是黑的**，日志显示 DSI PLL probe 锁定失败、DCS 读超时 `-110`、强制输出重启后写入也超时，物理屏幕输出未验收。[桌面安装与显示验证](<docs/xfce-desktop-20261004.md>)。
 
+第 5 轮黑屏排查进一步排除软件层：面板 `vddio-supply`（`vreg_l14a_1p8`）在驱动里从未被取用（用户计数 0，用临时模块强制拉高后面板行为无变化）；PHY PLL 每次启动 probe 报 lock failed，但两次 devcoredump 中 `dsi0_pll` 状态寄存器 bit0 均为 1（运行期已锁定）；停 X 后直接向扫描输出缓冲写入白底+红条、DPU 正常出帧（`vsync` 递增、无 underrun/超时），用户确认**仍然全黑**，且面板对 DCS 读（0x52）始终不应答、不发 TE。另发现 fbcon 无法向 DRM 帧缓冲绘制（`framebuffer is not in virtual address space`）的独立缺陷。结论：故障位于 DSI 物理链路/面板上电初始化一侧，下一步为候选内核实验。[详见文档](<docs/xfce-desktop-20261004.md>)。
+
 历史 RAM 阶段：原厂 DTBO 下首次启动失败，单独授权的社区空 DTBO 对照成功；先恢复原厂 DTBO、再确认 ColorOS 正常启动。旧封存 boot/rootfs 保持原样，r1 已成组重构建并部署。[RAM 成功与回退](docs/ram-boot-success-20261003.md)、[服务器集成历史](docs/debian-server-port.md)
 
 2026-10-03 已确认设备是 KB2000 / ColorOS 14.0.0.602，Bootloader 已解锁。临时 root 实测屏幕 Samsung AMB655X、DCS ID `A5 05 01`，有效序列号按厂商规则解码日期 2020-10-08；**证据支持原厂规格的三星面板，但不能证明从未换屏或完成真伪认证**。[屏幕实测](docs/panel-evidence.md)
