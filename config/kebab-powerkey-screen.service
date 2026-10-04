@@ -1,0 +1,32 @@
+[Unit]
+Description=Kebab short power key toggles OLED light
+Wants=systemd-udev-settle.service
+After=systemd-udev-settle.service systemd-logind.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/sbin/kebab-powerkey-screen --listen --start-off --wake-brightness 512
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=5
+RuntimeDirectory=kebab-powerkey-screen
+RuntimeDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadWritePaths=/sys/class/backlight/ae94000.dsi.0/brightness
+DevicePolicy=closed
+DeviceAllow=char-input r
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -41,6 +41,10 @@
 
 ## 来源与移植方法
 
+- 2026-10-04 最新电源键：按用户要求部署kebab-powerkey-screen.service（enabled/active），按名称发现pm8941_pwrkey，仅短按释放时将OLED亮度请求0/512切换，不调用关机/休眠/充电，logind仍ignore防止重复关机。启动配置先请求0；本轮未新增重启验收。5项Linux解析测试、systemd验证、多次真实KEY_POWER动作和用户“已不烫手，短按能亮屏和熄屏”确认通过，USB SSH/限充正常、无failed unit。actual_brightness恒39936并超出软件max4095，请勿当作物理亮度或熄屏独立证据；这是发光控制，DSI/DPU完全关断未验证。用户此前拔线5分钟后自行重插，热症状当前缓解但根因未定，不等于长期插电验收。入口docs/powerkey-screen-20261004.md、docs/local-heating-20261004.md。
+
+- 2026-10-04 最新热问题：用户明确报告“屏幕下部靠近usb处”烫手。最近只读REG08=0x06/owned=1/有效租约，电池37.9°C/Not charging、CPU最高42.6°C；不能以这些非局部传感器读数宣称局部发热正常或插电安全。已要求立即拔USB冷却并暂停使用，等待拔线与异常情况确认；未强制关机、改PD/充电其它寄存器或继续负载测试。停充不等于切USB输入，外部电源可能仍供系统，但本机旁路供电及发热原因未验证。冷却及安全断开未确认前不继续插电实验；入口docs/local-heating-20261004.md。此问题未解决，优先级高于MC部署/长期负载。
+
 - 2026-10-04 最新服务器就绪只读盘点：系统/SSH/7GiB根与/srv约220GiB/80-75限充服务正常，无failed unit；当前停充读回有效，真实跨阈值及长期负载仍未验收。存储重启后Wi-Fi服务active、DNS可解析，但绑定wlan0的Debian/kernel.org IPv4 HTTPS均超时，9.9.9.9 HTTP转校园内网门户；NTPSynchronized=no，多个NTP回复超时。应先重新认证/排查，不能沿用之前“校园外网/NTP通过”的结果。本次手机无Java/25565监听，MC/公网入口未就绪；只读盘点没有替用户登录或改配置。入口docs/server-readiness-20261004.md。
 
 - 2026-10-04 最新存储：用户明确允许清空userdata并采用7GiB系统盘+约224GiB数据盘。已保存当前Debian私有文件归档并完整读/hash核验（非原子块快照、不包含userdata），根/dev/sda15 ext4在线扩至7GiB，df6.9GiB/剩约3.9GiB；仅格式化已核验/dev/sda28 userdata为ext4，按UUID挂载/srv，df约220GiB可用。一次正常重启后自动挂载、32MiB fsync/直接读回、主备sda GPT哈希完全未变、A槽成功标记/retry5、严格USB SSH与限充自启通过。没有改GPT布局或boot。实际mkfs提示原厂userdata偏离512KiB最小I/O对齐393216字节但4096-byte逻辑/物理对齐，未重分区，性能未测。MC会话请用/srv数据盘并为服务设置挂载依赖/挂载点检查，不覆写存储配置；不再依据旧3.9GiB总容量规划。入口docs/storage-expansion-20261004.md；本次userdata授权已执行，不是后续任意擦除授权。
