@@ -6,7 +6,7 @@ OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debi
 
 触摸优先修复：已查明本机 TCM 是 7 字节前缀 + 7 字节对象，旧驱动布局不匹配；r2 候选通过 ASan/UBSan、匹配模块编译及三轮报告启停短测。长采集零事件，真实单指/双指/抬起尚未验收；原驱动已恢复，未部署候选或刷固件。[触摸协议记录](<docs/touch-protocol-r2-20261004.md>)。
 
-最小 XFCE 桌面已装：离线 161 包、不升级不删除、LightDM 保持禁用，默认仍是 `multi-user.target`。有界会话实测 Xorg modesetting + glamor（Adreno 650）在 `1080x2400@120Hz` 工作，XFCE 组件正常、整机约 750 MB 内存，并用 `XGetImage` 抓到 156,745 字节桌面帧（SHA-256 `cc82b3ef…b1255fe`）；**但用户确认内屏仍是黑的**，日志显示 DSI PLL probe 锁定失败、DCS 读超时 `-110`、强制输出重启后写入也超时，物理屏幕输出未验收。[桌面安装与显示验证](<docs/xfce-desktop-20261004.md>)。
+最小 XFCE 桌面已装：离线 161 包、不升级不删除、LightDM 保持禁用，默认仍是 `multi-user.target`。有界会话实测 Xorg modesetting + glamor（Adreno 650）在 `1080x2400@120Hz` 工作，XFCE 组件正常、整机约 750 MB 内存，并用 `XGetImage` 抓到 156,745 字节桌面帧（SHA-256 `cc82b3ef…b1255fe`）；**内屏黑屏已定位并修复**：厂商 dtbo 要求 `qcom,mdss-dsc-slice-per-pkt = 2`（驱动留 0 被当成 1）且面板 `reset-gpios` 从未被驱动，两处一起修正后面板开始应答 DCS 读（`actual_brightness` 由超时变为 39936）、`frame_done_cnt` 归零，用户实机确认看到白底+红条测试画面，同一内核上 XFCE 桌面在 `1080x2400@120Hz` 运行。[桌面安装与显示验证](<docs/xfce-desktop-20261004.md>)。
 
 第 5 轮黑屏排查进一步排除软件层：面板 `vddio-supply`（`vreg_l14a_1p8`）在驱动里从未被取用（用户计数 0，用临时模块强制拉高后面板行为无变化）；PHY PLL 每次启动 probe 报 lock failed，但两次 devcoredump 中 `dsi0_pll` 状态寄存器 bit0 均为 1（运行期已锁定）；停 X 后直接向扫描输出缓冲写入白底+红条、DPU 正常出帧（`vsync` 递增、无 underrun/超时），用户确认**仍然全黑**，且面板对 DCS 读（0x52）始终不应答、不发 TE。另发现 fbcon 无法向 DRM 帧缓冲绘制（`framebuffer is not in virtual address space`）的独立缺陷。结论：故障位于 DSI 物理链路/面板上电初始化一侧，下一步为候选内核实验。[详见文档](<docs/xfce-desktop-20261004.md>)。
 

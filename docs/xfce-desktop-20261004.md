@@ -120,3 +120,134 @@ sudo -n systemd-run --unit=kebab-xfce-test --property=RuntimeMaxSec=20min \
 
 测试模块已卸载、`vreg_l14a_1p8` 恢复 0 用户、桌面临时单元停止、LightDM 保持禁用、默认 `multi-user.target`、SSH 正常、控制台取消消隐；本轮无分区刷写、无触摸固件/NV/持久配置改动。
 
+## 8. 黑屏根因定位与修复尝试（2026-10-04 第 6 轮）
+
+### 8.1 用户实机照片：面板本体与链路正常，ABL 能显示
+
+用户提供的实机照片（`local/`，仅本地保存）显示内屏正常点亮并显示开机阶段画面：OnePlus 标志、`Orange State / Your device has been unlocked and can't be trusted / Your device will boot in 5 seconds`、`Powered by android`。拍照时刻为设备时间 03:12:47，距本轮重启约 3 分钟，即 **Linux 已经运行，而面板仍停在 ABL 留下的画面**。
+
+由此可以确定：
+
+- 面板本体、供电与 DSI 物理链路**没有硬件故障**（同一面板在 ColorOS/ABL 下能正常显示）；
+- 面板处于**自刷新**状态：GRAM 里保留 ABL 写入的开机画面，且 Linux 送出的帧从未被它接受；
+- "黑屏"的准确描述是"Linux 阶段面板不更新（并在此前的关开实验后一度整屏熄灭）"，不是面板坏。
+
+### 8.2 根因候选一：DSC slice-per-packet 不匹配（已实施并部署）
+
+- 从本机原厂 `dtbo_a` 备份解析出 19 个 overlay，其中命中本机 cmdline 的面板节点
+  `qcom,mdss_dsi_oplus20828samsung_amb655x_1080_2400_cmd` 明确声明
+  **`qcom,mdss-dsc-slice-per-pkt = <2>`**（同节点还有 `qcom,mdss-dsc-encoders = <2>`、
+  `slice-height = 0x1e`(30)、`slice-width = 0x21c`(540)、`bit-per-component/pixel = 8`、
+  `block-prediction-enable`、panel `0x438 x 0x960` = 1080x2400）。
+- 内核侧 `panel-samsung-amb655x.c` 原来的注释是"`dsi->dsc_slice_per_pkt` 留 0，msm 当 1 用；
+  原始 TODO 要 2，但 6.8 已知可用构建没有这个字段"，而 msm 在
+  `dsi_host.c:1713` 取该字段、1715-1716 在 0 时替换为 1，并用它计算
+  `bytes_per_pkt`（`slice_chunk_size * dsc_slice_per_pkt`）与 `pkt_per_line`
+  （`slice_per_intf / dsc_slice_per_pkt`）——**打包方式与面板要求不一致时面板无法解码**。
+- 修复：probe 中在 `mipi_dsi_attach()` 之前显式 `dsi->dsc_slice_per_pkt = 2;`
+  （补丁 `patches/local/0003-drm-panel-amb655x-dsc-slice-per-pkt.patch`，
+  SHA-256 `59ed5109e405f0cff330ce8437b8de0416120f0886081c862485137f8eecc19a`；
+  内核提交 `d6ab94b80a118dd80fb5d26ee3882f046f8a820e`）。
+- 硬件侧已被证实生效：修复前后两份 devcoredump 对比，`dsi0_ctrl` 的 `0x2a0` 由
+  `00000000 39003941 0000021c` 变为 `00000000 39003901 0000021c`（第二字低字节 0x41→0x01），
+  说明 DSC 打包相关寄存器确实按新值编程。
+- 部署与重启：候选引导镜像 45,617,152 字节、SHA-256
+  `5bfa275b841b426326c4e4ec76fb7d62aa2c1492e3682e4876d112081f49270c`，
+  复用已部署 r1 的 initramfs 与 cmdline（`root=UUID=bc52fbbe-…`），
+  在手机内写入 `/dev/disk/by-partlabel/boot_a` 后按 45,617,152 字节回读，哈希与输入一致；
+  重启后内核 `7.2.0-kebab-debian13-r1+` `#3 SMP PREEMPT Sun Oct 4 11:00:29 CST 2026`。
+- 结果：**仍未点亮**。新内核下 DPU 依然只在空转：`vsync` 计数冻结、`frame_done_cnt` 累计到 217 次
+  `frame done timeout`、`failed wait_for_idle ret:-110` 反复，DCS 读仍 `Connection timed out`，
+  面板继续显示 ABL 画面。DSC 打包本身是正确的修正，但不足以让面板接入。
+
+### 8.3 根因候选二：面板复位 GPIO 从未被驱动（已实施，构建部署中）
+
+- 驱动此前**既不申请也不驱动** `reset-gpios`：probe 里只有一段注释（"devicetree 里留着是为了文档和
+  将来的修复"），`samsung_amb655x_reset()` 里三行 `gpiod_set_value_cansleep()` 全被注释，
+  只留下三次 `usleep_range()`。
+- 厂商节点给出确切依据：`qcom,mdss-dsi-reset-sequence = <0x01 0x0a 0x00 0x01 0x01 0x0a>`
+  即"高 10 ms → 低 1 ms → 高 10 ms"（reset 为 ACTIVE_LOW，物理高=不复位），与驱动里被注释掉的
+  调用序列完全一致；同节点还声明 `qcom,mdss-dsi-te-using-te-pin`、
+  `te-pin-select = 1`、`te-dcs-command = 1`、`platform-te-gpio = <0x42>`(gpio66)、
+  `platform-reset-gpio = <0x4b>`(gpio75)、`platform-panel-vout-gpio = <0x18>`(gpio24)、
+  `qcom,mdss-dsi-init-delay-us = <0x3e8>`。
+- 判断：ABL 交接后（或 ABL 关闭自身 DSI 接收端后）面板只做 GRAM 自刷新，**必须复位才能重新
+  锁定链路并接受内核的初始化序列与帧**。上游当年跳过复位是因为当时 DSC 打包错误、复位后表现为花屏，
+  现在打包已按厂商值修正，复位成为必须的一步。
+- 修复：probe 中 `devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW)`，`reset()` 中恢复厂商脉冲
+  （补丁 `patches/local/0004-drm-panel-amb655x-drive-reset-gpio.patch`）。
+
+### 8.4 供后续使用的厂商参数（本次解析原厂 dtbo 得到）
+
+- DSC：`encoders = 2`、`slice-height 30`、`slice-width 540`、`slice-per-pkt 2`、
+  `bit-per-component 8`、`bit-per-pixel 8`、block prediction 开。
+- 时序（120 Hz 项）：`panel-width 0x438`(1080)、`panel-height 0x960`(2400)、
+  h-pulse 24 / h-back-porch 24 / h-front-porch 52、v-pulse 4 / v-back-porch 8 / v-front-porch 4、
+  `qcom,mdss-dsi-panel-phy-timings = [00 24 0a 0a 26 25 09 0a 06 02 04 00 1e 1a]`、
+  `bl-max-level = 0xfff`(4095)、`init-delay-us 1000`。
+- 驱动的 0x9e PPS 负载与厂商 `qcom,mdss-dsi-on-command` 中的序列逐字节一致（前 40+ 字节已核对）。
+
+### 8.5 现场状态与回退源
+
+- 当前 `boot_a` 为 DSC 候选（内核 `d6ab94b8`）；回退源齐备：
+  r1 引导镜像 `artifacts/server-r1-20261003/ready/boot-server.img`
+  （SHA-256 `f899299d2b9663e78f0e0553e26d99d95170a4b3ed2f557778abd8d9f78450d5`）与原厂
+  `backups/partitions-20261003-152513-342/boot_a.img`。
+- 全程只写 `boot_a`，未动 super/dtbo/槽位；测试用临时模块已卸载，`vreg_l14a_1p8` 已回到 0 用户。
+- 面板当前仍显示 ABL 画面或测试画面；`/tmp` 为易失目录，脚本与镜像在重启后需重新拷贝。
+
+## 9. 黑屏修复生效（2026-10-04 第 6 轮续，用户实机确认）
+
+### 9.1 根因
+
+黑屏由两处驱动缺陷叠加造成，两处都修才点亮：
+
+1. **DSC 打包与面板要求不一致**：厂商 dtbo 节点
+   `qcom,mdss_dsi_oplus20828samsung_amb655x_1080_2400_cmd` 声明
+   `qcom,mdss-dsc-slice-per-pkt = <2>`，而驱动把 `dsi->dsc_slice_per_pkt` 留 0，
+   msm 退回 1 打包（`bytes_per_pkt = slice_chunk_size * 1`），面板无法解码。
+2. **面板复位 GPIO 从未被驱动**：驱动既不申请 `reset-gpios`（probe 里只有一段说明注释），
+   也不发复位脉冲（`samsung_amb655x_reset()` 里三行 `gpiod_set_value_cansleep()` 全被注释）。
+   ABL 交接后面板停在 GRAM 自刷新状态，继续显示 ABL 留下的开机画面，不接受内核的初始化序列与帧。
+
+只修第 1 处不够（第 8.2 节：DCS 读仍超时、`frame_done_cnt` 涨到 217、屏幕仍停在 ABL 画面）；
+补上复位脉冲后面板立即开始应答。
+
+### 9.2 最终部署
+
+- 内核提交 `746acf8f065e…`（在其上是 `d6ab94b80a11…` 的 DSC 修正），对应补丁
+  `patches/local/0003-drm-panel-amb655x-dsc-slice-per-pkt.patch`（SHA-256 `59ed5109…cc19a`）与
+  `patches/local/0004-drm-panel-amb655x-drive-reset-gpio.patch`（SHA-256 `824bb7c0…5a221f`）。
+- `boot_a` 写入引导镜像 45,617,152 字节，SHA-256
+  `ccacb17a809fedd3f2912ec9961e1324962c11564a9514373d3fe536a8c2b3dd`（复用已部署 r1 的 initramfs 与
+  cmdline `root=UUID=bc52fbbe-…`），按同一字节范围回读哈希一致；只写 `boot_a`，super/dtbo/槽位未动。
+
+### 9.3 修复后证据
+
+- **面板开始在 DSI 返回通道应答**：`/sys/class/backlight/ae94000.dsi.0/actual_brightness`（驱动内 DCS 0x52 读）
+  由修复前的 `Connection timed out` / `No data available` 变为正常返回 **39936**，亮度寄存器 4095。
+- **帧正常完成**：`encoder-0/status` 显示 `vsync` 持续递增、`underrun 0`、**`frame_done_cnt: 0**`，
+  不再出现 `frame done timeout` 与 `failed wait_for_idle ret:-110`。
+- **用户实机确认**：用户态 `mmap(/dev/fb0)` 写入"白底 + 中间红条"后，用户确认看到该画面。
+- **完整桌面栈**：同一内核上有界 XFCE 会话启动成功，`DSI-1 connected 1080x2400+0+0`、
+  唯一模式 `1080x2400 120.00*+`，`kebab-xfce-test.service` active，Xorg 单实例运行。
+
+### 9.4 仍未修复的独立问题
+
+- fbcon 仍无法向 DRM 帧缓冲绘制（`sys_imageblit/sys_fillrect: framebuffer is not in virtual address space`），
+  内核控制台文字不会显示；
+- 面板 `vddio-supply`（`vreg_l14a_1p8`）仍未在驱动中申请，运行时用户计数 0；
+- 驱动只暴露 120 Hz 模式（`samsung_amb655x_mode` 为 `__maybe_unused`）；
+- 启动期 `DSI PLL(0) lock failed status=0x00000000` 与 `clk_core_disable/unprepare` WARNING 仍在
+  （运行期 PLL 实测已锁定）；
+- 触摸仍未按真实手指操作验收；
+- 桌面会话当前以有界 transient 单元运行，LightDM 仍禁用、默认目标仍为 `multi-user.target`。
+
+### 9.5 回退
+
+`boot_a` 回退源：r1 引导镜像 `artifacts/server-r1-20261003/ready/boot-server.img`
+（`f899299d…78450d5`）或本轮 DSC 候选（`5bfa275b…f49270c`）；原厂引导镜像在
+`backups/partitions-20261003-152513-342/boot_a.img`。回退只需重写 `boot_a`。
+
+
+

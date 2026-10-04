@@ -1,0 +1,78 @@
+From 746acf8f065e1fc49eb628d4c9f2bef8a4489633 Mon Sep 17 00:00:00 2001
+From: Codex automation <codex@localhost>
+Date: Sun, 4 Oct 2026 11:17:36 +0800
+Subject: [PATCH] drm/panel: samsung-amb655x: drive the panel reset GPIO
+
+The vendor node for this panel declares
+qcom,mdss-dsi-reset-sequence = <1 10 0 1 1 10>. Without that pulse the panel
+keeps self-refreshing the image the bootloader left in its GRAM: the DSI host
+reports frames, but the panel never latches them and never answers DCS reads.
+Drive the sequence the vendor tree specifies, now that the DSC slice packing
+matches the panel as well.
+---
+ drivers/gpu/drm/panel/panel-samsung-amb655x.c | 33 +++++++++++--------
+ 1 file changed, 19 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/gpu/drm/panel/panel-samsung-amb655x.c b/drivers/gpu/drm/panel/panel-samsung-amb655x.c
+index 02551a459..66fda2d14 100644
+--- a/drivers/gpu/drm/panel/panel-samsung-amb655x.c
++++ b/drivers/gpu/drm/panel/panel-samsung-amb655x.c
+@@ -13,11 +13,11 @@
+ //     roughly forty of these into short writes. amb655x_write_long() below
+ //     exists solely to preserve the original wire format.
+ //
+-//  2. The reset GPIO is never driven. Upstream's note on this panel: it works
+-//     if reset is skipped, and with reset the backlight comes up but the panel
+-//     displays garbage while the DSI stack throws errors. The bootloader has
+-//     already brought the panel out of reset by the time we get here, so we
+-//     leave it alone.
++//  2. The reset GPIO is now driven with the vendor sequence. Upstream skipped it
++//     because with the old one-slice-per-packet DSC packing a reset produced
++//     garbage; the vendor dtbo declares slice-per-pkt 2, and with that fixed the
++//     reset pulse is what makes the panel latch frames instead of holding the
++//     bootloader image.
+ 
+ #define DEBUG
+ 
+@@ -96,12 +96,18 @@ static void amb655x_dcs_write_long(struct mipi_dsi_multi_context *ctx,
+ 
+ static void samsung_amb655x_reset(struct samsung_amb655x *ctx)
+ {
+-	/* See note 2 at the top of this file: reset is intentionally skipped. */
+-	// gpiod_set_value_cansleep(ctx->reset_gpio, 0);
++	/*
++	 * Vendor qcom,mdss-dsi-reset-sequence = <1 10 0 1 1 10> (physical
++	 * levels): deassert 10 ms, assert 1 ms, deassert 10 ms. Skipping this
++	 * pulse leaves the panel self-refreshing whatever the bootloader left in
++	 * its GRAM: the DSI link runs, but the panel never latches a new frame
++	 * and never answers reads.
++	 */
++	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
+ 	usleep_range(10000, 11000);
+-	// gpiod_set_value_cansleep(ctx->reset_gpio, 1);
++	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+ 	usleep_range(1000, 2000);
+-	// gpiod_set_value_cansleep(ctx->reset_gpio, 0);
++	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
+ 	usleep_range(10000, 11000);
+ }
+ 
+@@ -407,11 +413,10 @@ static int samsung_amb655x_probe(struct mipi_dsi_device *dsi)
+ 	if (IS_ERR(ctx))
+ 		return PTR_ERR(ctx);
+ 
+-	/*
+-	 * No devm_gpiod_get() for reset. reset-gpios is present in the
+-	 * devicetree for documentation and for a future fix, but driving it
+-	 * here breaks the panel. See note 2 at the top of this file.
+-	 */
++	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
++	if (IS_ERR(ctx->reset_gpio))
++		return dev_err_probe(dev, PTR_ERR(ctx->reset_gpio),
++				     "Failed to get reset GPIO\n");
+ 
+ 	ctx->dsi = dsi;
+ 	mipi_dsi_set_drvdata(dsi, ctx);
+-- 
+2.47.3
+

@@ -1,0 +1,43 @@
+From d6ab94b80a118dd80fb5d26ee3882f046f8a820e Mon Sep 17 00:00:00 2001
+From: kebab-port <kebab-port@local>
+Date: Sun, 4 Oct 2026 10:57:27 +0800
+Subject: [PATCH] drm/panel: samsung-amb655x: set dsc_slice_per_pkt=2 from
+ stock dtbo
+
+The stock dtbo node qcom,mdss_dsi_oplus20828samsung_amb655x_1080_2400_cmd
+declares qcom,mdss-dsc-slice-per-pkt = <2>. msm derives bytes_per_pkt and
+pkt_per_line from mipi_dsi_device.dsc_slice_per_pkt; leaving the field at 0
+makes the host pack one slice per packet, which this panel cannot decode, so
+the internal panel stays black while the rest of the pipeline reports frames.
+Set it to the value the vendor device tree requires.
+---
+ drivers/gpu/drm/panel/panel-samsung-amb655x.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/gpu/drm/panel/panel-samsung-amb655x.c b/drivers/gpu/drm/panel/panel-samsung-amb655x.c
+index 64ec7df3b..02551a459 100644
+--- a/drivers/gpu/drm/panel/panel-samsung-amb655x.c
++++ b/drivers/gpu/drm/panel/panel-samsung-amb655x.c
+@@ -443,12 +443,14 @@ static int samsung_amb655x_probe(struct mipi_dsi_device *dsi)
+ 	ctx->dsc.block_pred_enable = true;
+ 
+ 	/*
+-	 * dsi->dsc_slice_per_pkt is left at 0, which msm treats as 1. The
+-	 * original TODO asked for 2, but 1 is what the known-good 6.8 build
+-	 * used, since the field did not exist then. If the panel lights up
+-	 * but shows garbage or tearing, setting this to 2 is the first thing
+-	 * to try.
++	 * The stock dtbo node for this exact panel
++	 * (qcom,mdss_dsi_oplus20828samsung_amb655x_1080_2400_cmd) declares
++	 * qcom,mdss-dsc-slice-per-pkt = <2>. msm derives both bytes_per_pkt and
++	 * pkt_per_line from this field; leaving it at 0 makes the host pack one
++	 * slice per packet, which the panel cannot decode. That mismatch keeps
++	 * the display black even though the DSI link itself is running.
+ 	 */
++	dsi->dsc_slice_per_pkt = 2;
+ 
+ 	ret = mipi_dsi_attach(dsi);
+ 	if (ret < 0) {
+-- 
+2.47.3
+
