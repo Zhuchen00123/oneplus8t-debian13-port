@@ -145,6 +145,34 @@
     "kb2000_coloros_abl_equivalence_verified": false,
     "compiled_or_deployed": false
   },
+  "charge_control_research": {
+    "checked_at": "2026-10-04",
+    "documentation": "docs/charge-control-research-20261004.md",
+    "device_register_writes_performed": false,
+    "charge_limit_enforced": false,
+    "references": [
+      {
+        "url": "https://github.com/LineageOS/android_device_oneplus_sm8250-common.git",
+        "ref": "lineage-23.2",
+        "commit": "d772af0971b01a6b4f9b0d265a9476df494ef280",
+        "file": "common.mk",
+        "role": "Android charging interface configuration reference only; not installed"
+      },
+      {
+        "url": "https://github.com/VR-25/acc.git",
+        "ref": "dev",
+        "commit": "908a5a4b716b7f2506a2e1426429293a11f42ab3",
+        "file": "README.md",
+        "role": "Android charging policy reference only; not installed or executed"
+      },
+      {
+        "url": "https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP2762AGV/document_id/9073/",
+        "revision": "MP2762A Rev. 1.1, 2023-07-14",
+        "role": "Manufacturer register and watchdog reference; actual board behavior unverified"
+      }
+    ],
+    "vendor_and_community_sources": "Existing pinned kebab-bringup and oneplus-vendor-dt-reference repositories above; no source updates"
+  },
   "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories",
   "candidate_kernel_patches": [
     {
