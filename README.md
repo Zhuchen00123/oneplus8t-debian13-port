@@ -2,6 +2,8 @@
 
 OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debian 13 arm64，内核尽量新。
 
+**服务器就绪盘点：基础系统/SSH/存储/限充正常，适合部署和调试服务；尚未完成长期无人值守及公网MC验收。** 最新重启后校园HTTPS探测超时、HTTP转认证门户、NTP未同步，需重新认证/排查；真实80/75周期、持续负载、MC/隧道和离机数据备份仍待验证。[当前就绪记录](docs/server-readiness-20261004.md)。
+
 **最新存储：系统文件系统已扩至7GiB，df显示6.9GiB、约3.9GiB可用；用户授权清空原Android userdata后建成约224.46GiB ext4数据分区，挂载/srv，实际约220GiB可用。** 正常重启自动挂载、32MiB fsync/直接读回、分区表未变、USB SSH与限充自启通过。MC服务与世界文件应使用/srv并要求挂载存在。[容量与扩容记录](docs/storage-expansion-20261004.md)。
 
 **最新限充部署：80%停充／75%恢复策略已常驻启用。** `7.2.0-kebab-debian13-r2-charge-policy+` 已实机完成224秒续约、停止服务与杀进程到期恢复测试，当前高电量停充读回通过；用户授权的A槽启动成功标记修复及一次正常重启已通过，重试数保持5，USB/SSH和策略服务自动恢复。真实80/75完整充电周期、插拔与长期负载仍未验收。[限充v1记录](docs/charge-policy-v1-20261004.md)、[启动记账修复](docs/boot-success-repair-20261004.md)、[基础配置](docs/server-base-20261004.md)。MC/穿透已在本会话暂停，[另开会话提示词](docs/mc-cnb-resume-prompt-20261004.md)已准备。

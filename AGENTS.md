@@ -41,6 +41,8 @@
 
 ## 来源与移植方法
 
+- 2026-10-04 最新服务器就绪只读盘点：系统/SSH/7GiB根与/srv约220GiB/80-75限充服务正常，无failed unit；当前停充读回有效，真实跨阈值及长期负载仍未验收。存储重启后Wi-Fi服务active、DNS可解析，但绑定wlan0的Debian/kernel.org IPv4 HTTPS均超时，9.9.9.9 HTTP转校园内网门户；NTPSynchronized=no，多个NTP回复超时。应先重新认证/排查，不能沿用之前“校园外网/NTP通过”的结果。本次手机无Java/25565监听，MC/公网入口未就绪；只读盘点没有替用户登录或改配置。入口docs/server-readiness-20261004.md。
+
 - 2026-10-04 最新存储：用户明确允许清空userdata并采用7GiB系统盘+约224GiB数据盘。已保存当前Debian私有文件归档并完整读/hash核验（非原子块快照、不包含userdata），根/dev/sda15 ext4在线扩至7GiB，df6.9GiB/剩约3.9GiB；仅格式化已核验/dev/sda28 userdata为ext4，按UUID挂载/srv，df约220GiB可用。一次正常重启后自动挂载、32MiB fsync/直接读回、主备sda GPT哈希完全未变、A槽成功标记/retry5、严格USB SSH与限充自启通过。没有改GPT布局或boot。实际mkfs提示原厂userdata偏离512KiB最小I/O对齐393216字节但4096-byte逻辑/物理对齐，未重分区，性能未测。MC会话请用/srv数据盘并为服务设置挂载依赖/挂载点检查，不覆写存储配置；不再依据旧3.9GiB总容量规划。入口docs/storage-expansion-20261004.md；本次userdata授权已执行，不是后续任意擦除授权。
 
 - 2026-10-04 最新限充部署：control镜像相同SHA-256在恢复A槽重试数后正常启动，首次ABL损坏提示对应successful=no/retry=0/unbootable=yes；没有存储损坏证据。224秒实机续约/服务停止/杀进程90秒到期恢复通过，用户已授权测试通过后开启常驻，现80/75策略enabled/active且高电量停充读回通过。用户另行明确允许一次A槽成功位修复并重启验证：主备GPT原始块已双端备份校验，仅设置boot_a bit54并更新对应CRC，不切槽/改布局；主备逐字节读回通过，正常重启后successful=true、retry仍5、严格USB SSH与服务自启通过。该一次授权已执行，不是后续任意GPT写入授权；未部署开机自动GPT写入服务。真实80/75完整循环、插拔、长期负载仍未验证。入口 docs/charge-policy-v1-20261004.md、docs/boot-success-repair-20261004.md；下方18:45状态为历史。

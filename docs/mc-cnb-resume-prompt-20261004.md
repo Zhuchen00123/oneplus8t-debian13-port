@@ -20,7 +20,7 @@
 - 显示和触摸修复已内建；旧 kebab-touch-fix.service 已禁用，绑定 synaptics-tcm。存在过间歇指针漂移，短测未再复现，不可称长期稳定。
 - 根分区是本机/dev/sda15，ext4已在原分区内扩至7GiB，df约6.9GiB、剩约3.9GiB。用户授权清空原userdata后，/dev/sda28已作为ext4数据盘按UUID自动挂载/srv，约220GiB可用，正常重启和32MiB直接读回通过。MC服务/世界/下载使用/srv下目录，服务设置RequiresMountsFor=/srv和ConditionPathIsMountPoint=/srv，避免缺盘时写满小系统盘。不要再次格式化、移动分区或覆盖fstab；先读docs/storage-expansion-20261004.md核对实际挂载。
 - 固定 USB 管理链路和严格保存 SSH 主机密钥正常。维护命令使用原项目私有配置：ssh -F F:\codexprojects\oneplus8t\local\ssh\kebab-server.conf kebab。不要复制、展示或上传密钥。
-- gdut 已通过用户手动校园门户认证，实际 Wi-Fi DHCP/网关/DNS、外部 HTTP/HTTPS和 NTP通过；RTC仍是1970。不得把当前手机当 Android。校园认证凭据不在聊天或项目文件中；重启后认证是否保留未验收，不要无故断开会话。
+- gdut曾通过用户手动校园门户认证、HTTP/HTTPS和NTP；最新存储重启后的只读盘点发现DNS可解析，但绑定wlan0的两个外网HTTPS目标均超时、9.9.9.9 HTTP被转到内网门户、NTP未同步，应先重新认证/排查并复验，不沿用旧成功结果。RTC未修复，不得把手机当Android；账号密码由用户自行在学校页面输入，不写聊天或文件。参见docs/server-readiness-20261004.md。
 - IPv4为校园内网地址；手机有全球IPv6，网关和公网IPv6的ICMP出站通过，但移动网络入站 TCP25565测试失败。测试手机截图确认它有公网IPv6，失败具体位置未确定，不能直接断言校园网全面封禁。
 - 443实测：socket显式绑定wlan0，IPv4直连Debian官网、kernel.org、清华官网的TCP443、TLS1.3标准证书验证、HTTP200均通过；IPv6域名没有取得地址，指定一个公网IPv6的TCP443超时，不代表所有IPv6目标都不可用。
 - 临时IPv6探针已停止，25565无测试监听，运行时限导致的failed状态已清理。目前未安装MC、Tailscale、ZeroTier、playit或frp，未创建新的CNB环境、隧道或公网游戏入口。
