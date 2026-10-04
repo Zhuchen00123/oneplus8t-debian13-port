@@ -13,12 +13,12 @@
 - 手机直接连接 gdut 校园 Wi-Fi，进出流量使用校园网，不依赖电脑共享或蜂窝网络。
 - 暂时没有公网 VPS/设备，优先省钱。明确不试 playit 等免费中继平台，参考我自己的 cnb-tunnel 方案，经 WSS/443 主动出站。
 - 另一个会话正在处理电池、限充、温度及服务器基础配置。你只负责 MC 和隧道，不要改充电/电源/温度策略、基础监控、journald、SSH 密钥或 USB 管理配置，也不要在基础配置会话未确认前进行长时间游戏负载测试。
-- 已安装基础配置：kebab-health.timer每分钟只读采样，配置/etc/kebab/server-health.json、程序/usr/local/sbin/kebab-health、状态/run/kebab-health/status.json；目标80%但charge_limit_enforced=false，当前内核MP2762A只提供OTG而非充电管理，不能称已限充。四类软件休眠已masked，时区Asia/Shanghai。详情docs/server-base-20261004.md，这些文件属于基础配置会话，不要覆盖。旧r2封存镜像未重打包。
+- 已安装基础配置：kebab-health.timer每分钟只读采样，配置/etc/kebab/server-health.json、程序/usr/local/sbin/kebab-health、状态/run/kebab-health/status.json；新版MP2762A90秒租约与80/75策略已部署，真实续约/停止/进程丢失恢复及重启后高电量停充读回通过，完整物理80/75周期与长期负载未验收。四类软件休眠已masked，时区Asia/Shanghai。详情docs/server-base-20261004.md、docs/charge-policy-v1-20261004.md，这些文件属于基础配置会话，不要覆盖。旧r2封存镜像未重打包。
 
 实际设备状态：
-- KB2000 / SM8250，持久 Debian 13 arm64，运行 7.2.0-kebab-debian13-r2+，约 11 GiB 内存。
+- KB2000 / SM8250，持久 Debian 13 arm64，运行 7.2.0-kebab-debian13-r2-charge-policy+，约 11 GiB 内存。A槽启动成功标记已修复、重启保留，不能根据旧记录反复重刷重置次数。
 - 显示和触摸修复已内建；旧 kebab-touch-fix.service 已禁用，绑定 synaptics-tcm。存在过间歇指针漂移，短测未再复现，不可称长期稳定。
-- 根分区是本机 /dev/sda15，ext4 当前约 3.9 GiB、剩余约 1.7 GiB；尚未扩容。不要照抄其他机型的分区编号，不改分区布局或 userdata。
+- 根分区是本机/dev/sda15，ext4已在原分区内扩至7GiB，df约6.9GiB、剩约3.9GiB。用户授权清空原userdata后，/dev/sda28已作为ext4数据盘按UUID自动挂载/srv，约220GiB可用，正常重启和32MiB直接读回通过。MC服务/世界/下载使用/srv下目录，服务设置RequiresMountsFor=/srv和ConditionPathIsMountPoint=/srv，避免缺盘时写满小系统盘。不要再次格式化、移动分区或覆盖fstab；先读docs/storage-expansion-20261004.md核对实际挂载。
 - 固定 USB 管理链路和严格保存 SSH 主机密钥正常。维护命令使用原项目私有配置：ssh -F F:\codexprojects\oneplus8t\local\ssh\kebab-server.conf kebab。不要复制、展示或上传密钥。
 - gdut 已通过用户手动校园门户认证，实际 Wi-Fi DHCP/网关/DNS、外部 HTTP/HTTPS和 NTP通过；RTC仍是1970。不得把当前手机当 Android。校园认证凭据不在聊天或项目文件中；重启后认证是否保留未验收，不要无故断开会话。
 - IPv4为校园内网地址；手机有全球IPv6，网关和公网IPv6的ICMP出站通过，但移动网络入站 TCP25565测试失败。测试手机截图确认它有公网IPv6，失败具体位置未确定，不能直接断言校园网全面封禁。

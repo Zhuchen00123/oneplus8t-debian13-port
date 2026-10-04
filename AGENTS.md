@@ -41,6 +41,8 @@
 
 ## 来源与移植方法
 
+- 2026-10-04 最新存储：用户明确允许清空userdata并采用7GiB系统盘+约224GiB数据盘。已保存当前Debian私有文件归档并完整读/hash核验（非原子块快照、不包含userdata），根/dev/sda15 ext4在线扩至7GiB，df6.9GiB/剩约3.9GiB；仅格式化已核验/dev/sda28 userdata为ext4，按UUID挂载/srv，df约220GiB可用。一次正常重启后自动挂载、32MiB fsync/直接读回、主备sda GPT哈希完全未变、A槽成功标记/retry5、严格USB SSH与限充自启通过。没有改GPT布局或boot。实际mkfs提示原厂userdata偏离512KiB最小I/O对齐393216字节但4096-byte逻辑/物理对齐，未重分区，性能未测。MC会话请用/srv数据盘并为服务设置挂载依赖/挂载点检查，不覆写存储配置；不再依据旧3.9GiB总容量规划。入口docs/storage-expansion-20261004.md；本次userdata授权已执行，不是后续任意擦除授权。
+
 - 2026-10-04 最新限充部署：control镜像相同SHA-256在恢复A槽重试数后正常启动，首次ABL损坏提示对应successful=no/retry=0/unbootable=yes；没有存储损坏证据。224秒实机续约/服务停止/杀进程90秒到期恢复通过，用户已授权测试通过后开启常驻，现80/75策略enabled/active且高电量停充读回通过。用户另行明确允许一次A槽成功位修复并重启验证：主备GPT原始块已双端备份校验，仅设置boot_a bit54并更新对应CRC，不切槽/改布局；主备逐字节读回通过，正常重启后successful=true、retry仍5、严格USB SSH与服务自启通过。该一次授权已执行，不是后续任意GPT写入授权；未部署开机自动GPT写入服务。真实80/75完整循环、插拔、长期负载仍未验证。入口 docs/charge-policy-v1-20261004.md、docs/boot-success-repair-20261004.md；下方18:45状态为历史。
 
 - 2026-10-04 18:45 限充v1检查点：90秒可续约内核 `7.2.0-kebab-debian13-r2-charge-policy+` 已完整构建；131,608个实际寄存器核心用例、9项策略、8项部署保护、5项健康联动测试通过。578模块与200 initramfs模块核验通过，同组readonly镜像实机启动、严格SSH、allow_control=0、接口444通过。服务已安装但disable。用户已明确授权约4分钟有界续约/停止/进程丢失恢复测试，通过后开启常驻80/75策略，后续不重复申请该范围授权。control镜像写boot_a并回读一致后正常重启，USB/RNDIS/SSH/Fastboot均未重新出现，已请求用户确认屏幕与插线；实际状态未确认，测试尚未开始、常驻限充未生效。先恢复管理链路，不把新内核默认只读通过当作control模式通过。入口 docs/charge-policy-v1-20261004.md，旧只读候选和完整boot备份保留，本轮未写GPT/misc或其它分区。
