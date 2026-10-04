@@ -1,6 +1,6 @@
 # 80% 限充可部署版本 v1（2026-10-04）
 
-目标是长期插电时达到80%停充、下降至75%恢复。此版本把内核寄存器访问与用户态电量策略分开；它是需要实机循环验收的部署候选，不能仅凭一次30秒测试宣称长期限充完成。
+目标是长期插电时达到80%停充、下降至75%恢复。此版本把内核寄存器访问与用户态电量策略分开；90秒租约的续期、停止与进程丢失恢复已实机通过，常驻策略已启用并正常重启复验。真实80/75完整循环、插拔与长期负载仍待验收。
 
 ## 实现
 
@@ -36,7 +36,7 @@
 1. 核验输入manifest、USB SSH、当前根UUID与boot_a路径，停止Java负载。部署脚本检查当前充电恢复所有权已释放，并校验正在替换的boot前缀哈希。
 2. 先部署readonly镜像。脚本在手机保存完整100,663,296字节boot_a，前后设备哈希与备份哈希相同才写入；模块逐份核验后写boot_a并读回。它不重启、不切槽、不写GPT/misc、DTBO、super、NV或vbmeta。
 3. 正常重启后核验新版本、`allow_control=0`、`owned=0`、USB/SSH、实际文件持久性。安装服务时默认disable；`--once`只读检查真实传感器，不能触发停充。
-4. 经本阶段授权后切换同组control镜像并重启，先有界验证超过90秒的续约、停止服务恢复、杀进程期限恢复，随后才启用常驻80/75策略。不能跳过真实低于80%的跨阈值循环、插拔、重启与长期负载验收。
+4. 经本阶段授权后切换同组control镜像并重启，先有界验证超过90秒的续约、停止服务恢复、杀进程期限恢复，随后才启用常驻80/75策略。后续完整验收仍需真实低于80%的跨阈值循环、插拔、重启与长期负载。
 5. 停用策略先执行deactivate，检查`owned=0`与CHG_EN恢复，再回到readonly镜像或保存的前一完整boot_a；旧内核模块树保持，禁止混用版本。内核无法恢复时不执行自动重启来掩盖错误，保留状态并使用已校验的回退组。
 
 槽位依据：本机Linux未收到`androidboot.slot_suffix`，标准misc A/B块也不匹配。本机主/备GPT CRC和boot属性只读核验一致：A active、可启动；B inactive、unbootable。位定义来自固定的 [Qualcomm BootLib参考](https://github.com/SHIFTPHONES/android_bootable_bootloader_edk2/blob/7d391d8b1059ed48259728cab004ca6f16ee3de2/QcomModulePkg/Include/Library/PartitionTableUpdate.h)，另结合已核验当前boot前缀，不对GPT或misc做写入。参考源码不等于本机ABL二进制已完整验证。
@@ -51,9 +51,9 @@
 - 已执行：200个initramfs模块原始ELF与匹配模块树逐字节核验；两套boot格式与独立AOSP解包通过。两镜像长度均为45,637,632字节，payload相同，44个差异字节全部位于header的cmdline字段。
 - 已执行：默认只读镜像写boot_a前完整备份并校验，写后同范围回读一致，正常重启后严格SSH、`allow_control=0 owned=0`、接口444和USB载波1通过。策略服务已安装并disable，实际`--once`读取100%/37.4°C/USB在线，未写充电位。
 - 已执行：5项健康联动测试，缓存超时、未来时间、实际寄存器冲突、无效/到期租约和已停止服务均不能声称停充读回已验证。监控的`charge_limit_enforced`仅表示本次采样的真实停充读回，不等于完整80/75循环已验收；监控自身仍无写充电路径。
-- 当前尚未证明：真实90秒租约续期/到期、常驻策略跨阈值周期、插拔/重启组合、长期负载与完整物理充电效果。不能用主机模拟或只读启动将上述事项标为通过。
+- 当前尚未证明：常驻策略真实跨阈值周期、插拔/重启组合、长期负载与完整物理充电效果。不能用主机模拟将上述事项标为通过；以下最新记录已补充90秒租约实际测试。
 
-## 当前实机状态与下一步（18:45检查点）
+## 历史检查点（18:45；下方有更新）
 
 用户已明确授权：控制模式下不超过约4分钟的续约/服务停止/进程丢失恢复测试，通过后开启常驻80/75策略。该授权已记录，恢复工作时不重复申请。
 
@@ -62,3 +62,20 @@
 本地readonly镜像SHA-256为 `a3330619b4d55d1a61d71f9335eee364fa4947248a70269caade81d59c4f44f3`；control镜像为 `0ddb6f49e97e7835b77cd605b4b6bce683cf2455ea3c16ea59e917c09c631f96`。手机完整回退备份在 `/var/backups/kebab-charge-policy/20261004-184009/boot_a.img`，前一候选完整备份在 `/var/backups/kebab-charge-policy/20261004-183534/boot_a.img`；本机旧r2与原厂恢复组继续保留。若出现ABL拒绝，应先按已实测按键进入Fastboot，核验设备与A槽，再刷同组readonly镜像并重启恢复；不能在未确认USB/槽位时盲刷。
 
 原始证据仅存 `local/charge-policy-20261004/`：构建/测试记录、只读启动、安装、control写入及两镜像差异。`test-runtime.sh`已准备异常恢复trap，先连续续约100秒，再测试正常停止，最后实际高电量冷启动后SIGKILL、等待内核期限恢复；尚未执行。恢复管理链路后再执行，成功才启用常驻服务。
+
+## 恢复与部署结果（18:59；成功标记随后已修复）
+
+- 用户确认ABL损坏提示并返回Fastboot。只读查询确认A槽successful=no、retry=0、unbootable=yes；Fastboot重刷已验证readonly镜像后retry=7、unbootable=no、当前A槽不变，严格SSH恢复。重新部署SHA-256不变的原control镜像后也正常启动，allow_control=1。证据支持首次失败由未登记启动成功而耗尽次数导致，无存储介质损坏证据；没有做全盘完整性诊断。[启动记账与修复方案](boot-success-repair-20261004.md)。
+- 实际有界测试用时224秒：直接停充后服务接管、连续续约超过100秒，CHG_EN持续关闭；停止服务恢复；以真实100%电量冷启动，3次确认后停充；临时关闭进程自动重启，SIGKILL后租约90秒逐步到期，内核恢复CHG_EN，owned=0。全程USB载波/供电在线，清理临时覆盖后没有失败单元。原始证据 `local/charge-policy-20261004/runtime-test.txt`。
+- 用户此前明确允许测试通过后开启常驻；现已执行activate，`kebab-charge-policy.service` enabled/active。后续采样真实100%/37.2°C，REG08=0x06、REG09=0x4c、REG13=0x03、owned=1、租约78秒，状态 `inhibit_readback_verified=true`。这证明当前高电量下停充与续约，不证明尚未经历的物理75%恢复周期。
+- 电量计的status/current有延迟：关CHG_EN后曾短时仍显示Charging和小电流，后续稳定Not charging/0；恢复后Charging/63mA。因此不把寄存器切换瞬间的电量计读数当作实时功率测量，也不称为已验证旁路供电。
+- 最新部署包为本地 `ready-retry-guard/`，两套boot字节与前包相同；部署检查增加successful与tries读取，未成功且剩余次数不足2时拒绝Linux更新。它仍只读GPT，不自动重置次数或改标记。
+- 当前A槽剩余5次、successful=false，可正常运行；成功位修复工具及只读原始表备份已完成并核验，尚未授权GPT写入。暂不进行常驻服务启用后的重启验收，避免未经修复重复消耗次数。主机8项成功标记工具测试通过，不能替代实机写入/重启验证。
+
+## 最终本轮部署结果
+
+用户明确允许成功位修复并重启验证后，按已核验方案仅设置主备GPT的boot_a成功位和对应CRC；原始块双端备份、两副本写后读回均通过。正常重启后successful=true、retry保持5、control镜像哈希不变，严格USB SSH和策略服务enabled/active通过。
+
+重启后的真实三次采样完成后，100%/37.9°C、REG08=0x06、REG09=0x4c、REG13=0x03、owned=1、租约83秒、`inhibit_readback_verified=true`，电量计Not charging/0；无failed unit。可交付本轮已实机部署的v1，同时保留 `full_charge_cycle_validated=false`；它不代表尚未执行的真实75%恢复、插拔或长期负载验收。
+
+一次成功位修复不安装自动GPT写服务，不扩大后续设备操作授权。实际修改与恢复备份详见 [成功标记记录](boot-success-repair-20261004.md)。

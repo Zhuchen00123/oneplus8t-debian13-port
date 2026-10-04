@@ -322,10 +322,18 @@
       "matched_modules_verified": 578,
       "initramfs_raw_module_bytes_verified": 200,
       "readonly_phone_boot_verified": true,
-      "control_phone_boot_verified": false,
-      "runtime_lease_test_executed": false,
-      "persistent_policy_enabled": false,
-      "control_boot_status": "boot_a readback verified; reboot USB absent; phone screen state requested",
+      "control_phone_boot_verified": true,
+      "runtime_lease_test_executed": true,
+      "runtime_lease_test_passed": true,
+      "runtime_lease_test_seconds": 224,
+      "persistent_policy_enabled": true,
+      "persistent_service_autostart_verified": true,
+      "persistent_inhibit_after_reboot_verified": true,
+      "boot_a_success_bit_repair_authorized_and_applied": true,
+      "boot_a_success_bit_survived_reboot": true,
+      "boot_a_retry_count_unchanged_after_reboot": 5,
+      "boot_success_tool_tests_passed": 8,
+      "control_boot_status": "A-slot retry exhaustion recovered by Fastboot; same control image boots; authorized success-bit repair persisted through reboot; USB SSH and service autostart passed",
       "documentation": "docs/charge-policy-v1-20261004.md"
     }
   }

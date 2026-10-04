@@ -41,6 +41,8 @@
 
 ## 来源与移植方法
 
+- 2026-10-04 最新限充部署：control镜像相同SHA-256在恢复A槽重试数后正常启动，首次ABL损坏提示对应successful=no/retry=0/unbootable=yes；没有存储损坏证据。224秒实机续约/服务停止/杀进程90秒到期恢复通过，用户已授权测试通过后开启常驻，现80/75策略enabled/active且高电量停充读回通过。用户另行明确允许一次A槽成功位修复并重启验证：主备GPT原始块已双端备份校验，仅设置boot_a bit54并更新对应CRC，不切槽/改布局；主备逐字节读回通过，正常重启后successful=true、retry仍5、严格USB SSH与服务自启通过。该一次授权已执行，不是后续任意GPT写入授权；未部署开机自动GPT写入服务。真实80/75完整循环、插拔、长期负载仍未验证。入口 docs/charge-policy-v1-20261004.md、docs/boot-success-repair-20261004.md；下方18:45状态为历史。
+
 - 2026-10-04 18:45 限充v1检查点：90秒可续约内核 `7.2.0-kebab-debian13-r2-charge-policy+` 已完整构建；131,608个实际寄存器核心用例、9项策略、8项部署保护、5项健康联动测试通过。578模块与200 initramfs模块核验通过，同组readonly镜像实机启动、严格SSH、allow_control=0、接口444通过。服务已安装但disable。用户已明确授权约4分钟有界续约/停止/进程丢失恢复测试，通过后开启常驻80/75策略，后续不重复申请该范围授权。control镜像写boot_a并回读一致后正常重启，USB/RNDIS/SSH/Fastboot均未重新出现，已请求用户确认屏幕与插线；实际状态未确认，测试尚未开始、常驻限充未生效。先恢复管理链路，不把新内核默认只读通过当作control模式通过。入口 docs/charge-policy-v1-20261004.md，旧只读候选和完整boot备份保留，本轮未写GPT/misc或其它分区。
 
 - 2026-10-04 当前分工：用户暂停本会话MC/穿透、另开会话使用 docs/mc-cnb-resume-prompt-20261004.md，当前会话负责服务器基础与80%限充目标。已部署只读kebab-health一分钟timer（RAM状态、告警变化才输出详情）、mask四类软件休眠、Asia/Shanghai时区；既有电源键ignore和journal64/16MiB保留。实际MP2762A驱动只提供OTG、BQ电量计只读、TCPM可写属性是PD协商，没有经验证的电池停充接口，80%未实现，未写充电寄存器/阈值。多轮timer、约6.5MiB峰值、无failed unit通过，未主动重启校园会话。入口 docs/server-base-20261004.md。MC新会话不能改充电/电源/温控/基础监控/SSH/USB配置，必须隔离工作树和写集。

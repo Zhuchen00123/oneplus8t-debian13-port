@@ -98,6 +98,8 @@ def gpt_boot_slots(disk=Path('/dev/sde')):
         result[name] = {'start_lba': start, 'end_lba': end,
                         'active': bool(attributes & (1 << 50)),
                         'priority': (attributes >> 48) & 3,
+                        'successful': bool(attributes & (1 << 54)),
+                        'tries_remaining': (attributes >> 51) & 7,
                         'unbootable': bool(attributes & (1 << 55))}
     if not (result['boot_a']['active'] and not result['boot_b']['active'] and
             not result['boot_a']['unbootable'] and
@@ -136,6 +138,8 @@ def main():
     if fields.get('androidboot.slot_suffix') not in (None, '_a'):
         raise ValueError('Boot args disagree with slot A')
     slots = gpt_boot_slots()
+    if not slots['boot_a']['successful'] and slots['boot_a']['tries_remaining'] < 2:
+        raise ValueError('A-slot retry budget too low; do not reboot or replace boot from Linux')
     if subprocess.run(['pgrep', '-x', 'java'], capture_output=True).returncode == 0:
         raise ValueError('Java workload is active; coordinate kernel maintenance')
     if subprocess.run(['systemctl', 'is-active', '--quiet', 'kebab-charge-policy.service']).returncode == 0:
