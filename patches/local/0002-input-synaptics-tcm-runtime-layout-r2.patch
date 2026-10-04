@@ -1,0 +1,1054 @@
+From 32d0dc7c445aa12cc2cada6c4cc6e73b0bc768ac Mon Sep 17 00:00:00 2001
+From: Codex automation <codex@localhost>
+Date: Sun, 4 Oct 2026 11:43:02 +0800
+Subject: [PATCH] Input: synaptics_tcm_oncell: accept the KB2000 report layout
+
+The panel controller on this device reports a 7-byte gesture prefix followed by
+7 bytes per object, so 7, 14 and 21 byte reports are all legal. The driver
+rejected the 14 and 21 byte forms as "invalid touch report length", which left
+the touchscreen unusable even though the controller kept reporting. Account for
+the prefix, validate against the real object stride, and keep the existing
+framing and bounds checks.
+
+Verified on hardware: with this layout the driver delivers ABS_MT_TRACKING_ID,
+ABS_MT_POSITION_X/Y and BTN_TOUCH press/release for real finger input.
+---
+ .../input/touchscreen/synaptics_tcm_oncell.c  | 615 +++++++-----------
+ .../input/touchscreen/synaptics_tcm_report.h  | 223 +++++++
+ 2 files changed, 468 insertions(+), 370 deletions(-)
+ create mode 100644 drivers/input/touchscreen/synaptics_tcm_report.h
+
+diff --git a/drivers/input/touchscreen/synaptics_tcm_oncell.c b/drivers/input/touchscreen/synaptics_tcm_oncell.c
+index 25b3f7697..aa2d7a026 100644
+--- a/drivers/input/touchscreen/synaptics_tcm_oncell.c
++++ b/drivers/input/touchscreen/synaptics_tcm_oncell.c
+@@ -6,13 +6,9 @@
+  *  Copyright (c) 2024 Caleb Connolly <caleb.connolly@linaro.org>
+  */
+ 
+-//#define DEBUG
+-
+ #include <linux/i2c.h>
+ #include <linux/input.h>
+-#include <linux/input/touchscreen.h>
+ #include <linux/mod_devicetable.h>
+-#include <linux/module.h>
+ #include <linux/property.h>
+ #include <linux/unaligned.h>
+ #include <linux/delay.h>
+@@ -24,6 +20,10 @@
+ #include <linux/module.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/mutex.h>
++#include <linux/spinlock.h>
++
++#include "synaptics_tcm_report.h"
+ 
+ /* Commands */
+ #define TCM_NONE 0x00
+@@ -90,45 +90,6 @@
+ #define REPORT_TOUCH_HOLD 0x20
+ #define REPORT_INVALID 0xff
+ 
+-/* Touch report codes */
+-#define TOUCH_END 0
+-#define TOUCH_FOREACH_ACTIVE_OBJECT 1
+-#define TOUCH_FOREACH_OBJECT 2
+-#define TOUCH_FOREACH_END 3
+-#define TOUCH_PAD_TO_NEXT_BYTE 4
+-#define TOUCH_TIMESTAMP 5
+-#define TOUCH_OBJECT_N_INDEX 6
+-#define TOUCH_OBJECT_N_CLASSIFICATION 7
+-#define TOUCH_OBJECT_N_X_POSITION 8
+-#define TOUCH_OBJECT_N_Y_POSITION 9
+-#define TOUCH_OBJECT_N_Z 10
+-#define TOUCH_OBJECT_N_X_WIDTH 11
+-#define TOUCH_OBJECT_N_Y_WIDTH 12
+-#define TOUCH_OBJECT_N_TX_POSITION_TIXELS 13
+-#define TOUCH_OBJECT_N_RX_POSITION_TIXELS 14
+-#define TOUCH_0D_BUTTONS_STATE 15
+-#define TOUCH_GESTURE_DOUBLE_TAP 16
+-#define TOUCH_FRAME_RATE 17 /* Normally 80hz */
+-#define TOUCH_POWER_IM 18
+-#define TOUCH_CID_IM 19
+-#define TOUCH_RAIL_IM 20
+-#define TOUCH_CID_VARIANCE_IM 21
+-#define TOUCH_NSM_FREQUENCY 22
+-#define TOUCH_NSM_STATE 23
+-#define TOUCH_NUM_OF_ACTIVE_OBJECTS 23
+-#define TOUCH_NUM_OF_CPU_CYCLES_USED_SINCE_LAST_FRAME 24
+-#define TOUCH_TUNING_GAUSSIAN_WIDTHS 0x80
+-#define TOUCH_TUNING_SMALL_OBJECT_PARAMS 0x81
+-#define TOUCH_TUNING_0D_BUTTONS_VARIANCE 0x82
+-#define TOUCH_REPORT_GESTURE_SWIPE 193
+-#define TOUCH_REPORT_GESTURE_CIRCLE 194
+-#define TOUCH_REPORT_GESTURE_UNICODE 195
+-#define TOUCH_REPORT_GESTURE_VEE 196
+-#define TOUCH_REPORT_GESTURE_TRIANGLE 197
+-#define TOUCH_REPORT_GESTURE_INFO 198
+-#define TOUCH_REPORT_GESTURE_COORDINATE 199
+-#define TOUCH_REPORT_CUSTOMER_GRIP_INFO 203
+-
+ struct tcm_message_header {
+ 	u8 marker;
+ 	u8 code;
+@@ -137,22 +98,6 @@ struct tcm_message_header {
+ /* header + 2 bytes (which are length of data depending on report code) */
+ #define REPORT_PEAK_LEN (sizeof(struct tcm_message_header) + 2)
+ 
+-struct tcm_cmd {
+-	u8 cmd;
+-	u16 length;
+-	u8 data[];
+-};
+-
+-struct tcm_identification {
+-	struct tcm_message_header header;
+-	u16 length;
+-	u8 version;
+-	u8 mode;
+-	char part_number[16];
+-	u8 build_id[4];
+-	u8 max_write_size[2];
+-} __packed;
+-
+ struct tcm_app_info {
+ 	struct tcm_message_header header;
+ 	u16 length;
+@@ -174,66 +119,39 @@ struct tcm_app_info {
+ 	u8 has_hybrid_data[2];
+ } __packed;
+ 
+-struct tcm_report_config_prop {
+-	u8 id; /* TOUCH_OBJECT_* */
+-	u8 bits; /* Size of the field in bits */
+-};
+-
+-struct tcm_report_config_entry {
+-	u8 foreach; /* TOUCH_FOREACH_* (and maybe other things?) */
+-	int n_props;
+-	const struct tcm_report_config_prop *props;
+-};
+-
+-struct tcm_report_config {
+-	int n_entries;
+-	const struct tcm_report_config_entry *entries;
+-};
+-
+ struct tcm_data {
+ 	struct i2c_client *client;
+-	struct regmap *regmap;
+ 	struct input_dev *input;
+ 	struct touchscreen_properties prop;
+ 	struct gpio_desc *reset_gpio;
+ 	struct completion response;
+ 	struct regulator_bulk_data supplies[2];
+ 
+-	/* annoying state */
++	struct mutex command_lock;
++	spinlock_t response_lock;
++	bool pending, broken, input_ready;
+ 	u16 buf_size;
+-	char buf[256];
++	u8 buf[256];
++	struct tcm_layout layout;
++	u16 max_x, max_y, max_objects;
+ };
+ 
+-static int tcm_send_cmd(struct tcm_data *tcm, struct tcm_cmd *cmd)
++/* TCM commands always include opcode + LE16 payload length, even getters. */
++static int tcm_send_command(struct tcm_data *tcm, u8 opcode,
++			    const u8 *payload, unsigned int length)
+ {
+-	struct i2c_client *client = tcm->client;
+-	struct i2c_msg msg;
++	u8 tx[4];
+ 	int ret;
+ 
+-	dev_dbg(&client->dev, "sending command %#x\n", cmd->cmd);
+-
+-	msg.addr = client->addr;
+-	msg.flags = 0;
+-	msg.len = 1 + cmd->length;
+-	msg.buf = (u8 *)cmd;
+-
+-	ret = i2c_transfer(client->adapter, &msg, 1);
+-	if (ret == 1)
+-		return 0;
+-	else if (ret < 0)
+-		return ret;
+-	else
+-		return -EIO;
+-}
+-
+-static int tcm_send_cmd_noargs(struct tcm_data *tcm, u8 cmd)
+-{
+-	struct tcm_cmd c = {
+-		.cmd = cmd,
+-		.length = 0,
+-	};
+-
+-	return tcm_send_cmd(tcm, &c);
++	/* This driver only needs no-argument getters and one-byte report toggles. */
++	if (length > 1)
++		return -EINVAL;
++	tx[0] = opcode;
++	put_unaligned_le16(length, tx + 1);
++	if (length)
++		tx[3] = payload[0];
++	ret = i2c_master_send(tcm->client, tx, 3 + length);
++	return ret == 3 + length ? 0 : ret < 0 ? ret : -EIO;
+ }
+ 
+ static int tcm_recv_report(struct tcm_data *tcm,
+@@ -257,250 +175,249 @@ static int tcm_recv_report(struct tcm_data *tcm,
+ 		return -EIO;
+ }
+ 
+-static int tcm_read_message(struct tcm_data *tcm, u8 cmd, void *buf, size_t length)
++static int tcm_process_report(struct tcm_data *tcm, const u8 *buf);
++
++/* Report toggles can return a zero-length ACK without asserting attention.
++ * Mask and synchronize the IRQ before sending, so exactly one reader owns
++ * the bus. Never resend a command; async reports cannot complete it.
++ */
++static int tcm_poll_response(struct tcm_data *tcm)
+ {
++	unsigned long deadline = jiffies + msecs_to_jiffies(1000);
++	u8 buf[256];
+ 	int ret;
+ 
+-	reinit_completion(&tcm->response);
+-	ret = tcm_send_cmd_noargs(tcm, cmd);
+-	if (ret)
+-		return ret;
++	do {
++		usleep_range(10000, 12000);
++		ret = tcm_recv_report(tcm, buf, sizeof(buf));
++		if (ret)
++			return ret;
++		ret = tcm_process_report(tcm, buf);
++		if (ret)
++			return ret;
++		if (completion_done(&tcm->response))
++			return 0;
++	} while (time_before(jiffies, deadline));
++	return -ETIMEDOUT;
++}
+ 
+-	ret = wait_for_completion_timeout(&tcm->response, msecs_to_jiffies(1000));
+-	if (ret == 0)
+-		return -ETIMEDOUT;
++/* Serialize commands. After a failed transfer/timeout refuse new commands
++ * until reprobe: the wire has no transaction ID and a late OK must not be
++ * reused as the next command's response.
++ */
++static int tcm_command(struct tcm_data *tcm, u8 opcode, const u8 *payload,
++		       unsigned int payload_len, void *buf, unsigned int capacity,
++		       unsigned int minimum)
++{
++	bool poll = opcode == TCM_ENABLE_REPORT || opcode == TCM_DISABLE_REPORT;
++	unsigned long flags;
++	int ret;
+ 
+-	if (buf) {
+-		if (length > tcm->buf_size) {
+-			dev_warn(&tcm->client->dev, "expected %zu bytes, got %u\n",
+-				 length, tcm->buf_size);
+-		}
+-		length = min(tcm->buf_size, length);
+-		memcpy(buf, tcm->buf, length);
++	mutex_lock(&tcm->command_lock);
++	if (poll)
++		disable_irq(tcm->client->irq);
++	spin_lock_irqsave(&tcm->response_lock, flags);
++	if (tcm->broken) {
++		spin_unlock_irqrestore(&tcm->response_lock, flags);
++		ret = -EIO;
++		goto unlock;
+ 	}
+-
+-	return 0;
++	reinit_completion(&tcm->response);
++	tcm->buf_size = 0;
++	tcm->pending = true;
++	spin_unlock_irqrestore(&tcm->response_lock, flags);
++	ret = tcm_send_command(tcm, opcode, payload, payload_len);
++	if (!ret) {
++		if (poll)
++			ret = tcm_poll_response(tcm);
++		else if (!wait_for_completion_timeout(&tcm->response,
++						     msecs_to_jiffies(1000)))
++			ret = -ETIMEDOUT;
++	}
++	spin_lock_irqsave(&tcm->response_lock, flags);
++	tcm->pending = false;
++	if (ret) {
++		tcm->broken = true;
++	} else if (tcm->buf_size < REPORT_PEAK_LEN ||
++		   tcm->buf[1] != REPORT_OK) {
++		ret = -EPROTO;
++	} else if (tcm->buf_size < minimum || tcm->buf_size > capacity) {
++		ret = -EMSGSIZE;
++	} else {
++		ret = tcm->buf_size;
++		if (buf)
++			memcpy(buf, tcm->buf, ret);
++	}
++	spin_unlock_irqrestore(&tcm->response_lock, flags);
++unlock:
++	if (poll)
++		enable_irq(tcm->client->irq);
++	mutex_unlock(&tcm->command_lock);
++	return ret;
+ }
+ 
+ static void tcm_power_off(void *data)
+ {
+ 	struct tcm_data *tcm = data;
+ 
+-	disable_irq(tcm->client->irq);
+ 	regulator_bulk_disable(ARRAY_SIZE(tcm->supplies), tcm->supplies);
+ }
+ 
+ static int tcm_input_open(struct input_dev *dev)
+ {
+ 	struct tcm_data *tcm = input_get_drvdata(dev);
++	u8 report = REPORT_TOUCH;
++	int ret;
+ 
+-	return i2c_smbus_write_byte(tcm->client, TCM_ENABLE_REPORT);
++	ret = tcm_command(tcm, TCM_ENABLE_REPORT, &report, 1, NULL, 256,
++			  REPORT_PEAK_LEN);
++	return ret < 0 ? ret : 0;
+ }
+ 
+ static void tcm_input_close(struct input_dev *dev)
+ {
+ 	struct tcm_data *tcm = input_get_drvdata(dev);
++	u8 report = REPORT_TOUCH;
+ 	int ret;
+ 
+-	ret = i2c_smbus_write_byte(tcm->client, TCM_DISABLE_REPORT);
+-	if (ret)
+-		dev_err(&tcm->client->dev, "failed to turn off sensing\n");
++	ret = tcm_command(tcm, TCM_DISABLE_REPORT, &report, 1, NULL, 256,
++			  REPORT_PEAK_LEN);
++	if (ret < 0)
++		dev_warn(&tcm->client->dev, "failed to disable touch reports: %d\n", ret);
+ }
+ 
+-/*
+-The default report config looks like this:
+-
+-a5 01 80 00 11 08 1e 08 0f 01 04 01 06 04 07 04
+-08 0c 09 0c 0a 08 0b 08 0c 08 0d 10 0e 10 03 00
+-00 00
+-
+-a5 01 80 00 - HEADER + length
+-
+-11 08 - TOUCH_FRAME_RATE (8 bits)
+-30 08 - UNKNOWN (8 bits)
+-0f 01 - TOUCH_0D_BUTTONS_STATE (1 bit)
+-04 01 - TOUCH_PAD_TO_NEXT_BYTE (7 bits - padding)
+-06 04 - TOUCH_OBJECT_N_INDEX (4 bits)
+-07 04 - TOUCH_OBJECT_N_CLASSIFICATION (4 bits)
+-08 0c - TOUCH_OBJECT_N_X_POSITION (12 bits)
+-09 0c - TOUCH_OBJECT_N_Y_POSITION (12 bits)
+-0a 08 - TOUCH_OBJECT_N_Z (8 bits)
+-0b 08 - TOUCH_OBJECT_N_X_WIDTH (8 bits)
+-0c 08 - TOUCH_OBJECT_N_Y_WIDTH (8 bits)
+-0d 10 - TOUCH_OBJECT_N_TX_POSITION_TIXELS (16 bits) ??
+-0e 10 - TOUCH_OBJECT_N_RX_POSITION_TIXELS (16 bits) ??
+-03 00 - TOUCH_FOREACH_END (0 bits)
+-00 00 - TOUCH_END (0 bits)
+-
+-Parsing this dynamically gets complicated, and we kinda don't need to.
+-
+-*/
+-
+-struct tcm_default_report_data {
+-	u8 fps;
+-	struct {
+-		u8 unknown;
+-		u8 buttons;
+-		u8 idx : 4;
+-		u8 classification : 4;
+-		u16 x : 12;
+-		u16 y : 12;
+-		u8 z;
+-		u8 width_x;
+-		u8 width_y;
+-		u8 tx;
+-		u8 rx;
+-	} __packed points[];
+-} __packed;
+-
+-static int tcm_handle_touch_report(struct tcm_data *tcm, char *buf, size_t len)
++static int tcm_handle_touch_report(struct tcm_data *tcm, const u8 *buf, size_t len)
+ {
+-	struct tcm_default_report_data *data;
+-	size_t num_points;
+-
+-	if (len < REPORT_PEAK_LEN + sizeof(data->fps)) {
+-		dev_err_ratelimited(&tcm->client->dev,
+-				    "touch report too short: %zu\n", len);
+-		return -EINVAL;
+-	}
+-	buf += REPORT_PEAK_LEN;
+-	len -= REPORT_PEAK_LEN;
++	struct tcm_frame frame;
++	unsigned int i;
++	int ret;
+ 
+-	dev_dbg(&tcm->client->dev, "touch report len %zu\n", len);
+-	if ((len - sizeof(data->fps)) % sizeof(data->points[0])) {
+-		dev_err_ratelimited(&tcm->client->dev,
+-				    "invalid touch report length: %zu\n", len);
+-		return -EINVAL;
++	ret = tcm_parse_frame(&tcm->layout, buf, len, tcm->max_objects, &frame);
++	if (ret)
++		goto invalid;
++	/* Validate coordinates before emitting any events. */
++	for (i = 0; i < frame.count; i++) {
++		const struct tcm_object *o = &frame.objects[i];
++
++		if ((o->classification == 1 || o->classification == 2) &&
++		    (o->x > tcm->max_x || o->y > tcm->max_y)) {
++			ret = -ERANGE;
++			goto invalid;
++		}
+ 	}
+-
+-	data = (struct tcm_default_report_data *)buf;
+-	num_points = (len - sizeof(data->fps)) / sizeof(data->points[0]);
+-
+-	/* We don't need to report releases because we have INPUT_MT_DROP_UNUSED */
+-	for (size_t i = 0; i < num_points; i++) {
+-		u8 major_width, minor_width;
+-
+-		minor_width = data->points[i].width_x;
+-		major_width = data->points[i].width_y;
+-
+-		if (minor_width > major_width)
+-			swap(major_width, minor_width);
+-
+-		dev_dbg(&tcm->client->dev, "touch report: idx %u x %u y %u\n",
+-			data->points[i].idx, data->points[i].x, data->points[i].y);
+-		input_mt_slot(tcm->input, data->points[i].idx);
+-		input_mt_report_slot_state(tcm->input, MT_TOOL_FINGER, true);
+-
+-		input_report_abs(tcm->input, ABS_MT_POSITION_X, data->points[i].x);
+-		input_report_abs(tcm->input, ABS_MT_POSITION_Y, data->points[i].y);
+-		input_report_abs(tcm->input, ABS_MT_TOUCH_MAJOR, major_width);
+-		input_report_abs(tcm->input, ABS_MT_TOUCH_MINOR, minor_width);
+-		input_report_abs(tcm->input, ABS_MT_PRESSURE, data->points[i].z);
++	for (i = 0; i < frame.count; i++) {
++		const struct tcm_object *o = &frame.objects[i];
++		bool active = o->classification == 1 || o->classification == 2;
++
++		input_mt_slot(tcm->input, o->index);
++		input_mt_report_slot_state(tcm->input, MT_TOOL_FINGER, active);
++		if (!active)
++			continue;
++		touchscreen_report_pos(tcm->input, &tcm->prop, o->x, o->y, true);
++		if (tcm->layout.width_bits) {
++			input_report_abs(tcm->input, ABS_MT_TOUCH_MAJOR, max(o->wx, o->wy));
++			input_report_abs(tcm->input, ABS_MT_TOUCH_MINOR, min(o->wx, o->wy));
++		}
++		if (tcm->layout.pressure_bits)
++			input_report_abs(tcm->input, ABS_MT_PRESSURE, o->z);
+ 	}
+-
++	/* DROP_UNUSED releases omitted slots, including zero-object frames. */
+ 	input_mt_sync_frame(tcm->input);
+ 	input_sync(tcm->input);
++	return 0;
++invalid:
++	dev_err_ratelimited(&tcm->client->dev,
++			    "invalid configured touch report: length %zu error %d\n", len, ret);
++	return ret;
++}
++
++/* Shared by the IRQ thread and the exclusive command poller. */
++static int tcm_process_report(struct tcm_data *tcm, const u8 *buf)
++{
++	struct tcm_packet packet;
++	unsigned long flags;
++	unsigned int len;
++	int ret;
+ 
++	ret = tcm_decode_packet(buf, sizeof(tcm->buf), &packet);
++	if (ret <= 0)
++		return ret;
++	len = packet.payload_size;
++	dev_dbg(&tcm->client->dev, "report %#x len %u\n", buf[1], len);
++	print_hex_dump_debug("tcm report: ", DUMP_PREFIX_OFFSET, 16, 1,
++			     buf, len + REPORT_PEAK_LEN, false);
++	if (buf[1] == REPORT_TOUCH) {
++		if (smp_load_acquire(&tcm->input_ready))
++			tcm_handle_touch_report(tcm, buf + REPORT_PEAK_LEN, len);
++		return 0;
++	}
++	/* Decoder admits only terminal replies here, never async reports. */
++	spin_lock_irqsave(&tcm->response_lock, flags);
++	if (tcm->pending) {
++		tcm->buf_size = len + REPORT_PEAK_LEN;
++		memcpy(tcm->buf, buf, tcm->buf_size);
++		tcm->pending = false;
++		complete(&tcm->response);
++	}
++	spin_unlock_irqrestore(&tcm->response_lock, flags);
+ 	return 0;
+ }
+ 
+ static irqreturn_t tcm_report_irq(int irq, void *data)
+ {
+ 	struct tcm_data *tcm = data;
+-	struct tcm_message_header *header;
+-	char buf[256];
+-	u16 len;
++	u8 buf[256];
+ 	int ret;
+ 
+-	header = (struct tcm_message_header *)buf;
+ 	ret = tcm_recv_report(tcm, buf, sizeof(buf));
+-	if (ret) {
+-		dev_err(&tcm->client->dev, "failed to read report: %d\n", ret);
+-		return IRQ_HANDLED;
+-	}
+-
+-	switch (header->code) {
+-	case REPORT_OK:
+-	//case REPORT_CONTINUED_READ:
+-	case REPORT_IDENTIFY:
+-	case REPORT_TOUCH:
+-	case REPORT_DELTA:
+-	case REPORT_RAW:
+-	case REPORT_DEBUG:
+-	case REPORT_TOUCH_HOLD:
+-		break;
+-	default:
+-		dev_dbg(&tcm->client->dev, "Ignoring report %#x\n", header->code);
+-		return IRQ_HANDLED;
+-	}
+-
+-	if (header->marker != 0xa5) {
++	if (!ret)
++		ret = tcm_process_report(tcm, buf);
++	if (ret)
+ 		dev_err_ratelimited(&tcm->client->dev,
+-				    "invalid report marker: %#x\n", header->marker);
+-		return IRQ_HANDLED;
+-	}
+-
+-	/* Length describes the payload after marker, code and the two-byte length. */
+-	len = get_unaligned_le16(buf + sizeof(*header));
+-
+-	if (len > sizeof(buf) - REPORT_PEAK_LEN) {
+-		dev_err_ratelimited(&tcm->client->dev, "report too long: %u\n", len);
+-		return IRQ_HANDLED;
+-	}
+-	dev_dbg(&tcm->client->dev, "report %#x len %u\n", header->code, len);
+-	print_hex_dump_bytes("report: ", DUMP_PREFIX_OFFSET, buf, len + REPORT_PEAK_LEN);
+-
+-	/* Check if this is a read response or an indication. For indications
+-	 * (user touched the screen) we just parse the report directly.
+-	 */
+-	if (completion_done(&tcm->response) && header->code == REPORT_TOUCH) {
+-		tcm_handle_touch_report(tcm, buf, len + REPORT_PEAK_LEN);
+-		return IRQ_HANDLED;
+-	}
+-
+-	tcm->buf_size = len + REPORT_PEAK_LEN;
+-	memcpy(tcm->buf, buf, len + REPORT_PEAK_LEN);
+-	complete(&tcm->response);
+-
++				    "failed to receive report: %d\n", ret);
+ 	return IRQ_HANDLED;
+ }
+ 
+-static int tcm_hw_init(struct tcm_data *tcm, u16 *max_x, u16 *max_y)
++static int tcm_hw_init(struct tcm_data *tcm)
+ {
++	struct tcm_app_info info = { 0 };
++	u8 config[256];
++	unsigned long deadline = jiffies + msecs_to_jiffies(3000);
+ 	int ret;
+-	struct tcm_identification id = { 0 };
+-	struct tcm_app_info app_info = { 0 };
+-
+-	/* The firmware sends an IDENTIFY report immediately which we treat like a response */
+-	ret = tcm_read_message(tcm, TCM_RUN_APPLICATION_FIRMWARE, &id, sizeof(id));
+-	if (ret) {
+-		dev_err(&tcm->client->dev, "failed to identify device: %d\n", ret);
+-		return ret;
+-	}
+-
+-	dev_dbg(&tcm->client->dev, "Synaptics TCM %s v%d mode %d\n",
+-		id.part_number, id.version, id.mode);
+-	if (id.mode != MODE_APPLICATION) {
+-		/* We don't support firmware updates or anything else */
+-		dev_err(&tcm->client->dev, "Device is not in application mode\n");
+-		//return -ENODEV;
+-	}
+ 
++	/* Reset already starts the OEM application. Only read runtime metadata;
++	 * never change report configuration or touch firmware.
++	 */
+ 	do {
+ 		msleep(20);
+-		ret = tcm_read_message(tcm, TCM_GET_APPLICATION_INFO, &app_info, sizeof(app_info));
+-		if (ret) {
+-			dev_err(&tcm->client->dev, "failed to get application info: %d\n", ret);
++		ret = tcm_command(tcm, TCM_GET_APPLICATION_INFO, NULL, 0,
++				  &info, sizeof(info), sizeof(info));
++		if (ret < 0)
+ 			return ret;
+-		}
+-	} while (app_info.status == APP_STATUS_BOOTING || app_info.status == APP_STATUS_UPDATING);
+-
+-	dev_dbg(&tcm->client->dev, "Application firmware v%d.%d (customer '%s') status %d\n",
+-		 app_info.version[0], app_info.version[1], app_info.customer_config_id, app_info.status);
+-
+-	*max_x = app_info.max_x;
+-	*max_y = app_info.max_y;
+-
++		if (get_unaligned_le16(&info.status) == APP_STATUS_OK)
++			break;
++		if (time_after_eq(jiffies, deadline))
++			return -ETIMEDOUT;
++	} while (get_unaligned_le16(&info.status) == APP_STATUS_BOOTING ||
++		 get_unaligned_le16(&info.status) == APP_STATUS_UPDATING);
++	if (get_unaligned_le16(&info.status) != APP_STATUS_OK)
++		return -ENODEV;
++	tcm->max_x = get_unaligned_le16(&info.max_x);
++	tcm->max_y = get_unaligned_le16(&info.max_y);
++	tcm->max_objects = get_unaligned_le16(info.max_objects);
++	if (!tcm->max_x || !tcm->max_y || !tcm->max_objects ||
++	    tcm->max_objects > TCM_MAX_OBJECTS)
++		return -EINVAL;
++	ret = tcm_command(tcm, TCM_GET_TOUCH_REPORT_CONFIG, NULL, 0,
++			  config, sizeof(config), REPORT_PEAK_LEN + 1);
++	if (ret < 0)
++		return ret;
++	ret = tcm_compile_layout(config + REPORT_PEAK_LEN,
++				 ret - REPORT_PEAK_LEN, &tcm->layout);
++	if (ret)
++		return dev_err_probe(&tcm->client->dev, ret, "unsupported touch report config\n");
++	dev_info(&tcm->client->dev, "runtime report config: %u objects, %u object bits, %u pressure bits\n",
++		 tcm->max_objects, tcm->layout.object_bits, tcm->layout.pressure_bits);
+ 	return 0;
+ }
+ 
+@@ -521,71 +438,23 @@ static int tcm_power_on(struct tcm_data *tcm)
+ 	return 0;
+ }
+ 
+-/* just results in a NOT_IMPLEMENTED error :( */
+-static int __maybe_unused tcm_set_report_config(struct tcm_data *tcm, struct tcm_report_config *config)
++/* Run before devm releases the input device, but leave IRQ responses alive
++ * for the input close command during unregister.
++ */
++static void tcm_stop_input(void *data)
+ {
+-	int ret;
+-	char buf[260];
+-	struct tcm_cmd *cmd = (struct tcm_cmd *)buf;
+-
+-	u8 *p = cmd->data;
+-	u8 *end = buf + sizeof(buf);
+-
+-	for (int entry = 0; entry < config->n_entries; entry++) {
+-		const struct tcm_report_config_entry *e = &config->entries[entry];
+-
+-		*p++ = e->foreach;
+-
+-		for (int i = 0; i < e->n_props; i++) {
+-			const struct tcm_report_config_prop *prop = &e->props[i];
+-
+-			if (p + 2 > end)
+-				return -EINVAL;
+-
+-			*p++ = prop->id;
+-			*p++ = prop->bits;
+-		}
+-	}
+-
+-	cmd->length = p - cmd->data;
+-
+-	dev_dbg(&tcm->client->dev, "default report config:\n");
+-	tcm_read_message(tcm, TCM_GET_TOUCH_REPORT_CONFIG, NULL, 0);
+-
+-	dev_dbg(&tcm->client->dev, "setting report config (size %u)\n", cmd->length);
+-	ret = tcm_send_cmd(tcm, cmd);
+-	if (ret)
+-		return ret;
+-
+-	dev_dbg(&tcm->client->dev, "NEW report config:\n");
+-	tcm_read_message(tcm, TCM_GET_TOUCH_REPORT_CONFIG, NULL, 0);
++	struct tcm_data *tcm = data;
+ 
+-	return 0;
++	smp_store_release(&tcm->input_ready, false);
++	synchronize_irq(tcm->client->irq);
+ }
+ 
+-static const struct tcm_report_config_entry __maybe_unused report_config_default_entry = {
+-	.foreach = TOUCH_FOREACH_ACTIVE_OBJECT,
+-	.n_props = 4,
+-	.props = (struct tcm_report_config_prop[]){
+-		{ .id = TOUCH_OBJECT_N_INDEX, .bits = 4 },
+-		{ .id = TOUCH_OBJECT_N_CLASSIFICATION, .bits = 4},
+-		{ .id = TOUCH_OBJECT_N_X_POSITION, .bits = 16 },
+-		{ .id = TOUCH_OBJECT_N_Y_POSITION, .bits = 16 },
+-		// { .id = TOUCH_OBJECT_N_X_WIDTH, .bits = 12 },
+-		// { .id = TOUCH_OBJECT_N_Y_WIDTH, .bits = 12 },
+-	},
+-};
+-
+ static int tcm_probe(struct i2c_client *client)
+ {
+ 	struct tcm_data *tcm;
+-	struct tcm_report_config __maybe_unused report_config;
+-	u16 max_x, max_y;
+ 	int ret;
+ 
+-	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C |
+-						I2C_FUNC_SMBUS_BYTE_DATA |
+-						I2C_FUNC_SMBUS_I2C_BLOCK))
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
+ 		return -ENODEV;
+ 
+ 	tcm = devm_kzalloc(&client->dev, sizeof(struct tcm_data), GFP_KERNEL);
+@@ -596,6 +465,8 @@ static int tcm_probe(struct i2c_client *client)
+ 	tcm->client = client;
+ 
+ 	init_completion(&tcm->response);
++	mutex_init(&tcm->command_lock);
++	spin_lock_init(&tcm->response_lock);
+ 
+ 	tcm->supplies[0].supply = "vdd";
+ 	tcm->supplies[1].supply = "vcc";
+@@ -605,13 +476,15 @@ static int tcm_probe(struct i2c_client *client)
+ 		return ret;
+ 
+ 	tcm->reset_gpio = devm_gpiod_get(&client->dev, "reset", GPIOD_OUT_HIGH);
++	if (IS_ERR(tcm->reset_gpio))
++		return PTR_ERR(tcm->reset_gpio);
+ 
+-	ret = devm_add_action_or_reset(&client->dev, tcm_power_off,
+-				       tcm);
++	ret = tcm_power_on(tcm);
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = tcm_power_on(tcm);
++	ret = devm_add_action_or_reset(&client->dev, tcm_power_off,
++				       tcm);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -622,20 +495,12 @@ static int tcm_probe(struct i2c_client *client)
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	ret = tcm_hw_init(tcm, &max_x, &max_y);
++	ret = tcm_hw_init(tcm);
+ 	if (ret) {
+ 		dev_err(&client->dev, "failed to initialize hardware\n");
+ 		return ret;
+ 	}
+ 
+-	// report_config.n_entries = 1;
+-	// report_config.entries = &report_config_default_entry;
+-	// ret = tcm_set_report_config(tcm, &report_config);
+-	// if (ret) {
+-	// 	dev_err(&client->dev, "failed to set report config\n");
+-	// 	return ret;
+-	// }
+-
+ 	tcm->input = devm_input_allocate_device(&client->dev);
+ 	if (!tcm->input)
+ 		return -ENOMEM;
+@@ -645,15 +510,21 @@ static int tcm_probe(struct i2c_client *client)
+ 	tcm->input->open = tcm_input_open;
+ 	tcm->input->close = tcm_input_close;
+ 
+-	input_set_abs_params(tcm->input, ABS_MT_POSITION_X, 0, max_x, 0, 0);
+-	input_set_abs_params(tcm->input, ABS_MT_POSITION_Y, 0, max_y, 0, 0);
+-	input_set_abs_params(tcm->input, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
+-	input_set_abs_params(tcm->input, ABS_MT_TOUCH_MINOR, 0, 255, 0, 0);
+-	input_set_abs_params(tcm->input, ABS_MT_PRESSURE, 0, 255, 0, 0);
++	input_set_abs_params(tcm->input, ABS_MT_POSITION_X, 0, tcm->max_x, 0, 0);
++	input_set_abs_params(tcm->input, ABS_MT_POSITION_Y, 0, tcm->max_y, 0, 0);
++	if (tcm->layout.width_bits) {
++		unsigned int limit = (1U << tcm->layout.width_bits) - 1;
++
++		input_set_abs_params(tcm->input, ABS_MT_TOUCH_MAJOR, 0, limit, 0, 0);
++		input_set_abs_params(tcm->input, ABS_MT_TOUCH_MINOR, 0, limit, 0, 0);
++	}
++	if (tcm->layout.pressure_bits)
++		input_set_abs_params(tcm->input, ABS_MT_PRESSURE, 0,
++				     (1U << tcm->layout.pressure_bits) - 1, 0, 0);
+ 
+ 	touchscreen_parse_properties(tcm->input, true, &tcm->prop);
+ 
+-	ret = input_mt_init_slots(tcm->input, 10, INPUT_MT_DIRECT | INPUT_MT_DROP_UNUSED);
++	ret = input_mt_init_slots(tcm->input, tcm->max_objects, INPUT_MT_DIRECT | INPUT_MT_DROP_UNUSED);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -663,6 +534,11 @@ static int tcm_probe(struct i2c_client *client)
+ 	if (ret)
+ 		return ret;
+ 
++	ret = devm_add_action_or_reset(&client->dev, tcm_stop_input, tcm);
++	if (ret)
++		return ret;
++	smp_store_release(&tcm->input_ready, true);
++
+ 	return 0;
+ }
+ 
+@@ -683,7 +559,6 @@ MODULE_DEVICE_TABLE(i2c, syna_i2c_ids);
+ 
+ static struct i2c_driver syna_i2c_driver = {
+ 	.probe	= tcm_probe,
+-	// .remove	   = syna_i2c_remove,
+ 	.id_table	= syna_i2c_ids,
+ 	.driver	= {
+ 	.name	= "synaptics-tcm",
+diff --git a/drivers/input/touchscreen/synaptics_tcm_report.h b/drivers/input/touchscreen/synaptics_tcm_report.h
+new file mode 100644
+index 000000000..11cb5fc8d
+--- /dev/null
++++ b/drivers/input/touchscreen/synaptics_tcm_report.h
+@@ -0,0 +1,223 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#ifndef _SYNAPTICS_TCM_REPORT_H
++#define _SYNAPTICS_TCM_REPORT_H
++
++/* Bounded, non-nested TCM report-config interpreter. Shared with host tests.
++ * Control opcodes have NO width operand. Scalar fields have one width byte.
++ * Bit ordering is LSB first. Unsupported layouts fail closed at probe.
++ */
++#ifdef __KERNEL__
++#include <linux/types.h>
++#include <linux/string.h>
++#include <linux/errno.h>
++#else
++#include <stdint.h>
++#include <string.h>
++#include <errno.h>
++typedef uint8_t u8;
++typedef uint16_t u16;
++#endif
++
++/* One complete packet per fixed-size read; continued transfers unsupported.
++ * Return 1 for a terminal reply, 2 for touch, 0 for ignorable status/report.
++ * IDLE/BUSY/CONTINUED_READ have no meaningful length/padding to validate.
++ */
++struct tcm_packet { unsigned int payload_size; u8 code; };
++static int tcm_decode_packet(const u8 *buf, unsigned int size,
++			     struct tcm_packet *out)
++{
++	struct tcm_packet p;
++
++	if (size < 4 || buf[0] != 0xa5)
++		return -EPROTO;
++	p.code = buf[1];
++	if (p.code == 0 || p.code == 2 || p.code == 3)
++		return 0;
++	if (p.code >= 4 && p.code < 12)
++		return -EPROTO;
++	p.payload_size = buf[2] | ((unsigned int)buf[3] << 8);
++	if (size < 5 || p.payload_size > size - 5)
++		return -EMSGSIZE;
++	if (buf[4 + p.payload_size] != 0x5a)
++		return -EPROTO;
++	*out = p;
++	return p.code == 0x11 ? 2 : p.code >= 0x10 ? 0 : 1;
++}
++
++#define TCM_MAX_OBJECTS 10
++#define TCM_MAX_FIELDS 64
++struct tcm_field { u8 code, bits; };
++struct tcm_segment {
++	unsigned int count;
++	struct tcm_field fields[TCM_MAX_FIELDS];
++};
++struct tcm_layout {
++	struct tcm_segment prefix, object, suffix;
++	unsigned int object_bits;
++	u8 loop, counted, pressure_bits, width_bits;
++};
++struct tcm_object { u16 x, y, z, wx, wy; u8 index, classification; };
++struct tcm_frame {
++	struct tcm_object objects[TCM_MAX_OBJECTS];
++	unsigned int count;
++};
++
++static int tcm_compile_layout(const u8 *cfg, unsigned int size,
++			     struct tcm_layout *layout)
++{
++	struct tcm_layout l = { 0 };
++	struct tcm_segment *s = &l.prefix;
++	unsigned int i, seen = 0, field_mask = 0, ended = 0;
++	int in_loop = 0;
++
++	if (!size || size > 252)
++		return -EINVAL;
++	for (i = 0; i < size; i++) {
++		unsigned int code = cfg[i], bits = 0;
++
++		if (ended) {
++			if (code)
++				return -EINVAL;
++			continue;
++		}
++		if (code == 0) {
++			if (in_loop || !l.loop)
++				return -EINVAL;
++			ended = 1;
++			continue;
++		}
++		if (code == 1 || code == 2) {
++			if (l.loop)
++				return -EOPNOTSUPP;
++			l.loop = code;
++			in_loop = 1;
++			s = &l.object;
++			continue;
++		}
++		if (code == 3) {
++			if (!in_loop)
++				return -EINVAL;
++			in_loop = 0;
++			s = &l.suffix;
++			continue;
++		}
++		if (code != 4) {
++			if (++i >= size || !(bits = cfg[i]))
++				return -EINVAL;
++		}
++		if (code >= 6 && code <= 12) {
++			if (!in_loop || bits > (code <= 7 ? 8 : 16) ||
++			    (field_mask & (1U << code)))
++				return -EINVAL;
++			field_mask |= 1U << code;
++			if (code == 10)
++				l.pressure_bits = bits;
++			if ((code == 11 || code == 12) && bits > l.width_bits)
++				l.width_bits = bits;
++		}
++		if (code == 24) {
++			if (s != &l.prefix || l.counted || bits > 8)
++				return -EINVAL;
++			l.counted = 1;
++		}
++		if (s->count >= TCM_MAX_FIELDS)
++			return -E2BIG;
++		s->fields[s->count++] = (struct tcm_field){code, bits};
++		if (in_loop)
++			l.object_bits += bits;
++		seen++;
++	}
++	/* index, classification and XY required; no nested or ambiguous loops. */
++	if (!ended || !seen || (field_mask & 0x3c0) != 0x3c0 ||
++	    l.object_bits < 8 ||
++	    (l.loop == 1 && !l.counted && l.suffix.count))
++		return -EOPNOTSUPP;
++	*layout = l;
++	return 0;
++}
++
++static int tcm_parse_segment(const struct tcm_segment *s, const u8 *payload,
++			     unsigned int total, unsigned int *offset,
++			     struct tcm_object *o, unsigned int *active)
++{
++	unsigned int i;
++
++	for (i = 0; i < s->count; i++) {
++		unsigned int code = s->fields[i].code;
++		unsigned int bits = s->fields[i].bits, value = 0, j;
++
++		if (code == 4)
++			bits = (8 - (*offset & 7)) & 7;
++		if (*offset > total || bits > total - *offset)
++			return -EMSGSIZE;
++		/* Unknown/gesture fields (including 48-bit info) are bounded skips. */
++		if ((code >= 6 && code <= 12) || code == 24) {
++			if (bits > 16)
++				return -EINVAL;
++			for (j = 0; j < bits; j++)
++				value |= ((payload[(*offset + j) / 8] >>
++					   ((*offset + j) & 7)) & 1U) << j;
++		}
++		*offset += bits;
++		switch (code) {
++		case 6: if (!o) return -EINVAL; o->index = value; break;
++		case 7: if (!o) return -EINVAL; o->classification = value; break;
++		case 8: if (!o) return -EINVAL; o->x = value; break;
++		case 9: if (!o) return -EINVAL; o->y = value; break;
++		case 10: if (!o) return -EINVAL; o->z = value; break;
++		case 11: if (!o) return -EINVAL; o->wx = value; break;
++		case 12: if (!o) return -EINVAL; o->wy = value; break;
++		case 24: *active = value; break;
++		}
++	}
++	return 0;
++}
++
++static int tcm_parse_frame(const struct tcm_layout *l, const u8 *payload,
++			   unsigned int size, unsigned int max_objects,
++			   struct tcm_frame *out)
++{
++	struct tcm_frame f = { 0 };
++	unsigned int offset = 0, active = 0, n, total, seen = 0;
++	int ret;
++
++	if (size > 252 || !max_objects || max_objects > TCM_MAX_OBJECTS)
++		return -EINVAL;
++	total = size * 8;
++	ret = tcm_parse_segment(&l->prefix, payload, total, &offset, NULL, &active);
++	if (ret)
++		return ret;
++	n = l->loop == 2 ? max_objects : active;
++	if (n > max_objects)
++		return -EINVAL;
++	for (;;) {
++		struct tcm_object *o;
++
++		if (l->loop == 1 && !l->counted) {
++			/* Only sub-byte end padding may follow the final complete object. */
++			if (total - offset < 8)
++				break;
++		} else if (f.count == n) {
++			break;
++		}
++		if (f.count == max_objects)
++			return -EOVERFLOW;
++		o = &f.objects[f.count];
++		ret = tcm_parse_segment(&l->object, payload, total, &offset, o, &active);
++		if (ret)
++			return ret;
++		if (o->index >= max_objects || (seen & (1U << o->index)))
++			return -EINVAL;
++		seen |= 1U << o->index;
++		f.count++;
++	}
++	ret = tcm_parse_segment(&l->suffix, payload, total, &offset, NULL, &active);
++	if (ret)
++		return ret;
++	if (total - offset >= 8)
++		return -EMSGSIZE;
++	/* Commit only a fully validated frame: no partial input slot changes. */
++	*out = f;
++	return 0;
++}
++#endif
+-- 
+2.47.3
+
