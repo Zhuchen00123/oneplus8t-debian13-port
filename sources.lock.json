@@ -148,8 +148,13 @@
   "charge_control_research": {
     "checked_at": "2026-10-04",
     "documentation": "docs/charge-control-research-20261004.md",
-    "device_register_writes_performed": false,
+    "device_register_writes_performed": true,
     "charge_limit_enforced": false,
+    "bounded_charge_test_passed": true,
+    "bounded_charge_test_seconds": 30,
+    "bounded_charge_test_usb_continuity": true,
+    "bounded_charge_test_restore_verified": true,
+    "full_80_percent_policy_validated": false,
     "references": [
       {
         "url": "https://github.com/LineageOS/android_device_oneplus_sm8250-common.git",
@@ -192,7 +197,7 @@
       "base_kernel_commit": "e3f3f54911c532ecb1359aafb5f394c63daa0bbd",
       "candidate_kernel_commit": "ab77fc2f590584426315a10d47e4390f960f9f0a",
       "checked_at": "2026-10-04",
-      "status": "isolated charge test candidate; not automatically applied to production r2 and not deployed",
+      "status": "isolated charge test candidate; bounded phone test passed; not automatically applied to production r2",
       "host_asan_ubsan_cases": 65813,
       "r2_module_w1_build_passed": true,
       "fixed_source_full_build_passed": true,
@@ -203,6 +208,10 @@
       "candidate_artifact_group": "artifacts/server-charge-candidate-20261004/ready/",
       "candidate_ram_group": "artifacts/boot-charge-candidate-20261004/rescue-final/",
       "phone_hardware_validated": false,
+      "bounded_charge_test_passed": true,
+      "bounded_charge_test_seconds": 30,
+      "bounded_charge_test_usb_continuity": true,
+      "bounded_charge_test_restore_verified": true,
       "charge_limit_implemented": false,
       "documentation": "docs/charge-control-candidate-20261004.md"
     }
@@ -233,6 +242,7 @@
         }
       ],
       "hardware_validated": false,
+      "bounded_charge_test_passed": true,
       "charge_limit_implemented": false
     },
     "r2": {

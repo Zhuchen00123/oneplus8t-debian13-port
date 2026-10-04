@@ -5,7 +5,7 @@
 ## 已完成
 
 - 新增只读 `kebab-health` 与一分钟 systemd timer，监测电量、电池温度、CPU温度、根分区空间及可用内存。状态在 RAM 的 `/run/kebab-health/status.json`，只在告警集合变化时输出完整状态，避免每分钟写入详细电池日志。
-- 配置记录目标80%，实际输出 `charge_limit_enforced=false`、`charger_writes_performed=false`。监控没有硬件操作路径，即使今后出现阈值接口也不自动写入。
+- 配置记录目标80%，实际输出仍为 `charge_limit_enforced=false`。基础监控只读，不执行硬件操作；本阶段另用隔离候选内核完成了一次用户确认的有界停充测试，不能把该测试当作常驻限充策略。
 - 温度/电量/空间阈值仅用于提示：电池45°C、CPU85°C、低电量15%、根分区空闲512MiB、可用内存256MiB。它们不是厂家充电温度限制，也不代替硬件保护。本轮不自动断电或关机。
 - 屏蔽 sleep/suspend/hibernate/hybrid-sleep 四个目标，防止 Linux 软件休眠。硬件强制关机流程不受它们控制。
 - 时区设为 Asia/Shanghai；NTP仍同步，标准 timesync clock 文件存在，RTC仍未修复。
@@ -14,19 +14,23 @@
 - 默认仍 multi-user，LightDM仍禁用。USB严格SSH、校园Wi-Fi配置保留。没有刷分区、写NV/触摸固件、改充电电压/电流、改内核热保护阈值。
 - 以上是手机运行后的配置，旧封存r2镜像组未重打包，不能声称它们已经包含这些新服务。
 
-## 80%限充仍未实现
+## 80%限充仍未实现；停充位已完成有界实机验证
 
 实机只暴露 `bq27541-0` 电量计和 TCPM USB-PD电源，没有 start/end charge threshold、charge_behaviour、charging_enabled 或 input_suspend 等充电控制接口。电量计属性只读。
 
-实际运行内核源码 `drivers/regulator/mp2762-otg-regulator.c` 明确只提供 MP2762A OTG升压，充电本身由启动固件/硬件处理；没有注册充电 power_supply。设备树的 charger@5c 也是该 OTG regulator。
+生产 r2 运行内核源码 `drivers/regulator/mp2762-otg-regulator.c` 明确只提供 MP2762A OTG升压，充电本身由启动固件/硬件处理；没有注册充电 power_supply。设备树的 charger@5c 也是该 OTG regulator。为做有界验证，隔离候选内核在同一驱动中增加了受门控的 `mp2762-charge-test`，默认启动不启用。
 
-`drivers/usb/typec/tcpm/tcpm.c` 的可写 online/voltage_now/current_now 用于 PD/PPS/AVS协商，不能把它们当作电池停充开关。没有尝试往这些节点写0，也没有直接I2C/PMIC寄存器操作。
+`drivers/usb/typec/tcpm/tcpm.c` 的可写 online/voltage_now/current_now 用于 PD/PPS/AVS协商，不能把它们当作电池停充开关。生产 r2 没有往这些节点写0，也没有直接 I2C/PMIC 寄存器操作；隔离候选测试只通过同一驱动写入并回读 MP2762A REG08 的 CHG_EN 位。
 
 本轮采样电池报告100%，约35.2–35.6°C；状态在Charging与Not charging之间变化。后者不是80%限充已生效的证据。读取值未经过完整充放电校准验证，不能由一轮寄存器读数下结论电池寿命或持续充电安全。
 
-真实80%停充需要另行适配并实测充电管理驱动，或使用可控的外置USB供电。这个缺口没有被监控脚本替代；常驻前仍需充电/温度及长期负载验收。
+真实80%停充需要在候选停充通路上增加电量滞回并实测，或使用可控的外置USB供电。这个缺口没有被监控脚本或本次30秒测试替代；常驻前仍需跨阈值、插拔、重启、温度及长期负载验收。
 
-后续调查已找到 Android 社区接口和 MP2762A 停充位，具体固定来源、看门狗限制与80%/75%候选路线见 [充电控制调查](charge-control-research-20261004.md)。仍未写充电寄存器，不能把技术可行性当作限充验收。
+后续调查已找到 Android 社区接口和 MP2762A 停充位；具体固定来源、看门狗限制、候选实现及实机证据见 [充电控制调查](charge-control-research-20261004.md) 与 [驱动候选](charge-control-candidate-20261004.md)。一次有界候选测试确实写入并恢复了 REG08，但不能把它当作80%限充验收。
+
+### 30秒实机停充测试
+
+2026-10-04 在 `7.2.0-kebab-debian13-r2-charge-candidate+` 上以一次性 `allow_charge_test=1` 启动参数运行：`REG08=0x16` 清除 CHG_EN 后回读 `0x06`，`owned=1`；电池状态为 `Not charging`、电流读数为 `0`，USB 在线和 `usb0` 载波保持。约30秒后驱动自动恢复为 `REG08=0x16`、`owned=0`，电池恢复 `Charging`，USB/SSH 连续。随后恢复默认只读 boot 镜像并重启；重启后 `allow_test=0`、`charge_behaviour` 权限为 `444`、健康 timer active、无 failed unit。证据仅存 `local/charge-candidate-20261004/`，不上传。
 
 ## 验证与恢复
 
