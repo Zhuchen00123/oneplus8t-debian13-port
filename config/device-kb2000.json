@@ -16,7 +16,7 @@
   "root_available": false,
   "root_available_context": "Last stock Android check had no su; current persistent Linux has authorized debian sudo, recorded below",
   "screen_forensics_completed": true,
-  "current_phase": "persistent_Debian13_r2_builtin_display_touch_verified; intermittent_ghost_touch_cause_unresolved; WiFi_deferred",
+  "current_phase": "persistent_Debian13_r2_builtin_display_touch_verified; gdut_wifi_association_DHCP_verified_portal_pending",
   "persistent_linux": {
     "kernelrelease": "7.2.0-kebab-debian13-r2+",
     "candidate": "artifacts/server-r2-20261004/ready/",
@@ -44,7 +44,9 @@
     "builtin_touch_verified": true,
     "two_simultaneous_contacts_verified": true,
     "legacy_touch_service_disabled": true,
-    "intermittent_ghost_touch_root_cause_resolved": false
+    "intermittent_ghost_touch_root_cause_resolved": false,
+    "wifi_association_and_dhcp_tested": true,
+    "wifi_record": "docs/gdut-wifi-20261004.md"
   },
   "temporary_magisk_root_verified": true,
   "original_partition_backup": "verified_requested_26_partitions",
