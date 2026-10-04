@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "model": "KB2000",
+  "boot_partition_bytes": 100663296,
+  "header_version": 2,
+  "pagesize": 4096,
+  "base": "0x00000000",
+  "kernel_offset": "0x00008000",
+  "ramdisk_offset": "0x01000000",
+  "second_offset": "0x00000000",
+  "tags_offset": "0x00000100",
+  "dtb_offset": "0x01f00000",
+  "legacy_header_os_version": "12.0.0",
+  "legacy_header_os_patch_level": "2024-08",
+  "legacy_header_os_field_note": "Preserve the observed vendor encoding; this is not the Debian version",
+  "rescue_cmdline": "console=tty0 loglevel=7 ignore_loglevel panic=15 rdinit=/init",
+  "rescue_rootfs": "RAM initramfs only; no phone filesystem mounted",
+  "usb_network": {
+    "function": "rndis",
+    "device_ipv4": "192.168.8.1/24",
+    "host_ipv4": "192.168.8.2/24"
+  },
+  "source": "Sanitized technical template; remeasure and verify your own local stock boot",
+  "stock_boot_sha256": "REPLACE_WITH_VERIFIED_LOCAL_STOCK_BOOT_SHA256"
+}

@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-03",
+  "target": {
+    "device": "OnePlus 8T KB2000",
+    "distribution": "Debian 13 arm64",
+    "kernel_preference": "newest viable community-supported; track mainline"
+  },
+  "repositories": [
+    {
+      "id": "linux-sm8250",
+      "url": "https://gitlab.postmarketos.org/soc/qualcomm-sm8250/linux.git",
+      "ref": "sm8250-7.2.0",
+      "commit": "71f4068cb254730bcf334cde9bdd6ca183e4fcd0",
+      "path": "sources/linux",
+      "checkout_on_windows": false,
+      "role": "build baseline; close-to-mainline community fork; newest published sm8250 tag observed"
+    },
+    {
+      "id": "kebab-bringup",
+      "url": "https://github.com/jfbobier/Oneplus-8T-kebab-pmos-bringup.git",
+      "ref": "main",
+      "commit": "2e5e065da8ea8d242ecc34bfe064b88257797aa9",
+      "path": "sources/bringup",
+      "role": "21 kernel patches, consolidated DTS, config and userspace reference; tested by author on KB2003"
+    },
+    {
+      "id": "linux-upstream-reference",
+      "url": "https://github.com/torvalds/linux.git",
+      "ref": "master",
+      "commit": "e767a4ea70a3992c37ed604157d32f0dfbf9b1e3",
+      "release_candidate_ref": "v7.3-rc5",
+      "release_candidate_commit": "72d3fcf802c45d00b300f25b848a93c3a2bd7c7e",
+      "role": "comparison reference only; no kebab DTS in qcom directory at inspected master commit"
+    },
+    {
+      "id": "armbian-reference",
+      "url": "https://github.com/armbian/build.git",
+      "ref": "main",
+      "commit": "b3b1f3e5134f807342d452956b2c7b8afdfff34f",
+      "role": "Debian trixie integration reference; SM8250 current 6.18 and edge 6.19 observed"
+    },
+    {
+      "id": "oneplus-vendor-kernel-reference",
+      "url": "https://github.com/OnePlusOSS/android_kernel_oneplus_sm8250.git",
+      "ref": "oneplus/sm8250_u_14.0.0_op8t",
+      "commit": "846e71f228ad605c75b53064c4c165a1361a0bfe",
+      "role": "Android 14 vendor kernel reference; not mainline"
+    },
+    {
+      "id": "oneplus-vendor-dt-reference",
+      "url": "https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8250.git",
+      "ref": "oneplus/sm8250_u_14.0.0_op8t",
+      "commit": "0a301570ef70f6f9bfe1840451c9d41f5ddce6b8",
+      "role": "vendor display/device tree comparison; panel DT naming is not proof of actual screen"
+    }
+  ],
+  "source_archive": {
+    "url": "https://gitlab.postmarketos.org/soc/qualcomm-sm8250/linux/-/archive/sm8250-7.2.0/linux-sm8250-7.2.0.tar.gz",
+    "sha512_from_bringup_apkbuild": "26d48ebd04c43e993bd00f9c055d40daf87b4919332c974e3c0db236135b522415e3dcf4b512e4028cc42da63fe4639991c3870bcb977967846db590a0b950b7",
+    "note": "recorded only; archive itself not downloaded or verified"
+  },
+  "local_kernel_patches": [
+    {
+      "file": "patches/local/0001-input-synaptics-tcm-fix-report-framing.patch",
+      "sha256": "1aa089192dd71f2b98249d72c6d07a3f08110d90d24326fc94cd5f922d9dbd7d",
+      "base_kernel_commit": "f6ac9e9c86d0c92ef6db1c4f5a4c3ccdc77d1d5a",
+      "kernel_commit": "65dad81b2b498007e4972c45f94644f2f5d430f9",
+      "input_driver": "drivers/input/touchscreen/synaptics_tcm_oncell.c",
+      "input_driver_sha256": "58851b8ee7ee0ef34686733efe02839e7785de33f06b0cce2f9ab80eb4377b32",
+      "role": "TCM full header accounting, malformed frame bounds and diagnostic rate limiting; no firmware or format changes",
+      "hardware_validated": false
+    }
+  ],
+  "candidate_kernel_patches": [
+    {
+      "file": "patches/local/0002-input-synaptics-tcm-runtime-layout-candidate.patch",
+      "sha256": "e3c5368e8a073c0247c4589d2d1671a376be2b0593fbe03c2a33fc348ac67f86",
+      "base_kernel_commit": "65dad81b2b498007e4972c45f94644f2f5d430f9",
+      "checked_at": "2026-10-04",
+      "status": "module takeover hardware verified; builtin candidate needs matching module and initramfs revalidation",
+      "host_sanitizers_passed": true,
+      "temporary_module_probe_open_close_passed": true,
+      "physical_touch_validated": true,
+      "documentation": "docs/patches.md"
+    }
+  ],
+  "manual_kernel_patches": [
+    {
+      "file": "patches/local/0003-drm-panel-amb655x-dsc-slice-per-pkt.patch",
+      "sha256": "59ed5109e405f0cff330ce8437b8de0416120f0886081c862485137f8eecc19a",
+      "automatically_applied": false,
+      "documentation": "docs/patches.md"
+    },
+    {
+      "file": "patches/local/0004-drm-panel-amb655x-drive-reset-gpio.patch",
+      "sha256": "824bb7c0be8575a720f4c5d8228f866bf07a2761a8b847df1521c3585b5a221f",
+      "automatically_applied": false,
+      "documentation": "docs/patches.md"
+    }
+  ],
+  "privacy": "Text recipes only; no images, firmware, identity, credentials, raw evidence or original Git history"
+}
