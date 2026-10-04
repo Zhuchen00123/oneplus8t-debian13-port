@@ -12,6 +12,9 @@ OnePlus 8T 中国版 KB2000（kebab / SM8250 / Adreno 650）的社区主线 Linu
 - [已验证状态和限制](docs/status.md)
 - [脱敏与发布范围](docs/privacy.md)
 - [来源和许可证说明](NOTICE.md)
+- [本分支：全屏只读状态面板与按需XFCE](docs/status-panel.md)
+
+`codex/status-panel-20261004`分支增加本机状态面板及显示切换入口，保留XFCE维护桌面，不合并到main。真实显示、切页和桌面往返已通过；长期开屏温升与联合重启未验收。安装入口只适用于已满足专题页前置条件的Linux运行环境，不提供完整充电内核组，也不自动改充电、网络或分区。
 
 ## 基线
 

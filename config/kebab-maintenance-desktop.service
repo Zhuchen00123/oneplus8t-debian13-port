@@ -1,0 +1,10 @@
+[Unit]
+Description=Kebab on-demand XFCE maintenance desktop (20 minute bound)
+After=systemd-user-sessions.service kebab-powerkey-screen.service
+Conflicts=lightdm.service kebab-status-panel.service kebab-xfce-test.service
+
+[Service]
+ExecStart=/usr/sbin/lightdm --config=/etc/kebab/maintenance-lightdm.conf
+RuntimeMaxSec=20min
+TimeoutStopSec=15
+Restart=no

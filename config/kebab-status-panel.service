@@ -1,0 +1,15 @@
+[Unit]
+Description=Kebab local read-only full-screen status panel
+After=systemd-user-sessions.service kebab-powerkey-screen.service
+Wants=kebab-powerkey-screen.service
+Conflicts=lightdm.service kebab-maintenance-desktop.service kebab-xfce-test.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+ExecStart=/usr/sbin/lightdm --config=/etc/kebab/panel-lightdm.conf
+Restart=no
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

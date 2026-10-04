@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Kebab Status Panel
+Comment=Local read-only server status
+Exec=/usr/local/libexec/kebab-panel-session
+Type=Application
+DesktopNames=KebabPanel
