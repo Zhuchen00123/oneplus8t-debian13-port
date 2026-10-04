@@ -16,7 +16,7 @@
   "root_available": false,
   "root_available_context": "Last stock Android check had no su; current persistent Linux has authorized debian sudo, recorded below",
   "screen_forensics_completed": true,
-  "current_phase": "persistent_Debian13_r2_builtin_display_touch_verified; gdut_wifi_association_DHCP_verified_portal_pending",
+  "current_phase": "persistent_Debian13_r2_builtin_display_touch_verified; gdut_wifi_internet_DNS_NTP_verified; Minecraft_Java_direct_IPv6_under_test",
   "persistent_linux": {
     "kernelrelease": "7.2.0-kebab-debian13-r2+",
     "candidate": "artifacts/server-r2-20261004/ready/",
@@ -36,7 +36,7 @@
     "short_power_key_policy_loaded": "ignore",
     "rtc_date_valid": false,
     "systemd_saved_clock_epoch_reboot_verified": true,
-    "wifi_authentication_tested": false,
+    "wifi_authentication_tested": true,
     "sustained_load_24h_tested": false,
     "touch_input_events_tested": true,
     "startup_dsi_clock_warnings": 2,
@@ -46,7 +46,9 @@
     "legacy_touch_service_disabled": true,
     "intermittent_ghost_touch_root_cause_resolved": false,
     "wifi_association_and_dhcp_tested": true,
-    "wifi_record": "docs/gdut-wifi-20261004.md"
+    "wifi_record": "docs/gdut-wifi-20261004.md",
+    "wifi_https_internet_verified": true,
+    "ntp_network_synchronized": true
   },
   "temporary_magisk_root_verified": true,
   "original_partition_backup": "verified_requested_26_partitions",
