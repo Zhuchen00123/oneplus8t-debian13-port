@@ -31,6 +31,8 @@
 
 - 2026-10-04 触摸 r2 候选：只读查询确认 KB2000 TCM 的 7 字节手势前缀 + 7 字节对象，14/21 字节合法；修正运行配置解析、命令 framing 和启停零 ACK 独占轮询。共享解析头 ASan/UBSan 固定用例及 120,000 个随机/变异用例通过，匹配临时模块 W=1 无警告，三轮短测六次启停 ACK 成功。较早三轮 60 秒采集均零事件，物理操作未确认，不能宣称触摸可用。测试模块卸载、builtin 恢复；内核 taint O/E 仍在，未刷分区/触摸固件/持久配置/NV。候选仅导出补丁并记录独立 candidate_kernel_patches，生产 r1 仓库和自动应用清单不变。先协调用户实际单指/双指/抬起验证，通过后再构建部署。入口 [触摸候选](<docs/touch-protocol-r2-20261004.md>)。
 
+- 2026-10-04 XFCE 桌面：持久 Debian r1 离线安装 161 个包（`--no-download --no-remove --no-install-recommends`，0 升级/0 删除，`dpkg --audit` 干净），LightDM 显式禁用，默认仍 `multi-user.target`，SSH 与根分区不受影响。以 `systemd-run --unit=kebab-xfce-test --property=RuntimeMaxSec=20min` 有界运行 LightDM：Xorg modesetting + glamor 在 Adreno 650（日志 `glamor X acceleration enabled on FD650`）上工作，`DSI-1 1080x2400@120Hz` 为唯一模式，XFCE 4.20 组件齐全，整机内存约 750 MB／单元峰值 171.6 MB，`XGetImage` 只读抓到 1080x2400 桌面帧（PNG 156,745 字节，SHA-256 `cc82b3ef…b1255fe`）。**用户实机确认内屏仍然黑屏**：启动期 `DSI PLL(0) lock failed status=0x00000000`，DCS 读（0x52）返回 `-110`，强制 `xrandr` 关开输出后 DCS 写 0x51/0x53/0x9f 也超时并触发 DPU `frame done timeout`；面板上电写序列本身无报错，问题定位在 DSI/面板链路而非 XFCE 或安装。因此只可声明“渲染/合成/回读通过”，不得声明屏幕点亮；触摸真实操作本轮未取得用户确认，仍未验收。本轮无分区刷写、无触摸固件/NV/持久配置改动。入口 [桌面安装与显示验证](<docs/xfce-desktop-20261004.md>)。
+
 ## 来源与移植方法
 
 - 优先读取 Linux 官方源码、SM8250 社区源码、OnePlusOSS 和维护者的一手记录。

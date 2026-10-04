@@ -6,6 +6,8 @@ OnePlus 8T 中国版的主线 Linux 移植与备份管理仓库。目标为 Debi
 
 触摸优先修复：已查明本机 TCM 是 7 字节前缀 + 7 字节对象，旧驱动布局不匹配；r2 候选通过 ASan/UBSan、匹配模块编译及三轮报告启停短测。长采集零事件，真实单指/双指/抬起尚未验收；原驱动已恢复，未部署候选或刷固件。[触摸协议记录](<docs/touch-protocol-r2-20261004.md>)。
 
+最小 XFCE 桌面已装：离线 161 包、不升级不删除、LightDM 保持禁用，默认仍是 `multi-user.target`。有界会话实测 Xorg modesetting + glamor（Adreno 650）在 `1080x2400@120Hz` 工作，XFCE 组件正常、整机约 750 MB 内存，并用 `XGetImage` 抓到 156,745 字节桌面帧（SHA-256 `cc82b3ef…b1255fe`）；**但用户确认内屏仍是黑的**，日志显示 DSI PLL probe 锁定失败、DCS 读超时 `-110`、强制输出重启后写入也超时，物理屏幕输出未验收。[桌面安装与显示验证](<docs/xfce-desktop-20261004.md>)。
+
 历史 RAM 阶段：原厂 DTBO 下首次启动失败，单独授权的社区空 DTBO 对照成功；先恢复原厂 DTBO、再确认 ColorOS 正常启动。旧封存 boot/rootfs 保持原样，r1 已成组重构建并部署。[RAM 成功与回退](docs/ram-boot-success-20261003.md)、[服务器集成历史](docs/debian-server-port.md)
 
 2026-10-03 已确认设备是 KB2000 / ColorOS 14.0.0.602，Bootloader 已解锁。临时 root 实测屏幕 Samsung AMB655X、DCS ID `A5 05 01`，有效序列号按厂商规则解码日期 2020-10-08；**证据支持原厂规格的三星面板，但不能证明从未换屏或完成真伪认证**。[屏幕实测](docs/panel-evidence.md)
