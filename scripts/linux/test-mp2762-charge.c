@@ -137,7 +137,36 @@ int main(void)
 	assert(mp2762_charge_restore(&io, &test) == 0 && bus.calls == 0);
 	assert(mp2762_charge_inhibit(&io, &test) == -EALREADY);
 	assert(bus.writes == 0);
-	puts("PASS: exhaustive byte configurations, input status, I2C failures, uncertain writes, restoration retries and conflicts");
+	/* Renewal validates the actual shared core without a single register write. */
+	for (ctrl = 0; ctrl < 256; ctrl++) {
+		for (wdt = 0; wdt < 256; wdt++) {
+			bus = initial(); bus.ctrl = ctrl; bus.wdt = wdt;
+			test = (struct mp2762_charge_test){.owned = true, .saved_enable = 0x10};
+			ret = mp2762_charge_validate_lease(&io, &test);
+			assert((ret == 0) == (!(ctrl & 0xf8) && (ctrl & 2) && !(wdt & 0x30)));
+			assert(bus.writes == 0 && test.owned);
+			cases++;
+		}
+	}
+	for (status = 0; status < 256; status++) {
+		bus = initial(); bus.ctrl = 0x06; bus.status = status;
+		test = (struct mp2762_charge_test){.owned = true, .saved_enable = 0x10};
+		ret = mp2762_charge_validate_lease(&io, &test);
+		assert((ret == 0) == ((status & 2) && !(status & 0xc0)));
+		assert(bus.writes == 0);
+		cases++;
+	}
+	for (fault = 0; fault < 3; fault++) {
+		bus = initial(); bus.ctrl = 0x06; bus.fail_call = fault;
+		test = (struct mp2762_charge_test){.owned = true, .saved_enable = 0x10};
+		assert(mp2762_charge_validate_lease(&io, &test) == -EIO);
+		assert(bus.writes == 0);
+		cases++;
+	}
+	bus = initial(); test = (struct mp2762_charge_test){0};
+	assert(mp2762_charge_validate_lease(&io, &test) == -EPERM);
+	assert(bus.calls == 0 && bus.writes == 0);
+	puts("PASS: exhaustive stop/renew configurations, input status, I2C failures, uncertain writes, restoration retries and conflicts");
 	printf("Cases: %u\n", cases);
 	return 0;
 }

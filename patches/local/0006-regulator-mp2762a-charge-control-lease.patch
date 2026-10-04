@@ -1,0 +1,237 @@
+From 7555af9e1756d51838f49c6348cb3b0f17365858 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sun, 4 Oct 2026 18:05:13 +0800
+Subject: [PATCH] regulator: mp2762: add opt-in renewable charge inhibit lease
+
+---
+ drivers/regulator/mp2762-charge-test.h   |  30 +++++++
+ drivers/regulator/mp2762-otg-regulator.c | 102 +++++++++++++++++++++--
+ 2 files changed, 124 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/regulator/mp2762-charge-test.h b/drivers/regulator/mp2762-charge-test.h
+index fd53e36b3..dfce22e2b 100644
+--- a/drivers/regulator/mp2762-charge-test.h
++++ b/drivers/regulator/mp2762-charge-test.h
+@@ -140,4 +140,34 @@ static inline int mp2762_charge_auto(const struct mp2762_charge_io *io,
+ 		return ret;
+ 	return ctrl & MP2762_CHARGE_ENABLE ? 0 : -EOPNOTSUPP;
+ }
++
++/* Shared with sanitizer tests; no writes on renewal, including failures. */
++static inline int mp2762_charge_validate_lease(const struct mp2762_charge_io *io,
++					     const struct mp2762_charge_test *test)
++{
++	int ctrl, wdt, status, ret;
++
++	if (!test->owned)
++		return -EPERM;
++	ctrl = io->read(io->context, MP2762_CHARGE_CTRL);
++	if (ctrl < 0)
++		return ctrl;
++	ret = mp2762_charge_control_safe(ctrl);
++	if (ret)
++		return ret;
++	if (ctrl & MP2762_CHARGE_ENABLE)
++		return -EIO;
++	wdt = io->read(io->context, MP2762_CHARGE_WDT);
++	if (wdt < 0)
++		return wdt;
++	if (wdt > 0xff || (wdt & MP2762_CHARGE_WDT_MASK))
++		return -EOPNOTSUPP;
++	status = io->read(io->context, MP2762_CHARGE_STATUS);
++	if (status < 0)
++		return status;
++	if (status > 0xff || !(status & MP2762_CHARGE_POWER_GOOD) ||
++	    (status & MP2762_CHARGE_UV))
++		return -ENODEV;
++	return 0;
++}
+ #endif
+diff --git a/drivers/regulator/mp2762-otg-regulator.c b/drivers/regulator/mp2762-otg-regulator.c
+index ba7152cc6..071c0f7ef 100644
+--- a/drivers/regulator/mp2762-otg-regulator.c
++++ b/drivers/regulator/mp2762-otg-regulator.c
+@@ -53,6 +53,10 @@ static bool allow_charge_test;
+ module_param(allow_charge_test, bool, 0400);
+ MODULE_PARM_DESC(allow_charge_test, "Allow bounded 30s charge inhibit test (default false)");
+ #define MP2762_CHARGE_TEST_SECONDS 30
++#define MP2762_CHARGE_LEASE_SECONDS 90
++static bool allow_charge_control;
++module_param(allow_charge_control, bool, 0400);
++MODULE_PARM_DESC(allow_charge_control, "Allow 90s renewable charge-control lease (default false)");
+ 
+ struct mp2762_otg {
+ 	struct i2c_client *client;
+@@ -64,6 +68,8 @@ struct mp2762_otg {
+ 	struct mp2762_charge_io charge_io;
+ 	struct mp2762_charge_test charge_test;
+ 	struct delayed_work restore_work;
++	unsigned long restore_deadline;
++	bool recovering;
+ 	bool stopping;
+ 	bool ready;
+ 	int charge_error;
+@@ -290,7 +296,7 @@ static int mp2762_charge_write(void *context, unsigned int reg,
+ 	int ret;
+ 
+ 	/* Defense in depth: the charge path has no general register writer. */
+-	if (!allow_charge_test || reg != MP2762_CHARGE_CTRL ||
++	if (!(allow_charge_test || allow_charge_control) || reg != MP2762_CHARGE_CTRL ||
+ 	    value > 0xff || (value & MP2762_CHARGE_COMMANDS))
+ 		return -EPERM;
+ 	ret = i2c_smbus_write_byte_data(chg->client, reg, value);
+@@ -304,9 +310,22 @@ static void mp2762_charge_restore_work(struct work_struct *work)
+ 	struct mp2762_otg *chg = container_of(to_delayed_work(work),
+ 					   struct mp2762_otg, restore_work);
+ 	int ret;
++	unsigned long now;
+ 
+ 	mutex_lock(&chg->lock);
++	now = jiffies;
++	/* A worker queued before renewal must not restore a renewed lease. */
++	if (chg->charge_test.owned && !chg->recovering &&
++	    time_before(now, chg->restore_deadline)) {
++		mod_delayed_work(system_wq, &chg->restore_work,
++				 chg->restore_deadline - now);
++		mutex_unlock(&chg->lock);
++		return;
++	}
++	chg->recovering = true;
+ 	ret = mp2762_charge_restore(&chg->charge_io, &chg->charge_test);
++	if (!ret)
++		chg->recovering = false;
+ 	chg->charge_error = ret;
+ 	if (ret < 0 && !chg->stopping) {
+ 		dev_err_ratelimited(&chg->client->dev,
+@@ -350,7 +369,7 @@ static int mp2762_charge_set_property(struct power_supply *psy,
+ 	bool was_owned;
+ 	int ret;
+ 
+-	if (!allow_charge_test)
++	if (!(allow_charge_test || allow_charge_control))
+ 		return -EPERM;
+ 	if (property != POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR)
+ 		return -EINVAL;
+@@ -368,14 +387,25 @@ static int mp2762_charge_set_property(struct power_supply *psy,
+ 	case POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE:
+ 		ret = mp2762_charge_inhibit(&chg->charge_io, &chg->charge_test);
+ 		/* Arm even for ambiguous writes. Repeat requests never extend it. */
+-		if (!was_owned && chg->charge_test.owned)
++		if (!was_owned && chg->charge_test.owned) {
++			unsigned long duration = allow_charge_control ?
++				MP2762_CHARGE_LEASE_SECONDS * HZ :
++				MP2762_CHARGE_TEST_SECONDS * HZ;
++
++			chg->recovering = ret != 0;
++			chg->restore_deadline = jiffies + duration;
+ 			mod_delayed_work(system_wq, &chg->restore_work,
+-				ret ? 0 : MP2762_CHARGE_TEST_SECONDS * HZ);
++					 ret ? 0 : duration);
++		}
+ 		break;
+ 	case POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO:
+ 		ret = mp2762_charge_auto(&chg->charge_io, &chg->charge_test);
+-		if (ret && chg->charge_test.owned)
++		if (ret && chg->charge_test.owned) {
++			chg->recovering = true;
+ 			mod_delayed_work(system_wq, &chg->restore_work, 0);
++		} else if (!ret) {
++			chg->recovering = false;
++		}
+ 		break;
+ 	default:
+ 		ret = -EINVAL;
+@@ -390,7 +420,7 @@ static int mp2762_charge_set_property(struct power_supply *psy,
+ static int mp2762_charge_is_writeable(struct power_supply *psy,
+ 				     enum power_supply_property property)
+ {
+-	return allow_charge_test && property == POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR;
++	return (allow_charge_test || allow_charge_control) && property == POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR;
+ }
+ 
+ static enum power_supply_property mp2762_charge_properties[] = {
+@@ -426,16 +456,70 @@ static ssize_t charge_test_snapshot_show(struct device *dev,
+ 		ret = ctrl < 0 ? ctrl : (wdt < 0 ? wdt : status);
+ 	else
+ 		ret = sysfs_emit(buf,
+-			"reg08=0x%02x reg09=0x%02x reg13=0x%02x allow_test=%u owned=%u last_error=%d max_test_seconds=%u\n",
++			"reg08=0x%02x reg09=0x%02x reg13=0x%02x allow_test=%u owned=%u last_error=%d max_test_seconds=%u allow_control=%u lease_seconds=%u recovering=%u\n",
+ 			ctrl, wdt, status, allow_charge_test, chg->charge_test.owned,
+-			chg->charge_error, MP2762_CHARGE_TEST_SECONDS);
++			chg->charge_error, MP2762_CHARGE_TEST_SECONDS,
++			allow_charge_control, MP2762_CHARGE_LEASE_SECONDS, chg->recovering);
+ 	mutex_unlock(&chg->lock);
+ 	return ret;
+ }
+ static DEVICE_ATTR_RO(charge_test_snapshot);
+ 
++/* A renewal never writes a charger register or changes the saved state. */
++static ssize_t charge_control_lease_show(struct device *dev,
++					struct device_attribute *attr, char *buf)
++{
++	struct mp2762_otg *chg = i2c_get_clientdata(to_i2c_client(dev));
++	unsigned long seconds = 0, now;
++
++	mutex_lock(&chg->lock);
++	now = jiffies;
++	if (chg->charge_test.owned && !chg->recovering &&
++	    time_before(now, chg->restore_deadline))
++		seconds = DIV_ROUND_UP(chg->restore_deadline - now, HZ);
++	mutex_unlock(&chg->lock);
++	return sysfs_emit(buf, "%lu\n", seconds);
++}
++
++static ssize_t charge_control_lease_store(struct device *dev,
++		struct device_attribute *attr, const char *buf, size_t count)
++{
++	struct mp2762_otg *chg = i2c_get_clientdata(to_i2c_client(dev));
++	int ret;
++
++	if (!allow_charge_control)
++		return -EPERM;
++	if (!sysfs_streq(buf, "renew"))
++		return -EINVAL;
++	mutex_lock(&chg->lock);
++	if (!chg->ready || chg->stopping) {
++		ret = -ESHUTDOWN;
++		goto out;
++	}
++	if (chg->recovering || !chg->charge_test.owned ||
++	    time_after_eq(jiffies, chg->restore_deadline)) {
++		ret = -ETIME;
++		goto out;
++	}
++	ret = mp2762_charge_validate_lease(&chg->charge_io, &chg->charge_test);
++	chg->charge_error = ret;
++	if (ret) {
++		chg->recovering = true;
++		mod_delayed_work(system_wq, &chg->restore_work, 0);
++	} else {
++		chg->restore_deadline = jiffies + MP2762_CHARGE_LEASE_SECONDS * HZ;
++		mod_delayed_work(system_wq, &chg->restore_work,
++				 MP2762_CHARGE_LEASE_SECONDS * HZ);
++	}
++out:
++	mutex_unlock(&chg->lock);
++	return ret ? ret : count;
++}
++static DEVICE_ATTR_RW(charge_control_lease);
++
+ static struct attribute *mp2762_charge_attrs[] = {
+ 	&dev_attr_charge_test_snapshot.attr,
++	&dev_attr_charge_control_lease.attr,
+ 	NULL,
+ };
+ static const struct attribute_group mp2762_charge_group = {
+@@ -485,6 +569,8 @@ static int mp2762_otg_probe(struct i2c_client *client)
+ 	if (!chg)
+ 		return -ENOMEM;
+ 
++	if (allow_charge_test && allow_charge_control)
++		return dev_err_probe(dev, -EINVAL, "charge test and lease modes are exclusive\n");
+ 	chg->client = client;
+ 	mutex_init(&chg->lock);
+ 	INIT_DELAYED_WORK(&chg->restore_work, mp2762_charge_restore_work);
+-- 
+2.47.3
+

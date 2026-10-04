@@ -5,6 +5,7 @@ import datetime
 import json
 from pathlib import Path
 import shutil
+import time
 
 
 def number(path, low, high, scale=1):
@@ -22,7 +23,36 @@ def text(path):
         return None
 
 
-def sample(config, sysroot=Path('/sys'), procroot=Path('/proc'), diskroot=Path('/')):
+def charge_control_status(sysroot, runtimeroot):
+    """Report only fresh controller state confirmed against current kernel readback."""
+    result = {'policy_active': False, 'inhibit_readback_verified': False,
+              'full_charge_cycle_validated': False}
+    try:
+        state = json.loads((runtimeroot / 'kebab-charge-policy/status.json').read_text())
+        age = time.monotonic() - state['monotonic_seconds']
+        if not (0 <= age < 45 and state.get('control_enabled') is True and
+                not state.get('error') and state.get('version') == 1):
+            return result
+        device = sysroot / 'bus/i2c/devices/5-005c'
+        fields = dict(x.split('=', 1) for x in (device / 'charge_test_snapshot').read_text().split())
+        snapshot = {key: int(value, 0) for key, value in fields.items()}
+        if snapshot.get('allow_control') != 1 or snapshot['last_error'] != 0 or snapshot.get('recovering') != 0:
+            return result
+        result['policy_active'] = True
+        remaining = number(device / 'charge_control_lease', 0, 90)
+        result['inhibit_readback_verified'] = bool(
+            state.get('inhibit_readback_verified') is True and snapshot['owned'] == 1 and
+            not snapshot['reg08'] & 0xf8 and snapshot['reg08'] & 2 and
+            remaining is not None and remaining > 0)
+        result['stop_percent'] = state['stop_percent']
+        result['resume_percent'] = state['resume_percent']
+        result['lease_seconds_remaining'] = remaining
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return result
+
+
+def sample(config, sysroot=Path('/sys'), procroot=Path('/proc'), diskroot=Path('/'), runtimeroot=Path('/run')):
     warnings, batteries, usb, cpus = [], [], [], []
     for supply in sorted((sysroot / 'class/power_supply').glob('*')):
         kind = text(supply / 'type')
@@ -61,13 +91,19 @@ def sample(config, sysroot=Path('/sys'), procroot=Path('/proc'), diskroot=Path('
             warnings.append('memory_available_low')
     except (OSError, KeyError, ValueError):
         warnings.append('memory_measurement_unavailable')
-    # This tool has no charger actuation path, including when new sysfs controls appear.
-    warnings.append('charge_limit_not_enforced')
+    # Monitoring remains read-only; the optional controller has its own independent owner.
+    control = charge_control_status(sysroot, runtimeroot)
+    enforced = (control['inhibit_readback_verified'] and
+                control.get('stop_percent') == config['requested_charge_limit_percent'])
+    if not enforced:
+        warnings.append('charge_limit_not_enforced')
     return {'sampled_at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'batteries': batteries, 'usb_power_contracts': usb,
             'requested_charge_limit_percent': config['requested_charge_limit_percent'],
-            'charge_limit_enforced': False, 'charger_writes_performed': False,
-            'charge_limit_reason': 'No validated charge-control backend configured; monitor is read-only',
+            'charge_limit_enforced': bool(enforced), 'charger_writes_performed': False,
+            'charge_control': control,
+            'charge_limit_reason': ('Active policy and inhibited CHG_EN readback verified; full charge cycle still unvalidated'
+                                    if enforced else 'No fresh verified inhibition; monitor is read-only'),
             'cpu_max_temperature_c': max(cpus) if cpus else None,
             'disk_free_mib': free_mib, 'memory_available_mib': memory_mib,
             'warnings': sorted(set(warnings))}

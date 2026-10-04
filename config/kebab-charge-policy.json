@@ -1,0 +1,8 @@
+{
+  "stop_percent": 80,
+  "resume_percent": 75,
+  "interval_seconds": 15,
+  "confirm_samples": 3,
+  "valid_temperature_min_c": 5,
+  "valid_temperature_max_c": 43
+}

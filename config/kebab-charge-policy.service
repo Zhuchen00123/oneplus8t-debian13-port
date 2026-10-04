@@ -1,0 +1,32 @@
+[Unit]
+Description=Kebab 80/75 percent charge control using MP2762A lease
+After=systemd-udev-settle.service
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/sbin/kebab-charge-policy --control
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=10
+RuntimeDirectory=kebab-charge-policy
+RuntimeDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadWritePaths=/sys/bus/i2c/devices/5-005c/charge_control_lease
+ReadWritePaths=/sys/class/power_supply/mp2762-charge-test/charge_behaviour
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=multi-user.target
