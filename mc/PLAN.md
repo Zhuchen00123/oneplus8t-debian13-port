@@ -472,3 +472,62 @@ systemd 的 `TimeoutStopSec`（默认 90 秒）被 SIGKILL 才结束，而这 90
 
 **结论：`workspace/start` 从"仅 mock 验证"升级为"真机验证"。**
 从环境被回收到隧道重新可用约 3.5 分钟，全自动。
+
+### 11.8 仓库误公开事故与删库重建（2026-10-05）
+
+**事故**：本阶段的分支最初是基于本地 `main`（旧历史 `57e3b24`）建的，推上去之后
+才发现远端 `main` 是**另一会话刻意重建的干净历史**（根提交 `f64ddd7`，2 个提交），
+两条历史**没有共同祖先**。于是这次推送把 9 个旧提交一并公开了，连带公开了
+`docs/device-assessment.md`、`docs/panel-evidence.md`、`docs/unlock-preflight.md`、
+`docs/temporary-root-plan.md`、`docs/backup-and-recovery.md`、`docs/community-status.md`、
+`docs/git-workflow.md`、`docs/porting-plan.md`、`docs/validation.md`、`config/device-kb2000.json`
+，以及 3 个真实公网地址。
+
+**先做的一步（不够）**：改基到 `origin/main` 后强推。
+`git rebase --onto origin/main 57e3b24 <branch>`（唯一冲突是 `.gitignore`，两边各加一段，都保留）。
+强推只移走 ref，**对象不会消失**——实测旧提交在 GitHub 上仍可按 SHA 完整访问：
+
+```
+web  /commit/1e85dc1…  200      API  commits/2fae839   200
+API  contents/docs/panel-evidence.md?ref=1e85dc1  →  200，3009 字节仍可读
+```
+
+**最终解法**：删除整个仓库再重建，然后只推干净历史。
+（该仓库当时 0 star / 0 fork / 0 开放 issue，没有需要保留的东西。）
+
+**验收证据**（对照实验是关键——单看错误码无法定性）：
+
+| 检查 | 有效 SHA（对照） | 旧 SHA |
+|---|---|---|
+| `GET /repos/.../commits/<sha>` | `99c24fe` → **200**、`d1bfa62` → **200** | `1e85dc1` → **422**、`2fae839` → **422** |
+| 网页 `/commit/<sha>` | `99c24fe` → 200 | `1e85dc1` → **404**、`2fae839` → **404** |
+| 旧树里的 `docs/panel-evidence.md` | — | **404** |
+
+新仓库：创建于 `2026-10-05T02:38:02Z`，public，默认分支 `main`，
+`refs/heads/{main, codex/status-panel-20261004, codex/mc-443-tunnel-20261004}` 三个分支、
+**无 tag**。分支树 98 个文件，内部文档零残留，六个敏感串（真实学号、CNB 令牌、
+手机 IP、三个公网 IP）全部零残留。
+
+**先说清楚边界**：删库重建的效果是"**公开面彻底切断 + 旧对象随仓库一起消失**"，
+不等于"证明从未泄露"。GitHub 对被删仓库有约 90 天可恢复窗口（仅仓库所有者可见），
+且此前若有爬虫或镜像抓取过，那些副本不受影响。
+
+#### ⚠️ 遗留隐患：本地 ref 仍指向旧历史
+
+远端已经干净，但**本地仓库里旧历史还在**，误推一次就会前功尽弃：
+
+| 本地 ref | 指向 | 风险 |
+|---|---|---|
+| `main` | `57e3b24`（**旧历史**） | `git push origin main` 就会重新公开 |
+| `codex/debian13-*`、`codex/gdut-wifi`、`device/*` | 旧历史 | `git push --all` 会全推上去 |
+| tag `init-20261003`、`device-evidence-20261003` | 旧历史 | `git push --tags` 会推上去 |
+
+**禁止**在这个仓库里执行 `git push --all`、`git push --mirror`、`git push --tags`。
+只按显式 SHA 推送，或只推上面那三个干净分支。
+
+#### 本仓库的发布纪律（血的教训）
+
+- 发布分支必须基于 `origin/main`，不要在旧的本地 `main` 上开分支。
+- 推之前先 `git merge-base --is-ancestor origin/main HEAD`，返回非 0 就是基于脏历史，**停下**。
+- 发布仅提交审核过的白名单文本文件；设备项目的旧 Git 历史不要导入。
+- `git ls-remote origin` 应恰好是 1 个 `HEAD` + 3 个 `refs/heads/`，多一个都要查。
