@@ -16,7 +16,16 @@
 - 设备：OnePlus 8T 中国版 KB2000，代号 kebab，SM8250 / Adreno 650。
 - 用户目标：Debian 13 arm64，内核尽量新；先核对社区进度，再做移植、备份与 Git 管理。
 
-## 当前状态与阅读顺序（2026-10-04）
+## 当前状态与阅读顺序（2026-10-05 更新）
+
+- 先读 docs/project-status-20261004.md、docs/handover-20261004.md 的10/05增补，再读 docs/sillytavern-migration-20261005.md、docs/sillytavern-performance-20261005.md；入口文件保留旧日期以保持链接。旧记录中的“最新/当前”仅表示当时阶段，不能当作新巡检。
+- 酒馆与全部来源数据、扩展已部署在 /srv/sillytavern；固定1.18.0及来源精确提交，ARM64依赖重新安装，普通用户与独立systemd运行。Azure反代/嵌入网关仍在Azure，经受限SSH连接；原Azure酒馆和数据保留，没有下线、删除或DNS变更授权。
+- 酒馆专用CNB环境、SSH/HTTP中继、令牌与MC隔离；真实WSS SSH、登录/CSRF、生成/嵌入、服务重启和专用CNB地址变化后自动恢复已通过。旧 local/ssh443-trial-20261005/ 是已清理的临时试验，不是现在的常驻入口；MC修复记录见 local/worktree-mc/mc/FIXES-20261005.md。
+- 会话卡死已修复取消终态、作用域及批量token计数；13项回归通过，用户Chrome人工确认能进入并正常切换会话。临时诊断已移除；清理后最终刷新、输入/扩展按钮、记忆质量、另一校外设备、长期SSE/温升和整机重启仍未验收，不宣称浏览器自动化通过。
+- 10/05最后巡检发现既有 kebab-powerkey-screen.service failed；原MC客户端、校园维护、CNB保活及限充/健康服务采样active。本轮按用户要求没有修改、重启或清除电源键失败状态，不沿用10/04“无failed unit”。禁止本次酒馆任务改充电、温控、电源键、USB SSH、分区、内核和既有基础监控。
+- 来源一致性备份、聊天、凭据和私有证据仅保存在受限且Git忽略的 local/sillytavern-migration-20261005/；运行中日常归档不能称为一致性快照，不用来源旧快照覆盖迁移后的新聊天。访问方法和回退见迁移专题；不擅自GitHub推送。
+
+## 2026-10-04 入口记录（历史，后续状态以上述增补为准）
 
 - 先读docs/project-status-20261004.md、docs/handover-20261004.md、docs/project-flows-20261004.md；它们是本轮统一当前入口，旧记录中的“最新/当前”仅表示当时阶段。
 - 手机已持久运行Debian 13 / 7.2.0-kebab-debian13-r2-charge-policy+，显示/触摸成组内建；严格USB SSH、7GiB系统盘、/srv约220GiB、正常重启与文件持久性通过。

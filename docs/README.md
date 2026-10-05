@@ -2,16 +2,21 @@
 
 ## 当前入口
 
+更新于2026-10-05。状态和交接文件保留10/04文件名，其顶部10/05增补为最新入口；基础系统历史验收与本次酒馆验收分别记录。
+
 | 文档 | 内容 |
 | --- | --- |
 | [当前状态](project-status-20261004.md) | 通过、部分通过、未验收与待办 |
 | [最新交接](handover-20261004.md) | 新会话入口、恢复点、授权与分工 |
+| [酒馆迁移与维护](sillytavern-migration-20261005.md) | 精确版本、数据/扩展、CNB访问、启停、私有备份与回退 |
+| [酒馆会话性能修复](sillytavern-performance-20261005.md) | 卡死根因、已部署补丁、13项回归、Chrome人工确认与待验收项 |
 | [项目流程](project-flows-20261004.md) | FigJam、Mermaid、交付及运行流程 |
 | [验证汇总](validation.md) | 最新索引与历史记录 |
 | [移植路线](porting-plan.md) | 当前进度及后续路线 |
 
 ## 当前专题
 
+- [酒馆迁移](sillytavern-migration-20261005.md)、[会话卡死与预热优化](sillytavern-performance-20261005.md)；地址查询使用根目录 `scripts/Get-SillyTavernAccess.ps1`，实际地址/凭据不写公开文档
 - [显示/触摸r2](r2-integrated-20261004.md)、[显示排查](xfce-desktop-20261004.md)、[触摸协议](touch-protocol-r2-20261004.md)
 - [全屏只读状态面板、按需XFCE与启停入口](status-panel-20261004.md)
 - [限充v1](charge-policy-v1-20261004.md)、[启动成功标记](boot-success-repair-20261004.md)
@@ -34,3 +39,5 @@
 | 早期充电 | [调查](charge-control-research-20261004.md)、[30秒候选](charge-control-candidate-20261004.md) | 已有后续v1常驻，不把早期未实现当当前结论 |
 
 local中的旧交接、原始日志、凭据和恢复材料是私有证据，不复制到公开图表。
+
+MC最新修复交接在 `local/worktree-mc/mc/FIXES-20261005.md`；`local/ssh443-trial-20261005/README.md`是已清理的临时SSH试验，酒馆后续独立常驻通道见迁移专题。现有FigJam/流程图仍为10/04版本，本次未更新。
