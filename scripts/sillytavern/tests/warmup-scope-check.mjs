@@ -1,0 +1,12 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
+const [oldFile,newFile]=process.argv.slice(2);const old=fs.readFileSync(oldFile,'utf8');const fixed=fs.readFileSync(newFile,'utf8');
+function fn(src,name){const start=src.indexOf('function '+name+'(');assert(start>=0);const end=src.indexOf('\n}\n',start);assert(end>start);return src.slice(start,end+2);}
+const chat=[{mes:'a'}];let calls=0,clears=0,starts=0;
+function context(job){return vm.createContext({memory_warmup:job,getContext:()=>({chat,setExtensionPrompt(_k,v){if(v==='')clears++;}}),memory_chat_key:()=> 'new',chat_enabled:()=>true,MODULE_NAME:'qvink_memory',debug(){},update_message_inclusion_flags(){calls++;},get_long_memory:()=> 'long',get_short_memory:()=> 'short',get_settings:()=>0,memory_token_signature:()=> 'token',memory_warmup_texts:()=> ['a'],start_memory_warmup(){starts++;}});}
+let ctx=context({key:'old',chat,pending:false,cancelled:true});vm.runInContext(fn(old,'refresh_memory'),ctx);ctx.refresh_memory();assert.equal(calls,1);
+calls=0;ctx=context({key:'old',chat,pending:false,cancelled:true});vm.runInContext(fn(fixed,'memory_warmup_inputs_match')+'\n'+fn(fixed,'refresh_memory'),ctx);assert.equal(ctx.refresh_memory(),'');assert.equal(calls,0);assert.equal(clears,2);
+ctx=context({key:'new',chat,pending:true});vm.runInContext(fn(fixed,'memory_warmup_inputs_match')+'\n'+fn(fixed,'refresh_memory'),ctx);ctx.refresh_memory();assert.equal(calls,0);
+ctx=context({key:'new',chat,pending:false,tokenSignature:'stale',messageCount:1,textSignature:'["a"]'});vm.runInContext(fn(fixed,'memory_warmup_inputs_match')+'\n'+fn(fixed,'refresh_memory'),ctx);ctx.refresh_memory();assert.equal(calls,0);assert.equal(starts,1);
+ctx=context({key:'new',chat,pending:false,tokenSignature:'token',messageCount:1,textSignature:'["old"]'});vm.runInContext(fn(fixed,'memory_warmup_inputs_match')+'\n'+fn(fixed,'refresh_memory'),ctx);ctx.refresh_memory();assert.equal(calls,0);assert.equal(starts,2);
+ctx=context({key:'new',chat,pending:false,tokenSignature:'token',messageCount:1,textSignature:'["a"]'});vm.runInContext(fn(fixed,'memory_warmup_inputs_match')+'\n'+fn(fixed,'refresh_memory'),ctx);assert.equal(ctx.refresh_memory(),'long\n\n...\n\nshort');assert.equal(calls,1);
+console.log(JSON.stringify({old_stale_chat_refresh_reproduced:true,stale_or_cancelled_refresh_blocked:true,pending_refresh_blocked:true,changed_tokenizer_rewarms:true,edited_text_rewarms:true,ready_injection_preserved:true}));

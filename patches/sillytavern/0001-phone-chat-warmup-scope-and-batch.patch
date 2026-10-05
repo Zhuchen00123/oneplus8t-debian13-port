@@ -1,0 +1,207 @@
+--- a/src/endpoints/tokenizers.js
++++ b/src/endpoints/tokenizers.js
+@@ -915,7 +915,7 @@
+     }
+ });
+ 
+-router.post('/openai/count', async function (req, res) {
++async function countOpenAIMessages(req, res) {
+     try {
+         if (!req.body) return res.sendStatus(400);
+ 
+@@ -1034,6 +1034,27 @@
+         const num_tokens = guesstimate(jsonBody);
+         res.send({ 'token_count': num_tokens });
+     }
++}
++
++router.post('/openai/count', countOpenAIMessages);
++
++// Same native tokenizer and single-message accounting, amortized over one request.
++router.post('/openai/count-batch', async (req, res) => {
++    const texts = req.body?.texts;
++    if (!Array.isArray(texts) || texts.length < 1 || texts.length > 128
++        || texts.some(text => typeof text !== 'string' || text.length > 65536)
++        || Buffer.byteLength(JSON.stringify(texts), 'utf8') > 524288) return res.sendStatus(400);
++    const tokenCounts = [];
++    for (const text of texts) {
++        let result;
++        await countOpenAIMessages({ query: req.query, body: [{ role: 'system', content: text }] }, {
++            send(data) { result = data?.token_count; },
++            sendStatus() { result = NaN; },
++        });
++        if (!Number.isFinite(result) || result < 0) return res.sendStatus(500);
++        tokenCounts.push(result);
++    }
++    return res.send({ token_counts: tokenCounts });
+ });
+ 
+ router.post('/remote/kobold/count', async function (request, response) {
+--- a/public/scripts/tokenizers.js
++++ b/public/scripts/tokenizers.js
+@@ -440,6 +440,54 @@
+  * @param {number | undefined} padding Optional padding tokens. Defaults to 0.
+  * @returns {Promise<number>} Token count.
+  */
++/** Warm the native exact per-chat cache without one round trip per string. */
++export async function warmTokenCountsBatchAsync(texts, isCurrent = () => true) {
++    const unique = [...new Set(texts)].filter(text => typeof text === 'string' && text.length);
++    if (main_api !== 'openai') {
++        for (const text of unique) {
++            if (!isCurrent()) return;
++            await getTokenCountAsync(text, 0);
++        }
++        return;
++    }
++    // Capture this cache and model: an in-flight response may not populate another chat.
++    const model = getTokenizerModel();
++    const cache = getTokenCacheObject();
++    const entries = unique.map(text => ({ text, key: `${model}-${getStringHash(JSON.stringify({ role: 'system', content: text }))}` }))
++        .filter(entry => typeof cache[entry.key] !== 'number');
++    const batches = [];
++    let batch = [], bytes = 2;
++    for (const entry of entries) {
++        const size = new TextEncoder().encode(JSON.stringify(entry.text)).length + 1;
++        if (entry.text.length > 65536 || size > 524000) {
++            throw new Error('Token warmup string exceeds safe batch limit');
++        }
++        if (batch.length && (batch.length >= 128 || bytes + size > 524000)) {
++            batches.push(batch); batch = []; bytes = 2;
++        }
++        batch.push(entry); bytes += size;
++    }
++    if (batch.length) batches.push(batch);
++    let next = 0;
++    const worker = async () => {
++        while (isCurrent() && next < batches.length) {
++            const entries = batches[next++];
++            const data = await jQuery.ajax({
++                async: true, type: 'POST', timeout: 20000,
++                url: `/api/tokenizers/openai/count-batch?model=${encodeURIComponent(model)}`,
++                data: JSON.stringify({ texts: entries.map(entry => entry.text) }),
++                dataType: 'json', contentType: 'application/json',
++            });
++            if (!Array.isArray(data?.token_counts) || data.token_counts.length !== entries.length
++                || data.token_counts.some(count => !Number.isFinite(count) || count < 0)) {
++                throw new Error('Invalid native token batch response');
++            }
++            entries.forEach((entry, index) => { cache[entry.key] = data.token_counts[index]; });
++        }
++    };
++    await Promise.all(Array.from({ length: Math.min(2, batches.length) }, worker));
++}
++
+ export async function getTokenCountAsync(str, padding = undefined) {
+     if (typeof str !== 'string' || !str?.length) {
+         return 0;
+--- a/public/scripts/extensions/third-party/SillyTavern-MessageSummarize/index.js
++++ b/public/scripts/extensions/third-party/SillyTavern-MessageSummarize/index.js
+@@ -39,7 +39,7 @@
+ import { getRegexScripts, runRegexScript } from '../../../../scripts/extensions/regex/engine.js'
+ import { itemizedPrompts } from '../../../../scripts/itemized-prompts.js'
+ import { t, translate } from '../../../i18n.js';
+-import { getTokenCountAsync, getTokenizerModel } from '../../../tokenizers.js';
++import { getTokenCountAsync, getTokenizerModel, warmTokenCountsBatchAsync } from '../../../tokenizers.js';
+ 
+ export { MODULE_NAME };
+ 
+@@ -4023,8 +4023,9 @@
+     const sample = 'This is a test.';
+     const texts = new Set([sample, sample + get_settings('summary_injection_separator') + sample]);
+     for (const message of getContext().chat) {
++        // Thresholds may count user/system messages even when memories exclude them.
++        texts.add(message.mes);
+         if (!check_message_exclusion(message, true)) continue;
+-        if (!get_data(message, 'remember')) texts.add(message.mes);
+         texts.add(get_memory(message));
+     }
+     return [...texts].filter(text => typeof text === 'string' && text.length);
+@@ -4042,17 +4043,14 @@
+         while (current()) {
+             const signature = memory_token_signature();
+             const texts = memory_warmup_texts();
+-            let next = 0;
+-            const worker = async () => {
+-                while (current() && signature === memory_token_signature() && next < texts.length) {
+-                    const text = texts[next++];
+-                    await getTokenCountAsync(text, 0); // Same native cache key as count_tokens.
+-                }
+-            };
+-            await Promise.all(Array.from({ length: Math.min(12, texts.length) }, worker));
++            await warmTokenCountsBatchAsync(texts,
++                () => current() && signature === memory_token_signature());
+             if (!current()) return; // Old chat may fill its own cache, never inject into the new one.
+             const latest = memory_warmup_texts();
+             if (signature !== memory_token_signature() || JSON.stringify(texts) !== JSON.stringify(latest)) continue;
++            job.tokenSignature = signature;
++            job.messageCount = getContext().chat.length;
++            job.textSignature = JSON.stringify(latest);
+             job.pending = false;
+             refresh_memory(); // Original exact inclusion/threshold/injection implementation.
+             document.documentElement.dataset.qvinkMemoryState = 'ready';
+@@ -4065,21 +4063,45 @@
+         document.documentElement.dataset.qvinkMemoryState = 'failed';
+         console.error('[Qvink] Exact memory warmup failed; generation is blocked.', error);
+         toastr.error('记忆准备失败，请重新打开聊天或刷新页面后再生成。');
++    }).finally(() => {
++        if (!current()) {
++            job.cancelled = true;
++            job.pending = false;
++        }
+     });
++}
++function memory_warmup_inputs_match(job) {
++    return job.tokenSignature === memory_token_signature()
++        && job.messageCount === getContext().chat.length
++        && job.textSignature === JSON.stringify(memory_warmup_texts());
+ }
+ async function wait_for_memory_warmup() {
+     const key = memory_chat_key();
+-    while (memory_warmup?.pending) {
++    const targetChat = getContext().chat;
++    while (memory_warmup) {
+         const job = memory_warmup;
++        // A fulfilled old-chat promise must never be awaited in a tight microtask loop.
++        if (job.key !== key || job.chat !== targetChat || job.cancelled) {
++            throw new Error('Memory preparation belongs to another chat; finish opening the chat');
++        }
++        if (job.error) throw job.error;
++        if (!job.pending) {
++            if (!memory_warmup_inputs_match(job)) { start_memory_warmup(); continue; }
++            return;
++        }
+         await job.promise;
+-        if (key !== memory_chat_key()) throw new Error('Chat changed during memory warmup');
++        if (key !== memory_chat_key() || targetChat !== getContext().chat || job.cancelled) {
++            throw new Error('Chat changed during memory warmup');
++        }
+         if (job.error) throw job.error;
++        if (job === memory_warmup && job.pending) {
++            throw new Error('Memory preparation ended without a ready result');
++        }
+     }
+ }
+ 
+ // Summarization
+ function refresh_memory() {
+-    if (memory_warmup?.pending) return "";
+     let ctx = getContext();
+     if (!chat_enabled()) { // if chat not enabled, remove the injections
+         ctx.setExtensionPrompt(`${MODULE_NAME}_long`, "");
+@@ -4087,6 +4109,16 @@
+         return;
+     }
+ 
++    const job = memory_warmup;
++    if (!job || job.pending || job.cancelled || job.key !== memory_chat_key() || job.chat !== ctx.chat) {
++        ctx.setExtensionPrompt(`${MODULE_NAME}_long`, "");
++        ctx.setExtensionPrompt(`${MODULE_NAME}_short`, "");
++        return "";
++    }
++    if (!memory_warmup_inputs_match(job)) {
++        start_memory_warmup();
++        return "";
++    }
+     debug("Refreshing memory")
+ 
+     // Update the UI according to the current state of the chat memories, and update the injection prompts accordingly
