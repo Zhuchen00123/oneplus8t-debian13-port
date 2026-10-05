@@ -472,6 +472,18 @@ def main():
     def _term(signum, frame):
         log("收到信号 %d，正在退出" % signum)
         cli.stop()
+        # ⚠️ 这一行是必须的，只设标志位不够。
+        #
+        # 隧道活着时主线程阻塞在 socket.recv() 上（连接是 settimeout(None)）。
+        # PEP 475 规定：信号处理器**正常返回**时，被中断的系统调用会自动重启。
+        # 于是 recv 继续阻塞，run_forever 里那句 `while not self.stopping` 永远轮不到。
+        # 而且 stop() 关的是 UP 连接，主线程读的却是 DOWN 连接，关错了一根。
+        #
+        # 实测症状：日志明明打了「收到信号 15」，进程仍要等满 TimeoutStopSec
+        # （systemd 默认 90 秒）再被 SIGKILL；期间隧道一直是断的。
+        # 抛 SystemExit 会让被中断的 recv 当场抛出，进程立即退出。
+        # SystemExit 继承 BaseException，不会被 run_forever 的 `except Exception` 吞掉。
+        raise SystemExit(0)
 
     for sig in (signal.SIGTERM, signal.SIGINT):
         try:
@@ -481,7 +493,10 @@ def main():
 
     log("启动：中继 %s:%d  session=%s  →  本机 %s:%d  TLS=%s"
         % (args.host, args.port, args.session, mc_host, mc_port, not args.plain))
-    cli.run_forever()
+    try:
+        cli.run_forever()
+    except SystemExit:
+        pass          # 来自 _term 的正常退出请求，不当错误
     log("已退出")
     return 0
 

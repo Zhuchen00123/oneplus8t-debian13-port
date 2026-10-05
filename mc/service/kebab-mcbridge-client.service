@@ -11,6 +11,10 @@ ExecStart=/usr/bin/python3 -u /usr/local/sbin/kebab-mcbridge-client.py
 # 客户端自己有 5 秒重连循环；这里再兜一层，防解释器级崩溃
 Restart=always
 RestartSec=5
+# 兜底：客户端是纯转发、无状态，被 SIGKILL 不会丢数据。
+# systemd 默认要等满 90 秒才 SIGKILL，而这 90 秒里隧道一直是断的。
+# 客户端已修成收到 SIGTERM 立即退出；这里再压一层，防止将来回归。
+TimeoutStopSec=15
 Nice=5
 SyslogIdentifier=kebab-mcbridge
 StandardOutput=journal

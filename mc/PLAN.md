@@ -405,9 +405,70 @@ zzsh2enrz7-9000.cnb.run  → HTTP 302（死）
 
 ### 11.5 未验证 / 待办
 
-- **`workspace/start` 只在 mock 里验证过**：真机触发需要环境处于停止状态，
-  而它现在正驮着隧道，不适合为测试停掉。等自然回收时自动走一遍。
+- **`workspace/start` 已在真机上验证过了**（2026-10-05 14:14，环境被平台回收后自动拉起，
+  见 §11.7）。
 - 重启后 `OnBootSec=90s` 行为未实机验收。
 - **密钥轮换**：`wst_9f3a7c2e5b18d460` / `fwd_2b7e91c4d6a80f53` 仍是公开默认值，
   上线前要连同 CNB 侧 `start-bridge.sh` 一起换掉（需用户确认后再动 CNB 仓库）。
 - 手机根分区与 MC 安装（Phase 4）仍未开始。
+
+### 11.6 修掉客户端"停不掉、每次卡满 90 秒"
+
+**现象**（2026-10-05 线上日志）：`systemctl stop/restart kebab-mcbridge-client` 每次都要等满
+systemd 的 `TimeoutStopSec`（默认 90 秒）被 SIGKILL 才结束，而这 90 秒里隧道一直是断的。
+四次重启四次如此。诡异的是客户端**日志里明明已经打印了「收到信号 15，正在退出」**：
+
+```
+[15:41:22] 收到信号 15，正在退出
+[15:41:22] systemd: Stopping kebab-mcbridge-client.service...
+[15:42:52] systemd: State 'stop-sigterm' timed out. Killing.    ← 90 秒后
+```
+
+**根因**：不是"信号没收到"，是收到了也没用。`_term` 只调了 `cli.stop()` 设标志位就**正常返回**，
+而 PEP 475 规定——信号处理器正常返回时，被中断的系统调用会**自动重启**。
+主线程此刻正阻塞在 `socket.recv()` 上（连接是 `settimeout(None)`），于是 `recv` 继续阻塞，
+`run_forever` 里的 `while not self.stopping` 永远轮不到。
+雪上加霜：`stop()` 关的是 UP 连接，主线程读的却是 DOWN 连接，**关错了一根**。
+
+隧道断开时主线程在 `time.sleep(0.25)` 分片睡眠里，标志位能被看到，所以那种情况一直是干净退出的
+——这正是 bug 间歇出现、容易漏掉的原因。
+
+**修法**（两层）：
+1. `_term` 末尾 `raise SystemExit(0)`，被中断的 `recv` 当场抛出
+   （`SystemExit` 继承 `BaseException`，不会被 `run_forever` 的 `except Exception` 吞掉）；
+2. 单元加 `TimeoutStopSec=15` 兜底——客户端是纯转发无状态，被 SIGKILL 不丢数据，
+   万一将来回归也把代价压在 15 秒而不是 90 秒。
+
+**验证**：新增回归测试 `mc/tests/test-client-sigterm.py`。
+它不联网、不需要真中继和 TLS：起一个"接受连接后装死"的 TCP 服务端，
+客户端就会在 WS 握手阶段阻塞在 `recv(1)` 上——**与线上是同一个阻塞点**。
+
+| 场景 | 修复前 | 修复后 |
+|---|---|---|
+| 阻塞在握手的 `recv` 上收 SIGTERM | 34.0 s（systemd 下 90 s） | **0.01 s** |
+| 重连等待期间收 SIGTERM | 0.02 s（本来就正常） | 0.01 s |
+| `--once` 模式阻塞在 `recv` 上 | 34.0 s | **0.01 s** |
+
+**先拿 git 里的旧版跑过，确认这个测试真能抓到 bug**（失败 4 项），再跑修复版（12 项全过）。
+
+**真机实测**（隧道连着的状态下连续停三次）：`122 ms / 88 ms / 97 ms`，
+对比修复前的 90,000 ms 约快 **900 倍**，且 journal 里不再出现 `timed out` / `Killing`。
+
+### 11.7 环境回收 → 自动恢复，全链路真机走通（2026-10-05 14:14）
+
+这是之前一直悬着的"等它自然回收时自动走一遍"，它自己发生了，全程无需人工：
+
+```
+[14:14:36] 远端给的地址不回 426/101（HTTP 302）→ 环境可能已被回收
+[14:14:37] 中继环境不在运行，调 zc354/mmmmcccccbuild/-/workspace/start（branch=main）
+[14:14:37] workspace/start → {"sn":"cnb-5in-1k45b6bd8",
+                              "message":"cnb received, but didn't finish build yet"}
+[14:14:37] 环境启动中，等 20s 后由下一轮接管
+[14:16:40] 地址变化：sd2xm49rnt-9000.cnb.run:443 → b9sajc2y10-9000.cnb.run:443
+[14:18:10] ✅ 已按新地址重启
+[14:18:50] 无变化：中继活着、客户端运行中
+[客户端] 已连上中继 b9sajc2y10-9000.cnb.run:443（session=kebab）→ 127.0.0.1:25565
+```
+
+**结论：`workspace/start` 从"仅 mock 验证"升级为"真机验证"。**
+从环境被回收到隧道重新可用约 3.5 分钟，全自动。
