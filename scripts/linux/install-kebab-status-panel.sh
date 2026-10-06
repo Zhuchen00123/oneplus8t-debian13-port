@@ -16,9 +16,9 @@ python3 -c 'import gi, cairo; gi.require_version("Gtk", "3.0"); gi.require_versi
 python3 test-kebab-status-panel.py
 bash -n kebab-display.sh
 sh -n kebab-panel-session.sh
-systemd-analyze verify ./kebab-status-panel.service ./kebab-maintenance-desktop.service
-sources=(kebab-status-panel.py kebab-panel-session.sh kebab-display.sh kebab-panel.desktop kebab-panel-lightdm.conf kebab-maintenance-lightdm.conf kebab-status-panel.service kebab-maintenance-desktop.service)
-targets=(/usr/local/bin/kebab-status-panel /usr/local/libexec/kebab-panel-session /usr/local/sbin/kebab-display /usr/share/xsessions/kebab-panel.desktop /etc/kebab/panel-lightdm.conf /etc/kebab/maintenance-lightdm.conf /etc/systemd/system/kebab-status-panel.service /etc/systemd/system/kebab-maintenance-desktop.service)
+systemd-analyze verify ./kebab-status-panel.service ./kebab-maintenance-desktop.service ./kebab-panel-network.service ./kebab-panel-network.timer
+sources=(kebab-status-panel.py kebab-panel-session.sh kebab-display.sh kebab-panel.desktop kebab-panel-lightdm.conf kebab-maintenance-lightdm.conf kebab-status-panel.service kebab-maintenance-desktop.service kebab-panel-network.py kebab-panel-network.service kebab-panel-network.timer)
+targets=(/usr/local/bin/kebab-status-panel /usr/local/libexec/kebab-panel-session /usr/local/sbin/kebab-display /usr/share/xsessions/kebab-panel.desktop /etc/kebab/panel-lightdm.conf /etc/kebab/maintenance-lightdm.conf /etc/systemd/system/kebab-status-panel.service /etc/systemd/system/kebab-maintenance-desktop.service /usr/local/libexec/kebab-panel-network /etc/systemd/system/kebab-panel-network.service /etc/systemd/system/kebab-panel-network.timer)
 for path in "${targets[@]}"; do
   [[ ! -e $path && ! -L $path ]] || { echo "Existing file requires review: $path" >&2; exit 1; }
 done
@@ -32,11 +32,11 @@ tar -czf "$backup/graphical-config-before.tar.gz" --ignore-failed-read /etc/ligh
 sha256sum "$backup/graphical-config-before.tar.gz" >"$backup/SHA256SUMS"
 for i in "${!sources[@]}"; do
   mode=0644
-  [[ $i -gt 2 ]] || mode=0755
+  [[ $i -gt 2 && $i -ne 8 ]] || mode=0755
   install -D -m "$mode" "${sources[$i]}" "${targets[$i]}"
 done
 systemctl daemon-reload
-systemd-analyze verify kebab-status-panel.service kebab-maintenance-desktop.service
+systemd-analyze verify kebab-status-panel.service kebab-maintenance-desktop.service kebab-panel-network.service kebab-panel-network.timer
 # Leave services disabled until the bounded graphical validation passes.
 printf '%s\n' "$backup" > /var/lib/kebab-status-panel-backup-path
 printf 'Installed; baseline backup: %s\n' "$backup"
