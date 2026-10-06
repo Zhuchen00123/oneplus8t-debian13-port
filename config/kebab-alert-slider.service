@@ -1,0 +1,17 @@
+[Unit]
+Description=OnePlus 8T IST8801 alert slider recognition
+After=systemd-udev-trigger.service
+ConditionPathExists=/etc/kebab/alert-slider-module.sha256
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/kebab-alert-slider start
+ExecStop=/usr/local/sbin/kebab-alert-slider stop
+TimeoutStartSec=15
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
