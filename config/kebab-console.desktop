@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=本机终端
+Comment=Touch terminal with persistent local session
+Type=Application
+Exec=/usr/local/bin/kebab-ui-mode terminal
+Icon=utilities-terminal
+Terminal=false
+Categories=System;TerminalEmulator;
+X-Purism-FormFactor=Workstation;Mobile;

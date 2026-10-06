@@ -1,0 +1,7 @@
+[Unit]
+Description=Restore existing dashboard after mobile session failure
+After=kebab-three-mode.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --no-block start kebab-status-panel.service

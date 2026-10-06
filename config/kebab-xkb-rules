@@ -1,0 +1,9 @@
+// Dedicated US keymap for this session; existing raw KEY_POWER listener owns power.
+! model = keycodes
+  * = evdev+aliases(qwerty)
+! model = types
+  * = complete
+! model = compat
+  * = complete
+! layout = symbols
+  * = pc+us+inet(evdev)+kebab(nopower)

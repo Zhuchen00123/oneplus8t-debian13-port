@@ -1,0 +1,21 @@
+[Unit]
+Description=Persistent ordinary-user terminal backend for Kebab UI
+RequiresMountsFor=/srv
+
+[Service]
+Type=forking
+User=debian
+Group=debian
+RuntimeDirectory=kebab-terminal
+RuntimeDirectoryMode=0700
+PIDFile=/run/kebab-terminal/tmux.pid
+ExecStart=/usr/local/libexec/kebab-terminal-backend start
+ExecStop=/usr/local/libexec/kebab-terminal-backend stop
+Restart=on-failure
+RestartSec=2
+TimeoutStartSec=10
+TimeoutStopSec=10
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

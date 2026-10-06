@@ -1,0 +1,4 @@
+partial function_keys
+xkb_symbols "nopower" {
+    replace key <I124> { type="ONE_LEVEL", [ VoidSymbol ] };
+};

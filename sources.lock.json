@@ -179,6 +179,13 @@
     "vendor_and_community_sources": "Existing pinned kebab-bringup and oneplus-vendor-dt-reference repositories above; no source updates"
   },
   "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories",
+  "userspace_profiles": {
+    "three-mode-20261006": {
+      "manifest": "config/kebab-three-mode-packages.json",
+      "record": "docs/three-mode-ui-20261006.md",
+      "purpose": "Pinned Debian packages and inspected source archives for Phoc/Phosh/VTE three-position UI"
+    }
+  },
   "candidate_kernel_patches": [
     {
       "file": "patches/local/0002-input-synaptics-tcm-runtime-layout-candidate.patch",

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=服务器仪表盘
+Type=Application
+Exec=/usr/local/bin/kebab-ui-mode panel
+Icon=computer
+Terminal=false
+Categories=System;Monitor;
+X-Purism-FormFactor=Workstation;Mobile;

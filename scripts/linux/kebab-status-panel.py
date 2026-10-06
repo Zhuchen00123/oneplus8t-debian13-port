@@ -293,7 +293,8 @@ def paint(cr, width, height, state, page=0, shift=0):
         label('完整80/75物理周期：尚未验收', 42, 576, 16, muted)
         label('电池读数不代表USB附近局部温度', 42, 615, 13, muted)
         card(674, '使用方式', 345)
-        for index, line in enumerate(('短按电源键：亮屏 / 熄屏', '轻触屏幕：切换三页', '亮屏每3秒采样，无动画', '熄屏暂停指标采样与重绘', 'XFCE维护桌面通过SSH按需启动', '屏幕扫描仍为120Hz')):
+        mode_hint = '三段键：终端 / 仪表盘 / 手机桌面' if state.get('three_mode') else 'XFCE维护桌面通过SSH按需启动'
+        for index, line in enumerate(('短按电源键：亮屏 / 熄屏', '轻触屏幕：切换三页', '亮屏每3秒采样，无动画', '熄屏暂停指标采样与重绘', mode_hint, '屏幕扫描仍为120Hz')):
             label(line, 42, 724 + index * 45, 16, muted if index >= 3 else white)
     else:
         network = state.get('network') or {}

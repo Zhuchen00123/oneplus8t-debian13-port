@@ -1,0 +1,35 @@
+[Unit]
+Description=Kebab terminal, dashboard and mobile desktop
+After=systemd-user-sessions.service kebab-alert-slider.service kebab-terminal-backend.service
+After=kebab-status-panel.service lightdm.service kebab-maintenance-desktop.service kebab-xfce-test.service
+Requires=kebab-terminal-backend.service
+Wants=kebab-alert-slider.service
+Conflicts=kebab-status-panel.service lightdm.service kebab-maintenance-desktop.service kebab-xfce-test.service
+OnFailure=kebab-three-mode-fallback.service
+
+[Service]
+User=debian
+Group=debian
+PAMName=login
+TTYPath=/dev/tty7
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+TTYReset=yes
+TTYVHangup=yes
+Environment=XDG_SESSION_TYPE=wayland
+Environment=XDG_SESSION_CLASS=user
+Environment=XDG_SEAT=seat0
+Environment=XDG_VTNR=7
+Environment=LIBSEAT_BACKEND=logind
+Environment=XKB_DEFAULT_RULES=kebab
+Environment=XKB_CONFIG_EXTRA_PATH=/etc/kebab/xkb
+ExecStartPre=/usr/local/libexec/kebab-mobile-compositor --wait-display
+ExecStartPre=+/usr/bin/chvt 7
+ExecStart=/usr/local/libexec/kebab-mobile-compositor
+Restart=no
+TimeoutStopSec=15
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

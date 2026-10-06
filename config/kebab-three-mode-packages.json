@@ -1,0 +1,33 @@
+{
+  "checked_at": "2026-10-06",
+  "distribution": "Debian 13 arm64",
+  "source": "Debian trixie official archive; no upgrades or removals",
+  "packages": {
+    "phosh": "0.46.0-3+deb13u1",
+    "phoc": "0.46.0-1",
+    "squeekboard": "1.43.1-1",
+    "gir1.2-vte-2.91": "0.80.1-1",
+    "gir1.2-gtklayershell-0.1": "0.9.0-2",
+    "tmux": "3.5a-3",
+    "xwayland": "2:24.1.6-1",
+    "gnome-settings-daemon-common": "48.1-1",
+    "gnome-text-editor": "48.3-3",
+    "grim": "1.4.0+ds-2+b2",
+    "kbd": "2.7.1-2",
+    "bluez": "5.82-1.1"
+  },
+  "inspected_source_archives": [
+    {
+      "url": "https://deb.debian.org/debian/pool/main/p/phosh/phosh_0.46.0.orig.tar.xz",
+      "sha256": "2a58cdece2fa3737d551dd976a450505f97de2371e6c2ab17be1c9bc7481d09c"
+    },
+    {
+      "url": "https://deb.debian.org/debian/pool/main/p/phoc/phoc_0.46.0.orig.tar.xz",
+      "sha256": "862e93ed915ffa7230db3e6fbf80c348f5d36f027e49b69d1b23220239bef899"
+    },
+    {
+      "url": "https://deb.debian.org/debian/pool/main/s/squeekboard/squeekboard_1.43.1.orig.tar.bz2",
+      "sha256": "f3ec511ffed23eda48ca44bfc4a0b4c8c9fc44c61f648f6ac0cae7856d84dadc"
+    }
+  ]
+}
