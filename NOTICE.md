@@ -5,6 +5,7 @@
 - Linux / SM8250 社区 fork：Linux 原始源码和派生驱动应遵循各源文件的 SPDX 与上游许可。
 - jfbobier Oneplus-8T-kebab-pmos-bringup：保留其补丁作者和源码文件头；上游仓库及 device APKBUILD 的许可证声明可能按文件不同。
 - OnePlusOSS：只用于公开协议和参数参考；没有复制或发布本机厂商固件。
+- 三段键驱动的寄存器协议参考OnePlusOSS固定提交`846e71f228ad605c75b53064c4c165a1361a0bfe`的IST8801源码（Oplus，GPL-2.0-only）；新增C驱动和共享判档代码保留GPL-2.0-only标记。没有发布厂商固件或本机校准。
 - patches/local/ 中保留原有补丁作者和上下文；Linux 派生代码的许可随对应原始文件。
 - 本仓库未用一个新顶层许可证覆盖所有来源不同的文件。独立脚本没有明确许可证声明的部分，不应据此假定已取得额外再许可权利。
 

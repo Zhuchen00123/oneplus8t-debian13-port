@@ -3,6 +3,8 @@
 /artifacts/
 /backups/
 /local/
+/alert-slider-calibration.json
+**/alert-slider-calibration.json
 /firmware/
 /downloads/
 *.img
