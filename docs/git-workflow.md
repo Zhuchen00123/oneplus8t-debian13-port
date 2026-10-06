@@ -1,6 +1,21 @@
 # Git 管理
 
-管理仓库保存规范、来源锁定、脚本、配置与脱敏证据。第三方仓库独立下载，镜像/个人信息忽略。本机管理仓库未配置remote；公开脱敏仓库另在[GitHub](https://github.com/Zhuchen00123/oneplus8t-debian13-port)，不能把两者当同一历史或直接推送本地完整refs。
+管理仓库保存规范、来源锁定、脚本、配置与脱敏证据。第三方仓库独立下载，镜像/个人信息忽略。现已配置origin指向[GitHub](https://github.com/Zhuchen00123/oneplus8t-debian13-port)，但管理仓库与公开库历史仍不同，不能直接推送本地完整refs。此前“未配置remote”仅为早期状态。
+
+## 2026-10-06 面板与三段键发布
+
+用户明确要求更新Git并推送。本地既有面板暂存区单独提交为`a9205e2`（codex/panel-network-20261006），三段键源码、服务、测试及实施记录提交为`c52b659`（codex/alert-slider-20261006）。保留已有改动，未修改全局Git身份。
+
+公开发布从已审核的`18694a2`独立历史导出，不从管理仓库推送：
+
+| 分支 | 公开提交 | 内容 |
+| --- | --- | --- |
+| [codex/panel-network-20261006](https://github.com/Zhuchen00123/oneplus8t-debian13-port/tree/codex/panel-network-20261006) | `e322ee466e17f9c1ae47c627c09ecc3fdcfdb8b5` | 面板第三页、只读网络快照及独立公开说明 |
+| [codex/alert-slider-20261006](https://github.com/Zhuchen00123/oneplus8t-debian13-port/tree/codex/alert-slider-20261006) | `d6fac93b2f3648dcc90ebb8e6af82832a928acbb` | 在面板分支上增加IST8801驱动、合成测试、本地校准输入模板及公开说明 |
+
+公开三段键包装脚本读取本地校准JSON，测试改用合成值；不上传本机校准、模块二进制、原始采样、私有交接或本地旧历史。实际公开树83个文本blob的敏感模式、扩展名与相对链接检查通过，提交后逐个blob与审核SHA-256清单比对。面板11项回归、三段键262,996个分类点及去抖、公开包装脚本语法检查通过。
+
+两个分支原子推送，远端SHA回读一致；main仍为`99c24fe9516cc81be2c907eb6e862ac983a26227`，没有合并或创建PR。独立发布目录在忽略的`local/git-publish-20261006/`，白名单与审核清单在`local/alert-slider-20261006/`。后续仍沿用独立脱敏导出流程，不能因origin存在就推送管理分支。
 
 ## 当前文档与公开导出
 

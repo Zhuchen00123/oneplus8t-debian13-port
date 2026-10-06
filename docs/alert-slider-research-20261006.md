@@ -1,5 +1,7 @@
 # OnePlus 8T 三段键可行性核查（2026-10-06）
 
+Git发布：用户授权后，本地实施提交`c52b659`，公开脱敏分支[codex/alert-slider-20261006](https://github.com/Zhuchen00123/oneplus8t-debian13-port/tree/codex/alert-slider-20261006)提交`d6fac93`已推送并回读。公开版不含本机校准、模块二进制或原始证据，包装脚本改为从本地校准JSON读取；main未合并。详见[发布流程](git-workflow.md)。
+
 ## 10/06 已部署的三段键识别
 
 用户随后要求“开始着手”，并实际配合最上／中／最下档采样及两轮拨动。已确认本机为一对 IST8801，地址 `0x18/0x19`、ID 均为 `0x81`。当前已部署独立 `kebab-alert-slider.service`，**enabled/active**，普通 Linux 输入设备名为 `OnePlus 8T Alert Slider`；没有绑定静音、亮灭屏、关机、充电或网络动作。
