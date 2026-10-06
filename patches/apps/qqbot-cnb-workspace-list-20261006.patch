@@ -1,0 +1,46 @@
+--- a/src/address_export.py
++++ b/src/address_export.py
+@@ -99,7 +99,7 @@
+             return e.code == 401 and e.headers.get('WWW-Authenticate', '').lower().startswith('basic')
+ 
+     def discover(self):
+-        parameters = urllib.parse.urlencode({'slug': REPO, 'status': 'running', 'page': 1, 'page_size': 100})
++        parameters = urllib.parse.urlencode({'slug': REPO, 'page': 1, 'page_size': 100})
+         listing = self.api('/workspace/list?' + parameters)
+         if listing.get('hasMore'):
+             raise ValueError('Incomplete workspace listing')
+--- a/tests/test_address.py
++++ b/tests/test_address.py
+@@ -72,8 +72,31 @@
+         with patch.object(d, 'api', return_value={'list': []}) as api:
+             self.assertRaises(Recovering, d.discover)
+             self.assertIn('slug=zc354%2Fkebab-sillytavern-relay', api.call_args.args[0])
+-            self.assertIn('status=running', api.call_args.args[0])
++            self.assertNotIn('status=', api.call_args.args[0])
+             self.assertIn('page_size=100', api.call_args.args[0])
++    def test_running_filter_is_local_and_exact(self):
++        d = Discovery()
++        rows = [
++            {'slug': 'other/repo', 'status': 'running', 'sn': 'wrong'},
++            {'slug': 'zc354/kebab-sillytavern-relay', 'status': 'closed', 'sn': 'closed'},
++            {'slug': 'zc354/kebab-sillytavern-relay', 'status': 'running', 'sn': 'right'},
++        ]
++        with patch.object(d, 'api', side_effect=[{'list': rows}, {'ssh': 'fixture'}]) as api, \
++             patch.object(d, 'endpoint', return_value='https://current-9003.cnb.run/') as endpoint, \
++             patch.object(d, 'probe', return_value=True):
++            self.assertEqual(d.discover(), 'https://current-9003.cnb.run/')
++            self.assertNotIn('status=', api.call_args_list[0].args[0])
++            self.assertTrue(api.call_args_list[1].args[0].endswith('/detail/right'))
++            endpoint.assert_called_once_with({'ssh': 'fixture'})
++
++    def test_multiple_running_dedicated_workspaces_are_rejected(self):
++        d = Discovery()
++        rows = [{'slug': 'zc354/kebab-sillytavern-relay', 'status': 'running', 'sn': sn}
++                for sn in ['one', 'two']]
++        with patch.object(d, 'api', return_value={'list': rows}), patch.object(d, 'endpoint') as endpoint:
++            self.assertRaises(ValueError, d.discover)
++            endpoint.assert_not_called()
++
+     def test_ssh_metadata_cannot_inject_command(self):
+         self.assertRaises(ValueError, Discovery().endpoint, {'ssh': 'ssh root@host;evil'})
+     def test_ssh_key_failure_is_not_confirmed(self):

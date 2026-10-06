@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-10-06",
+  "distribution": "Debian 13 arm64",
+  "debian_archive": "https://deb.debian.org/debian/",
+  "packages": {
+    "firefox-esr": "153.4.0esr-1~deb13u1",
+    "firefox-esr-l10n-zh-cn": "153.4.0esr-1~deb13u1",
+    "linuxqq": "3.2.32-52194",
+    "xdg-utils": "1.2.1-2"
+  },
+  "qq": {
+    "official_page": "https://im.qq.com/linuxqq/index.shtml",
+    "download_url": "https://qqdl.gtimg.cn/qqfile/QQNT/9.9.33/release/3f89efc5/QQ_3.2.32_260812_arm64_01.deb",
+    "bytes": 205524324,
+    "sha256": "8796ccfd66acc025ef18db37185532d40bc8c58921e17da6d28c295acbcf8f92",
+    "architecture": "arm64",
+    "note": "Pinned available official package, not a latest-version claim. Independent of the QQ bot runtime."
+  },
+  "validation": {
+    "apt_upgrades": 0,
+    "apt_removals": 0,
+    "dpkg_audit_clean": true,
+    "ordinary_user_bounded_launch_seconds_each": 6,
+    "physical_touch_ime_and_desktop_qq_login_validated": false,
+    "unexpected_reboot_root_cause_resolved": false
+  },
+  "record": "docs/desktop-apps-recovery-20261006.md"
+}

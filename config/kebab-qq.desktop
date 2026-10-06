@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=QQ
+Comment=Official ARM64 Linux QQ
+Type=Application
+Exec=/usr/local/bin/kebab-qq %U
+Icon=qq
+StartupWMClass=QQ
+Terminal=false
+Categories=Network;InstantMessaging;
+X-Purism-FormFactor=Workstation;Mobile;

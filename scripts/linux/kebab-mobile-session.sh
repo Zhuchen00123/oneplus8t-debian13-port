@@ -18,8 +18,8 @@ values = {
    'picture-uri-dark': ('s', ''), 'primary-color': ('s', '#07100d'),
    'color-shading-type': ('s', 'solid')},
  'sm.puri.phosh': {'enable-suspend': ('b', False),
-   'favorites': ('as', ['kebab-console.desktop', 'kebab-panel-view.desktop', 'org.gnome.TextEditor.desktop', 'thunar.desktop']),
-   'force-adaptive': ('as', ['kebab-console.desktop', 'kebab-panel-view.desktop', 'thunar.desktop', 'xfce4-terminal.desktop'])},
+   'favorites': ('as', ['kebab-console.desktop', 'kebab-panel-view.desktop', 'kebab-firefox.desktop', 'kebab-qq.desktop', 'org.gnome.TextEditor.desktop', 'thunar.desktop']),
+   'force-adaptive': ('as', ['kebab-console.desktop', 'kebab-panel-view.desktop', 'thunar.desktop', 'xfce4-terminal.desktop', 'kebab-firefox.desktop', 'firefox-esr.desktop', 'kebab-qq.desktop', 'qq.desktop'])},
  'sm.puri.phosh.notifications': {'wakeup-screen-triggers': ('as', [])},
  # Squeekboard interprets false as suppressing automatic display, while its
  # explicit DBus ForceVisible still works. Focus changes otherwise reset hides.

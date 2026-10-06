@@ -178,15 +178,43 @@
     ],
     "vendor_and_community_sources": "Existing pinned kebab-bringup and oneplus-vendor-dt-reference repositories above; no source updates"
   },
+  "current_runtime_kernel": {
+    "checked_at": "2026-10-06",
+    "release": "7.2.0-kebab-debian13-r3-slider+",
+    "commit": "83d0c460b621f7effe0a400f32d261c4f18335f2",
+    "extends_profile": "r2-charge-policy",
+    "additional_patch": "patches/local/0007-input-kebab-ist8801-builtin-candidate.patch",
+    "artifact_group": "artifacts/slider-builtin-20261006/ready/",
+    "normal_reboot_verified": true,
+    "physical_three_positions_verified": true,
+    "documentation": "docs/slider-builtin-20261006.md"
+  },
   "privacy": "device serials, proprietary firmware, partition images and EFS/NV must stay in ignored local directories",
   "userspace_profiles": {
     "three-mode-20261006": {
       "manifest": "config/kebab-three-mode-packages.json",
       "record": "docs/three-mode-ui-20261006.md",
       "purpose": "Pinned Debian packages and inspected source archives for Phoc/Phosh/VTE three-position UI"
+    },
+    "desktop-apps-20261006": {
+      "manifest": "config/kebab-desktop-apps-packages.json",
+      "record": "docs/desktop-apps-recovery-20261006.md",
+      "purpose": "Pinned Debian Firefox ESR and official ARM64 QQ package for the Phosh lower mode"
     }
   },
   "candidate_kernel_patches": [
+    {
+      "file": "patches/local/0007-input-kebab-ist8801-builtin-candidate.patch",
+      "sha256": "78a972d9b3aa3a9e23670cab9346158b7d59509c350a4f81408da4800862b0d0",
+      "base_kernel_commit": "7555af9e1756d51838f49c6348cb3b0f17365858",
+      "candidate_kernel_commit": "83d0c460b621f7effe0a400f32d261c4f18335f2",
+      "candidate_kernelrelease": "7.2.0-kebab-debian13-r3-slider+",
+      "checked_at": "2026-10-06",
+      "status": "r3 DT/I2C builtin deployed to boot_a; normal reboot and physical three-mode touch passed",
+      "hardware_boot_validated": true,
+      "physical_three_positions_validated": true,
+      "documentation": "docs/slider-builtin-20261006.md"
+    },
     {
       "file": "patches/local/0002-input-synaptics-tcm-runtime-layout-candidate.patch",
       "sha256": "e3c5368e8a073c0247c4589d2d1671a376be2b0593fbe03c2a33fc348ac67f86",

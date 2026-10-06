@@ -233,7 +233,13 @@ static int __init slider_raw_init(void)
 		ret = PTR_ERR(rail);
 		goto clients_free;
 	}
-	if (regulator_get_voltage(rail) != 3000000 || regulator_is_enabled(rail) != 0) {
+	/* RPMh reports -EINVAL (unknown) before its first enable/disable request.
+	 * Production consumers must acquire a normal reference even then, or when
+	 * another consumer already enabled the rail. Core enable/disable preserves
+	 * the other references. Bounded diagnostics still require known-off state.
+	 */
+	if (regulator_get_voltage(rail) != 3000000 ||
+	    (!persistent && regulator_is_enabled(rail) != 0)) {
 		ret = -EBUSY;
 		goto rail_put;
 	}

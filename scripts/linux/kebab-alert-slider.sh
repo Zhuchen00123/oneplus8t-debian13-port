@@ -1,9 +1,40 @@
 #!/bin/bash
-# Runtime driver only for the verified kernel and Hall sensor calibration.
+# Runtime module on r2; startup health gate for the isolated r3 builtin.
 set -euo pipefail
 [[ $EUID == 0 && $(uname -m) == aarch64 ]]
-[[ $(uname -r) == 7.2.0-kebab-debian13-r2-charge-policy+ ]]
 snapshot=/sys/module/kebab_alert_slider/parameters/snapshot
+if [[ $(uname -r) == 7.2.0-kebab-debian13-r3-slider+ ]]; then
+  case "${1:-}" in
+    start)
+      # The I2C core probes builtin drivers once bus and vdd are available.
+      # This gate never loads a second driver or overwrites its calibration.
+      python3 - "$snapshot" <<'PY'
+import json, sys, time
+for _ in range(50):
+    try:
+        with open(sys.argv[1]) as stream:
+            s = json.load(stream)
+        if (s['active'] and s['owned'] and s['count'] >= 3 and
+                s['error'] == 0 and s['age_ms'] <= 300 and
+                s['reported'] in (0, 1, 2)):
+            print('Builtin alert slider recognised, profile=' + str(s['reported']))
+            break
+    except (OSError, ValueError, KeyError):
+        pass
+    time.sleep(0.2)
+else:
+    raise SystemExit('Builtin alert slider has not produced a healthy stable position')
+PY
+      ;;
+    stop)
+      echo 'Builtin recognition remains kernel-owned; this service is a health gate.'
+      ;;
+    status) cat "$snapshot" ;;
+    *) echo 'Usage: kebab-alert-slider start|stop|status' >&2; exit 2 ;;
+  esac
+  exit 0
+fi
+[[ $(uname -r) == 7.2.0-kebab-debian13-r2-charge-policy+ ]]
 case "${1:-}" in
   start)
     [[ ! -d /sys/module/kebab_alert_slider && ! -d /sys/module/kebab_alert_slider_raw ]]

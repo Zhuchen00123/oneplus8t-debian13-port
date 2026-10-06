@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Firefox 浏览器
+Comment=Native Wayland web browser
+Type=Application
+Exec=/usr/local/bin/kebab-firefox %u
+Icon=firefox-esr
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;
+X-Purism-FormFactor=Workstation;Mobile;

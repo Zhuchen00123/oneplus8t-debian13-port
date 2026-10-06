@@ -1,0 +1,5 @@
+--- a/kebab-portal-login.sh
++++ b/kebab-portal-login.sh
+@@ -94 +94 @@
+-  cn_out=$("$PYTHON" -m campusnet "$@" 2>&1)
++  cn_out=$(timeout --foreground --signal=TERM --kill-after=5s 25s "$PYTHON" -m campusnet "$@" 2>&1)
