@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import signal
 import time
+import ipaddress
+import re
 
 
 def read(path):
@@ -81,6 +83,44 @@ def health_snapshot(path=Path('/run/kebab-health/status.json')):
         return None, None
 
 
+def network_snapshot(path=Path('/run/kebab-panel-network/status.json')):
+    try:
+        value = json.loads(path.read_text())
+        checked = value.get('checked_at')
+        if type(checked) not in (int, float) or not 0 <= time.time() - checked <= 90:
+            return None
+        campus = value.get('campus')
+        if not isinstance(campus, dict):
+            return None
+        for key, version in (('ipv4', 4), ('ipv6', 6)):
+            if not isinstance(campus.get(key), list):
+                return None
+            if any(not isinstance(address, str) or ipaddress.ip_address(address).version != version
+                   for address in campus[key]):
+                return None
+        relay = value.get('sillytavern')
+        if relay is not None:
+            stamp = relay.get('checked_at')
+            url = relay.get('https_url')
+            if (type(stamp) not in (int, float) or not 0 <= time.time() - stamp <= 180
+                    or not isinstance(url, str)
+                    or not re.fullmatch(r'https://[A-Za-z0-9-]+-9003\.cnb\.run/', url)):
+                value['sillytavern'] = None
+        endpoint = value.get('mc_address')
+        if endpoint is not None and (not isinstance(endpoint, str)
+                                    or not re.fullmatch(r'[A-Za-z0-9-]+\.cnb\.run:[0-9]{1,5}', endpoint)
+                                    or not 1 <= int(endpoint.rsplit(':', 1)[1]) <= 65535):
+            value['mc_address'] = None
+        if not isinstance(value.get('services'), dict):
+            return None
+        value['services'] = {unit: status for unit, status in value['services'].items()
+                             if isinstance(status, str) and status in
+                             ('active', 'inactive', 'failed', 'activating', 'deactivating', 'reloading')}
+        return value
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
+
+
 class Sampler:
     def __init__(self):
         self.cpu = None
@@ -129,6 +169,7 @@ class Sampler:
                 'root': disk('/'), 'data': disk('/srv', True), 'battery': battery,
                 'wifi_up': read(net_path / 'operstate') == 'up', 'net_rates': speed,
                 'health': health, 'health_age': age, 'uptime': uptime,
+                'network': network_snapshot(),
                 'kernel': os.uname().release, 'hardware_writes': False}
 
 
@@ -168,12 +209,13 @@ def paint(cr, width, height, state, page=0, shift=0):
     def color(value):
         cr.set_source_rgb(*(int(value[i:i + 2], 16) / 255 for i in (1, 3, 5)))
 
-    def label(value, x, y, size=18, ink=white, bold=False, width=450):
+    def label(value, x, y, size=18, ink=white, bold=False, width=450, lines=1):
         layout = PangoCairo.create_layout(cr)
         layout.set_font_description(Pango.FontDescription(f'Noto Sans CJK SC {"Bold " if bold else ""}{size}'))
         layout.set_text(str(value), -1)
         layout.set_width(int(width * Pango.SCALE))
-        layout.set_height(-1)  # One line; long unexpected values must not overlap rows.
+        layout.set_height(-lines)
+        layout.set_wrap(Pango.WrapMode.CHAR)
         layout.set_ellipsize(Pango.EllipsizeMode.END)
         color(ink)
         cr.move_to(x, y)
@@ -196,7 +238,7 @@ def paint(cr, width, height, state, page=0, shift=0):
 
     current = dt.datetime.now()
     label('ONEPLUS 8T', 28, 42, 17, accent, True)
-    label('服务器状态' if page == 0 else '状态与说明', 28, 82, 29, white, True)
+    label(('服务器状态', '状态与说明', '网络与入口')[page], 28, 82, 29, white, True)
     label(current.strftime('%m月%d日  %H:%M'), 28, 139, 17, muted)
     label('只读  ·  本机采样', 294, 143, 14, muted, width=220)
 
@@ -237,7 +279,7 @@ def paint(cr, width, height, state, page=0, shift=0):
         stop, resume = charge.get('stop_percent'), charge.get('resume_percent')
         message = f'{stop}/{resume} · 停充读回已验证（快照）' if verified else '限充读回未确认 / 快照不可用'
         label(message, 42, 1033, 13, muted)
-    else:
+    elif page == 1:
         card(202, '运行状态', 205)
         uptime = state.get('uptime')
         label('运行 ' + (f'{int(uptime // 3600)}小时 {int(uptime % 3600 // 60)}分钟' if uptime is not None else '—'), 42, 252, 23, white, True)
@@ -251,9 +293,41 @@ def paint(cr, width, height, state, page=0, shift=0):
         label('完整80/75物理周期：尚未验收', 42, 576, 16, muted)
         label('电池读数不代表USB附近局部温度', 42, 615, 13, muted)
         card(674, '使用方式', 345)
-        for index, line in enumerate(('短按电源键：亮屏 / 熄屏', '轻触屏幕：切换两页', '亮屏每3秒采样，无动画', '熄屏暂停指标采样与重绘', 'XFCE维护桌面通过SSH按需启动', '屏幕扫描仍为120Hz')):
+        for index, line in enumerate(('短按电源键：亮屏 / 熄屏', '轻触屏幕：切换三页', '亮屏每3秒采样，无动画', '熄屏暂停指标采样与重绘', 'XFCE维护桌面通过SSH按需启动', '屏幕扫描仍为120Hz')):
             label(line, 42, 724 + index * 45, 16, muted if index >= 3 else white)
-    label('轻触切页   ● ○' if page == 0 else '轻触切页   ○ ●', 28, 1124, 15, accent)
+    else:
+        network = state.get('network') or {}
+        campus = network.get('campus', {})
+        services = network.get('services', {})
+
+        def service(unit):
+            return {'active': '运行', 'inactive': '停止', 'failed': '失败',
+                    'activating': '启动中', 'deactivating': '停止中',
+                    'reloading': '重载中'}.get(services.get(unit + '.service'), '未知')
+
+        card(202, '校园网  ·  gdut / wlan0', 258)
+        label('IPv4  ' + ' / '.join(campus.get('ipv4', []) or ['未获取']), 42, 247, 21, accent)
+        label('IPv6  ' + ' / '.join(campus.get('ipv6', []) or ['未获取全局地址']), 42, 292, 13, muted, lines=2)
+        label('校园认证  http://10.0.3.2/', 42, 349, 17)
+        label('手机 SSH 端口 22 · 使用原有密钥', 42, 391, 14, muted)
+        label('接口地址不代表校园认证或校外可达', 42, 427, 12, muted)
+
+        card(476, 'CNB  ·  酒馆独立入口', 292)
+        relay = network.get('sillytavern')
+        label('地址已同步' if relay else '地址未确认 / 等待同步', 42, 521, 23, accent)
+        label(relay['https_url'] if relay else '暂无有效入口', 42, 568, 13, lines=3)
+        label('控制器 ' + service('kebab-strelay-controller') + '  ·  SSH ' + service('kebab-strelay-ssh'), 42, 664, 15)
+        label('HTTP ' + service('kebab-strelay-http') + '  ·  使用原酒馆登录', 42, 703, 14, muted)
+        label('同步状态不是公网访问测试', 42, 739, 12, muted)
+
+        card(784, 'CNB  ·  MC 转发', 202)
+        label('客户端 ' + service('kebab-mcbridge-client'), 42, 828, 21, accent)
+        label(network.get('mc_address') or '暂无有效配置地址', 42, 874, 13, lines=2)
+        label('仅显示中继主机，游戏可用性未检测', 42, 949, 12, muted)
+        age = time.time() - network['checked_at'] if network else None
+        label('网络快照 ' + fmt(age, '秒') + ' · 30秒更新', 28, 1018, 14, muted)
+        label('过期地址隐藏 · 不显示账号、密码或令牌', 28, 1060, 12, muted)
+    label('轻触切页   ' + ' '.join('●' if index == page else '○' for index in range(3)), 28, 1124, 15, accent)
     label('短按电源键亮灭屏 · 服务器继续运行', 28, 1164, 12, muted)
 
 
@@ -261,7 +335,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sample', action='store_true')
     parser.add_argument('--preview', type=Path)
-    parser.add_argument('--page', type=int, choices=(0, 1), default=0)
+    parser.add_argument('--page', type=int, choices=(0, 1, 2), default=2)
     args = parser.parse_args()
     sampler = Sampler()
     if args.sample:
@@ -318,7 +392,7 @@ def main():
         now = time.monotonic()
         if lit is False or now - last_touch < 0.45:
             return True
-        last_touch, page = now, 1 - page
+        last_touch, page = now, (page + 1) % 3
         area.queue_draw()
         record()
         return True

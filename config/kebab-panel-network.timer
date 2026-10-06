@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh local addresses for Kebab panel
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=30s
+AccuracySec=2s
+Unit=kebab-panel-network.service
+
+[Install]
+WantedBy=timers.target
