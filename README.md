@@ -58,6 +58,8 @@ OnePlus 8T 中国版（kebab / SM8250）的主线 Linux 移植与服务器维护
 
 ## 使用与构建
 
+EmbeddingGemma 2 ONNX Q8已完成手机文本与图片有界试跑，实测速度、内存、温度与限制见[10/07试跑记录](docs/embeddinggemma-q8-trial-20261007.md)。独立试验环境保留，未切换酒馆或启用常驻嵌入服务。
+
 当前手机处于Linux；维护使用本机私有SSH配置，入口为local/ssh/kebab-server.conf，不复制或上传密钥。ADB示例仅适用于原厂Android/历史阶段。设备写入前按[规范](AGENTS.md)核验实际目标、输入哈希、授权和恢复点。
 
 构建使用Debian WSL的大小写敏感文件系统，先DTB后内核。r2-charge-policy是当前配方；下面只做主机构建：

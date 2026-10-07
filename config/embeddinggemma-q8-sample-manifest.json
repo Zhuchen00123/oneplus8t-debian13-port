@@ -1,0 +1,16 @@
+[
+  {
+    "file": "cats.jpg",
+    "url": "https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/542437c29cc5273cfd29e25c77696f2b349badd7/cats.jpg",
+    "dataset_revision": "542437c29cc5273cfd29e25c77696f2b349badd7",
+    "sha256": "5dddd2c5e0788ffbb37d8b8d9a30b41b83dfbc1cf486c0b214d5b3af09b283c3",
+    "bytes": 422547
+  },
+  {
+    "file": "corgi.jpg",
+    "url": "https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/542437c29cc5273cfd29e25c77696f2b349badd7/corgi.jpg",
+    "dataset_revision": "542437c29cc5273cfd29e25c77696f2b349badd7",
+    "sha256": "385413e29523ac6b777f8f23bcf72696119f9bfa364792036fc008700a1f6811",
+    "bytes": 309486
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "name": "embeddinggemma-q8-trial-20261007",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@huggingface/transformers": "4.3.1"
+  }
+}
