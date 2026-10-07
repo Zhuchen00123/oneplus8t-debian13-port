@@ -1,5 +1,7 @@
 # EmbeddingGemma 2 ONNX Q8 手机试跑（2026-10-07）
 
+Git发布增补：用户随后明确授权提交和推送。本地实施提交`8b2fd1c`；独立公开历史已推送[主题分支](https://github.com/Zhuchen00123/oneplus8t-debian13-port/tree/codex/embeddinggemma-q8-trial-20261007)，公开提交`d8ae2f5`，远端SHA一致。公开文件集与65个提交blob审核通过，不含模型权重、样例图片、原始报告或私有旧历史；main未合并。详见[发布记录](git-workflow.md)。
+
 结论：KB2000 / Debian 13 能实际运行 ONNX Q8 文本与视觉嵌入。普通大核 CPU4 单线程的小样例测试中，短中文查询约0.59秒、128 token约1.57秒，低视觉预算下图片约8秒一张；适合低并发文本检索和后台图片索引。不是长期温升、完整多模态性能或生产服务验收。
 
 ## 部署与来源

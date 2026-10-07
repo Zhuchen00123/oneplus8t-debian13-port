@@ -2,6 +2,14 @@
 
 管理仓库保存规范、来源锁定、脚本、配置与脱敏证据。第三方仓库独立下载，镜像/个人信息忽略。现已配置origin指向[GitHub](https://github.com/Zhuchen00123/oneplus8t-debian13-port)，但管理仓库与公开库历史仍不同，不能直接推送本地完整refs。此前“未配置remote”仅为早期状态。
 
+## 2026-10-07 EmbeddingGemma 2 ONNX Q8发布
+
+用户明确要求提交并推送。本地试跑脚本、固定模型/依赖、清单和完整脱敏记录提交为`8b2fd1c2fd3e999fbeae7b17c0ca7b5bb3989e5c`，分支`codex/embeddinggemma-q8-trial-20261007`；按项目既有规则使用单次`Codex <codex@localhost>`身份，没有修改Git身份配置。用户原有未跟踪的电源路径文档保留，不纳入此次提交。
+
+公开导出从`origin/main`的`99c24fe9516cc81be2c907eb6e862ac983a26227`独立历史开始，提交为`d8ae2f5f335eabc0c58632deb20f40cb15963d51`，已推送至[ONNX Q8试跑分支](https://github.com/Zhuchen00123/oneplus8t-debian13-port/tree/codex/embeddinggemma-q8-trial-20261007)。10个白名单文本增量，公开说明独立重写；模型权重、图片、私有原始报告和本地旧管理历史未导出。全公开树65个文本文件的敏感模式、JSON/Python和相对链接检查无发现，65个实际提交blob逐项匹配审核SHA-256；远端分支SHA回读一致，main回读仍为上述提交。未合并或创建PR。
+
+独立发布目录为忽略的`local/embeddinggemma-git-publish-20261007/`；白名单、审核清单、隐私检查在`local/embeddinggemma-q8-20261007/`。后续不能直接从本地管理分支推送同名公开分支，两者历史不同。试跑状态见[本地完整记录](embeddinggemma-q8-trial-20261007.md)，公开内容见[GitHub实测摘要](https://github.com/Zhuchen00123/oneplus8t-debian13-port/blob/codex/embeddinggemma-q8-trial-20261007/docs/embeddinggemma-q8.md)。
+
 ## 2026-10-06 面板与三段键发布
 
 用户明确要求更新Git并推送。本地既有面板暂存区单独提交为`a9205e2`（codex/panel-network-20261006），三段键源码、服务、测试及实施记录提交为`c52b659`（codex/alert-slider-20261006）。保留已有改动，未修改全局Git身份。
