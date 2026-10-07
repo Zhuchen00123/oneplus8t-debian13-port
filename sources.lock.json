@@ -149,5 +149,24 @@
         "long_term_touch_stability_validated": false
       }
     }
+  },
+  "embeddinggemma_q8_trial": {
+    "checked_at": "2026-10-07",
+    "scope": "isolated CPU trial; does not replace the SillyTavern embedding provider",
+    "model_repository": "https://huggingface.co/onnx-community/embeddinggemma-2-ONNX",
+    "model_revision": "daa72c51243991dfcaf9f9137d2c573d8f7790c0",
+    "dtype": "q8",
+    "modalities_downloaded": [
+      "text",
+      "vision"
+    ],
+    "transformers_js": "4.3.1",
+    "onnxruntime_node": "1.30.0",
+    "node": "20.20.2",
+    "dependency_lock": "scripts/embeddinggemma/package-lock.json",
+    "model_manifest": "config/embeddinggemma-q8-model-manifest.json",
+    "sample_dataset": "https://huggingface.co/datasets/Xenova/transformers.js-docs",
+    "sample_dataset_revision": "542437c29cc5273cfd29e25c77696f2b349badd7",
+    "sample_manifest": "config/embeddinggemma-q8-sample-manifest.json"
   }
 }

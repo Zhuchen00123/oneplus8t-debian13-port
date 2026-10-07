@@ -41,3 +41,7 @@ OnePlus 8T 中国版 KB2000（kebab / SM8250 / Adreno 650）的社区主线 Linu
 脚本不是整机刷写工具。主机构建不触发 ADB/fastboot/SSH 手机部署；运行时 USB/蓝牙/救援脚本供用户明确选择后集成到目标系统，GPU 诊断会访问执行它的机器的图形设备。
 
 默认配方保留 r1 仅应用 0001；显式选择 `r2` profile 可成组应用显示与内建触摸四项修复。r2 已完成本机真实单指/双指/抬起、重启和 USB SSH 验证，旧模块接管服务已禁用。[r2 构建与验收](docs/r2.md)。镜像、固件、身份及原始证据只留本地。
+
+## EmbeddingGemma 2 ONNX Q8 试跑
+
+2026-10-07：新增固定来源的文本与图片嵌入有界测试。普通大核单线程短查询约0.59秒，低预算图片约8秒；仅为小样例验收，未部署生产服务。详见[实测与限制](docs/embeddinggemma-q8.md)及[复验步骤](scripts/embeddinggemma/README.md)。

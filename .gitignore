@@ -45,3 +45,11 @@ known_hosts
 *.sqlite
 *.pcap
 *.pcapng
+
+# Local embedding trial assets and outputs
+/models/
+/assets/
+/results/
+/node_modules/
+/npm-cache/
+/runtime/
