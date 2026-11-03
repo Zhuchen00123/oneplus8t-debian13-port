@@ -1,5 +1,7 @@
 # OnePlus 8T / KB2000 → Debian 13
 
+11/03 InstaBox 美国链路已改为常驻：VM 侧 vps-link.service（Restart=always）把 VM sshd 发布在 VPS:22222，实测 kill 自愈、挂起恢复后仍可用；按用户要求暂不做上网加速。
+
 11/03 已可用 InstaBox 美国 VM 的网络上网：VM 反向 SSH 到香港 VPS 的 22222、本地 ssh -D 建 SOCKS5，出口 16.148.25.106（AWS 俄勒冈），页面约 1.1–1.5 s、下载 2.25 MB/s；一键脚本 scripts/Start-UsEgress.ps1。见[美国出口](docs/hk-vps-quic-egress-20261102.md)。
 
 11/03 InstaBox 云端 VM（AWS 俄勒冈）与校园网实测双向不可达，但到香港 VPS 质量良好（RTT 161 ms、下行 15.0 MB/s／上行 10.8 MB/s、零丢包）；已用香港 VPS 做中转：手机侧反向 SSH 隧道 + VPS socat 22022，InstaBox 可登录校园手机并经转发访问电脑 DSH 与路由器（0.73 s）。见[校园↔InstaBox 中转](docs/hk-vps-quic-egress-20261102.md)。

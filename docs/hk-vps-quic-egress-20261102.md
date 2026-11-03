@@ -305,3 +305,27 @@ powershell -NoProfile -File F:\codexprojects\instabox\scripts\Start-UsEgress.ps1
 - 暴露的 22222 是 **sshd**（密钥登录，密码认证已关闭），不是开放代理。
 - VM 上的 `tun_key` 放在 `/tmp`，仅在 VM 生命周期内存在。
 - 回退：`systemctl disable --now relay-22222`（VPS），删除 `/var/lib/relay` 中的第二条授权；VM 侧无需处理（临时环境）。
+
+### 常驻化（2026-11-03 晚）
+
+按用户要求"打通链路即可、暂不用于直接上网"，把一次性脚本改成**常驻链路**：
+
+| 项 | 变化 |
+| --- | --- |
+| VM 侧 | 新增 `/etc/systemd/system/vps-link.service`（`Restart=always`），密钥与 known_hosts 放在 `/data/home/.ssh/`，`systemctl enable` 已开启 |
+| 本地脚本 | `scripts\Start-UsEgress.ps1` 改为安装并启动该单元，不再用 `nohup` |
+| 用途 | 只保持"VM sshd 发布在 `2602:f506:81::6440:1333:22222`"，SOCKS 仍可用但不再优化 |
+
+验证：
+
+| 测试 | 结果 |
+| --- | --- |
+| 手动 kill 隧道进程 | `NRestarts=1` 后自动恢复，链路可用 |
+| VM 挂起（`suspend`）后恢复（`start`） | `vps-link` 仍 active，从校园侧 SSH 仍返回 `LINK_AFTER_RESUME` |
+| 校园侧连通性 | `ssh -p 22222 ... user@2602:f506:81::6440:1333` → 正常 |
+
+说明：
+
+- VM 闲置 30 分钟仍会自动挂起，但**恢复后链路自动可用**（已验证一次）。
+- 若 VM 被销毁/重建，`/etc` 可能不保留，重跑一次脚本即可（幂等，约 10 秒）。
+- 暂不做 QUIC 出口或吞吐优化。
