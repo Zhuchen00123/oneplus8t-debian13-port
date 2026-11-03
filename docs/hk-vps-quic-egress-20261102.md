@@ -372,3 +372,55 @@ powershell -NoProfile -File F:\codexprojects\instabox\scripts\Start-UsEgress.ps1
 - 用户下载会额外叠加排队延迟，但只贡献约 +6 ms RTT；页面变慢主要来自基线 RTT 本身的抬升。
 - 由于页面加载要多次往返，45 ms 的 RTT 抬升直接体现为 1.1 s → 1.9 s 的页面耗时。
 - 校区到 1.1.1.1 / Google DNS 等外部参考点不可达，无法取得同链路的第三方对照；判断基于同一 VPS 的纵向对比。
+
+## 上传速度复测与第三方测速端点（2026-11-03 晚）
+
+### 端点可达性筛查（从校区手机实测）
+
+| 端点 | 地址 | 可达 | TCP 连接 |
+| --- | --- | --- | --- |
+| Cloudflare Speed | speed.cloudflare.com | ✅ v4/v6 | v6 120 ms / v4 244 ms |
+| OVH | proof.ovh.net | ✅ v4 | 181 ms |
+| 中科大镜像 | mirrors.ustc.edu.cn | ✅ v6 | 49 ms |
+| 清华 TUNA | mirrors.tuna.tsinghua.edu.cn | ✅ v6 | 41 ms |
+| Tele2 | speedtest.tele2.net | ❌ | — |
+| Linode 新加坡/东京 | speedtest.*.linode.com | ❌ | — |
+
+结论：校区可用的可靠端点以 **Cloudflare Speed**（支持上传/下载、IPv6）为主，CERNET 镜像可作国内对照但需要有效大文件路径。
+
+### 上传实测
+
+| 方向 | 工具 | 结果 |
+| --- | --- | --- |
+| 校区(手机) → HK VPS | HTTP POST 50 MB | **0.79 / 0.86 / 0.94 MB/s** |
+| 校区(PC) → HK VPS | HTTP POST 50 MB | **0.81 / 0.88 MB/s** |
+| 校区(手机) → Cloudflare | POST 50 MB | 1.81 / 2.70 MB/s |
+| 校区(PC) → Cloudflare | POST 50 MB | **4.64 / 5.75 MB/s** |
+| 校区(手机) ← Cloudflare | GET 50 MB | 8.62 / 9.02 MB/s |
+| 校区(手机) ← HK VPS | GET 50 MB | 8.6–8.7 MB/s |
+
+接收端已排除瓶颈：VPS 上的接收器本机自测 **386–434 MB/s**；VPS 负载 0.00、网卡无 errors/drops。
+
+### 结论
+
+| 方向 | 早上 | 现在 | 变化 |
+| --- | --- | --- | --- |
+| VPS → 校区（下载） | 9.3 MB/s | 8.6 MB/s | −7% |
+| **校区 → VPS（上传）** | **5.3 MB/s** | **0.79–0.94 MB/s** | **−84%** |
+| 校区 → Cloudflare（上传，对照） | — | 4.6–5.75 MB/s | 正常 |
+
+- 劣化是**方向性的**：下行基本不变，**上行塌陷**。
+- 校区整体上行没坏（到 Cloudflare 仍有 ~5 MB/s），所以问题出在**校区 → 香港这条特定路径的上行方向**，而不是校区出口总带宽或 VPS 接收能力。
+- 与 RTT 从 77 ms 升到 122 ms、偶发 1.1 s 停顿一致，符合该方向拥塞/丢包的特征。
+
+### 复测命令（可复用）
+
+```bash
+# 下载（Cloudflare，IPv6）
+curl -6 -k --resolve speed.cloudflare.com:443:[2a06:98c1:58::da] \
+  -o /dev/null -w '%{speed_download}\n' 'https://speed.cloudflare.com/__down?bytes=50000000'
+
+# 上传（Cloudflare，IPv6）
+curl -6 -k --resolve speed.cloudflare.com:443:[2a06:98c1:58::da] \
+  -X POST --data-binary @50mb.bin -o /dev/null -w '%{speed_upload}\n' https://speed.cloudflare.com/__up
+```

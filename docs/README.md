@@ -2,6 +2,8 @@
 
 ## 当前入口
 
+- [11/03 上传复测与测速端点筛查：校区→VPS 上行 5.3→0.79 MB/s（−84%）、下行仅 −7%，Cloudflare 对照正常，属方向性劣化](hk-vps-quic-egress-20261102.md)
+
 - [11/03 美国出口 TCP vs QUIC 与链路劣化测量：TCP SOCKS 4.10 MB/s 优于 QUIC 1.65；校园→VPS RTT 77→122 ms，吞吐仅降 7%](hk-vps-quic-egress-20261102.md)
 
 - [11/03 用 InstaBox 美国 VM 上网：VM 反向 SSH 到香港 VPS 22222、本地 ssh -D 建 SOCKS5，出口为 AWS 俄勒冈；含 2.25 MB/s 与一键脚本](hk-vps-quic-egress-20261102.md)

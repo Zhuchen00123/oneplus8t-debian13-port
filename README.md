@@ -1,5 +1,7 @@
 # OnePlus 8T / KB2000 → Debian 13
 
+11/03 上传复测：校区→香港 VPS 的上行从早上 5.3 MB/s 塌陷到 0.79–0.94 MB/s（−84%），而下行仍 8.6 MB/s；同期校区→Cloudflare 上传仍有 4.6–5.75 MB/s，说明是校区→香港这一特定方向劣化，非校区总出口或 VPS 接收能力。端点筛查：Cloudflare Speed 可用，Tele2/Linode 不可达。
+
 11/03 美国出口选型完成：TCP SOCKS（VPS:1080 → wg0 → VM）50MB 实测 4.10 MB/s，QUIC 方案仅 1.65 MB/s，页面延迟持平，已停用 QUIC。同日链路劣化测量：校园→VPS RTT 由 77 ms 升至 122 ms（+58%，p99 1.1 s、2/100 秒级停顿），吞吐仅降 7%（9.3→8.6 MB/s），性质是延迟而非带宽。
 
 11/03 InstaBox 美国链路已改为常驻：VM 侧 vps-link.service（Restart=always）把 VM sshd 发布在 VPS:22222，实测 kill 自愈、挂起恢复后仍可用；按用户要求暂不做上网加速。
