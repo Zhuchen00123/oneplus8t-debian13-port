@@ -2,6 +2,8 @@
 
 ## 当前入口
 
+- [11/03 用 InstaBox 美国 VM 上网：VM 反向 SSH 到香港 VPS 22222、本地 ssh -D 建 SOCKS5，出口为 AWS 俄勒冈；含 2.25 MB/s 与一键脚本](hk-vps-quic-egress-20261102.md)
+
 - [11/03 校园↔InstaBox 经香港 VPS 中转：手机反向 SSH 隧道 + VPS socat 22022，InstaBox 可登录校园手机并转发访问 DSH／路由器；含 InstaBox 到 VPS 的 161 ms／15 MB/s 实测](hk-vps-quic-egress-20261102.md)
 
 - [11/02 手机服务器承载QUIC出口并接管DSH入口：hysteria2常驻、USB有线IPv6与NAT66、QUIC下载9.3MB/s／上传5.3MB/s；插件隧道改经手机转发，新增Let's Encrypt的IPv6直连入口并关闭明文3000端口](hk-vps-quic-egress-20261102.md)

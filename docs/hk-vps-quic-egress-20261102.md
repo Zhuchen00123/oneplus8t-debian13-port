@@ -247,3 +247,61 @@ ssh -L 8080:192.168.1.1:80 -p 22022 -i campus_relay -N -f debian@2602:f506:81::6
 - 手机 sshd：`passwordauthentication no`、`permitrootlogin no`，仅密钥。
 - 对外只开 22022，落到手机 sshd；VPS 上的 `relay` 用户被限制只能监听 `127.0.0.1:22022`。
 - 回退：`systemctl disable --now vps-relay-tunnel`（手机）与 `systemctl disable --now relay-22022`（VPS），再删 `/var/lib/relay` 与 `/etc/systemd/system/relay-22022.service`。
+
+## 用 InstaBox VM 的网络上网（美国出口，2026-11-03 新增）
+
+### 原理
+
+VM 入站被封，但它能出站到香港 VPS。于是让 **VM 向 VPS 建反向 SSH 隧道**，把 VM 自己的 sshd 发布到 VPS 上，本地再对这条连接做 `ssh -D`，得到出口在美国的 SOCKS5。
+
+```text
+浏览器 ──SOCKS5 127.0.0.1:1080──► ssh -D ──► 香港 VPS [::]:22222
+                                                 │ socat → 127.0.0.1:22222
+                                                 ▼
+                                          VM sshd（反向隧道，VM 发起）
+                                                 ▼
+                                        AWS 俄勒冈出口（16.148.25.106）
+```
+
+### 组成
+
+| 位置 | 组件 | 说明 |
+| --- | --- | --- |
+| VPS | `relay-22222.service` | `socat TCP6-LISTEN:22222,...,ipv6only=1 → 127.0.0.1:22222`，已 enable |
+| VPS | 用户 `relay` 的第二条 authorized_keys | `restrict,port-forwarding,permitlisten="127.0.0.1:22222"`，密钥 `instabox-tunnel` |
+| VM | `/tmp/tun_key` + `setsid ssh -R 127.0.0.1:22222:127.0.0.1:22` | 由脚本注入并拉起 |
+| VM | `~/.ssh/authorized_keys` | 追加 `instabox-login` 公钥 |
+| 本地 | `scripts\Start-UsEgress.ps1` | 一键完成 VM 侧配置并打印 SOCKS 命令 |
+| 本地 | `.local-secrets\vps_tunnel` / `vm_login` | 两把私钥（目录已 gitignore） |
+
+### 使用
+
+```powershell
+powershell -NoProfile -File F:\codexprojects\instabox\scripts\Start-UsEgress.ps1
+# 输出最后一行给出：
+# ssh -D 1080 -p 22222 -i .local-secrets\vm_login -N user@2602:f506:81::6440:1333
+```
+
+然后把浏览器或系统代理设为 `socks5h://127.0.0.1:1080`。
+
+### 实测（2026-11-03）
+
+| 项目 | 结果 |
+| --- | --- |
+| 出口 IPv4 | `16.148.25.106`（AWS 俄勒冈） |
+| 出口 IPv6 | `2600:1f14:34cf:7b1d:c073::14d` |
+| google.com | HTTP 200，1.49 s |
+| example.com | HTTP 200，1.07–1.40 s |
+| 10 MB 下载 | 2.25 MB/s（约 18 Mbps） |
+
+### 边界
+
+- **只在 VM 运行期间有效**：VM 暂停或重建后隧道消失，需重新运行脚本。
+- 吞吐约 2.25 MB/s，瓶颈是「校园 → VPS」与「VPS → VM」两段叠加，且是单 TCP 流；浏览网页足够，大文件下载不划算。
+- 出口是数据中心 IP（AWS），部分站点会触发风控/验证码。
+
+### 安全与回退
+
+- 暴露的 22222 是 **sshd**（密钥登录，密码认证已关闭），不是开放代理。
+- VM 上的 `tun_key` 放在 `/tmp`，仅在 VM 生命周期内存在。
+- 回退：`systemctl disable --now relay-22222`（VPS），删除 `/var/lib/relay` 中的第二条授权；VM 侧无需处理（临时环境）。
