@@ -1,4 +1,10 @@
 # 文档索引
+MC最新修复交接在 `local/worktree-mc/mc/FIXES-20261005.md`；`local/ssh443-trial-20261005/README.md`是已清理的临时SSH试验，酒馆后续独立常驻通道见迁移专题。现有FigJam/流程图仍为10/04版本，本次未更新。
+
+- [11/03 校园→香港 VPS 实际链路追踪：绕行北京 CNGI 出口，110ms 中 105ms 在途](hk-vps-quic-egress-20261102.md)
+
+MC最新修复交接在 `local/worktree-mc/mc/FIXES-20261005.md`；`local/ssh443-trial-20261005/README.md`是已清理的临时SSH试验，酒馆后续独立常驻通道见迁移专题。现有FigJam/流程图仍为10/04版本，本次未更新。
+# 文档索引
 
 ## 当前入口
 
