@@ -2,6 +2,8 @@
 
 ## 当前入口
 
+- [11/03 校园↔InstaBox 经香港 VPS 中转：手机反向 SSH 隧道 + VPS socat 22022，InstaBox 可登录校园手机并转发访问 DSH／路由器；含 InstaBox 到 VPS 的 161 ms／15 MB/s 实测](hk-vps-quic-egress-20261102.md)
+
 - [11/02 手机服务器承载QUIC出口并接管DSH入口：hysteria2常驻、USB有线IPv6与NAT66、QUIC下载9.3MB/s／上传5.3MB/s；插件隧道改经手机转发，新增Let's Encrypt的IPv6直连入口并关闭明文3000端口](hk-vps-quic-egress-20261102.md)
 
 - [11/02 CommandCode改走路由器Clash：精确域名规则、DNS及USB fake-IP HTTPS入口；Node实际命中FSCloud并取得JSON200，DSH未改配置／重启](dsh-commandcode-router-proxy-20261102.md)

@@ -1,5 +1,7 @@
 # OnePlus 8T / KB2000 → Debian 13
 
+11/03 InstaBox 云端 VM（AWS 俄勒冈）与校园网实测双向不可达，但到香港 VPS 质量良好（RTT 161 ms、下行 15.0 MB/s／上行 10.8 MB/s、零丢包）；已用香港 VPS 做中转：手机侧反向 SSH 隧道 + VPS socat 22022，InstaBox 可登录校园手机并经转发访问电脑 DSH 与路由器（0.73 s）。见[校园↔InstaBox 中转](docs/hk-vps-quic-egress-20261102.md)。
+
 11/02 已将 hysteria2 常驻到连在 E8820S 上的 OnePlus 8T 服务器并保持 USB 有线：路由器补 usb0 ULA IPv6 与 NAT66、手机补回程路由后，QUIC 下载 9.3 MB/s、上传 5.3 MB/s（同链路 Wi-Fi 仅 1.5 MB/s）。电脑 DSH 的 dsh-bridge 自建隧道改为经手机转发接入香港 VPS，新增 HTTPS 入口 https://fuckdsh.lugang.xyz（Let's Encrypt、IPv6 直连、页面 0.34–0.47 s），明文 3000 端口已关闭；插件 25 秒重连上限与长期稳定性仍待观察。见[部署、实测与回退](docs/hk-vps-quic-egress-20261102.md)。
 
 11/02 已按用户要求让 `api.commandcode.ai` 走路由器 Clash：域名规则及USB入口实测命中FSCloud，DSH同款Node的普通fetch取得JSON200；其它真实IP的USB直连对照通过。仅修改路由器侧，DSH未改配置／重启，IPv6策略未动，真实对话长期稳定性待观察。见[实施与回退](docs/dsh-commandcode-router-proxy-20261102.md)。

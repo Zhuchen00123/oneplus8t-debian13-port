@@ -182,3 +182,68 @@ DNS 记录与证书如需撤销：删除 Cloudflare 的 AAAA 记录，`certbot d
 - 手机（8 核 A77 + AES）足以常驻 hysteria2：空闲 0% CPU、53 MB 内存、温度 36–40 °C。
 - 有线 QUIC 出口 9.3 MB/s 下载 / 5.3 MB/s 上传，明显优于路由器（0.8 MB/s）与 Wi-Fi 路径（1.5 MB/s）。
 - DSH 主入口页面 0.34–0.47 s，HTTPS 只多 0.1 s；大文件吞吐受插件协议限制（0.72 MB/s），需要时走手机 SOCKS（8.3 MB/s）。
+
+## 校园 ↔ InstaBox 经香港 VPS 中转（2026-11-03 新增）
+
+### 背景
+
+实测 InstaBox 云端 VM（AWS 俄勒冈）与校园网**双向不可达**：校园不接受入站，VM 的 AWS 安全组也不放行入站。两边唯一共同可达的点是香港 VPS，因此用 VPS 做中转。
+
+### 拓扑
+
+```text
+InstaBox VM ──SSH:22022(IPv6)──► 香港 VPS [::]:22022
+                                     │ socat → 127.0.0.1:22022
+                                     │ sshd 远程转发（反向隧道，由手机发起）
+                                     ▼
+                                  手机 kebab-debian13:22
+                                     │ usb0 / 路由
+                                     ▼
+                          192.168.1.0/24（电脑 DSH、路由器）
+```
+
+关键点：**校园侧主动出站建隧道**，所以不需要校区开放任何入站端口。
+
+### 组成
+
+| 位置 | 组件 | 说明 |
+| --- | --- | --- |
+| 手机 | `/etc/systemd/system/vps-relay-tunnel.service` | `ssh -N -R 127.0.0.1:22022:127.0.0.1:22 relay@2602:f506:81::6440:1333`，Restart=always，已 enable |
+| 手机 | `/root/.ssh/vps_relay` | 专用密钥，只用于建这条隧道 |
+| VPS | 用户 `relay` + `/var/lib/relay/.ssh/authorized_keys` | 限制 `restrict,port-forwarding,permitlisten="127.0.0.1:22022"` |
+| VPS | `/etc/systemd/system/relay-22022.service` | `socat TCP6-LISTEN:22022,fork,reuseaddr,ipv6only=1 TCP4:127.0.0.1:22022`，已 enable |
+| 手机 | `~debian/.ssh/authorized_keys` | 追加 `instabox-relay` 公钥 |
+| 本地 | `F:\codexprojects\instabox\.local-secrets\campus_relay` | 对应私钥 |
+
+注意 `ipv6only=1`：不加会和 sshd 已占用的 `127.0.0.1:22022` 冲突（双栈绑定覆盖 IPv4）。
+
+### 从 InstaBox 使用
+
+```bash
+# 直接登录校园手机
+ssh -p 22022 -i campus_relay debian@2602:f506:81::6440:1333
+
+# 端口转发到电脑 DSH
+ssh -L 19388:192.168.1.195:19388 -p 22022 -i campus_relay -N -f debian@2602:f506:81::6440:1333
+curl http://127.0.0.1:19388/
+
+# 端口转发到路由器
+ssh -L 8080:192.168.1.1:80 -p 22022 -i campus_relay -N -f debian@2602:f506:81::6440:1333
+```
+
+### 实测（2026-11-03）
+
+| 测试 | 结果 |
+| --- | --- |
+| InstaBox → 中转 → 手机 SSH | `HOST=kebab-debian13`，成功 |
+| 手机 → 电脑 DSH:19388 | HTTP 401（需认证），7 ms（局域网内） |
+| InstaBox → 转发 → 电脑 DSH | HTTP 401，0.76 s |
+| InstaBox → 转发 → 路由器:80 | **HTTP 200，0.73 s** |
+
+单次请求约 0.73–0.76 s，主要成本是 161 ms 的跨境 RTT 加上隧道与 SSH 握手。
+
+### 安全与回退
+
+- 手机 sshd：`passwordauthentication no`、`permitrootlogin no`，仅密钥。
+- 对外只开 22022，落到手机 sshd；VPS 上的 `relay` 用户被限制只能监听 `127.0.0.1:22022`。
+- 回退：`systemctl disable --now vps-relay-tunnel`（手机）与 `systemctl disable --now relay-22022`（VPS），再删 `/var/lib/relay` 与 `/etc/systemd/system/relay-22022.service`。
