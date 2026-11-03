@@ -424,3 +424,52 @@ curl -6 -k --resolve speed.cloudflare.com:443:[2a06:98c1:58::da] \
 curl -6 -k --resolve speed.cloudflare.com:443:[2a06:98c1:58::da] \
   -X POST --data-binary @50mb.bin -o /dev/null -w '%{speed_upload}\n' https://speed.cloudflare.com/__up
 ```
+
+## 上传方向深挖（2026-11-03 晚）
+
+### 协议确认
+
+对 VPS 的所有上传测试都是 **IPv6**（VPS 的 IPv4 入站被 NAT 屏蔽，`curl -4 198.44.170.21:22` 连接耗时 0、`code=000`）。Cloudflare 对照做了双栈：**v6 3.10 MB/s、v4 2.93 MB/s**，两者接近，说明差异不来自协议族。
+
+### 测试矩阵
+
+| 测试 | 结果 |
+| --- | --- |
+| TCP 上传 → VPS（HTTP POST，12.5–50 MB） | **0.36–0.97 MB/s** |
+| TCP 上传 → VPS，4 条并发流 | 合计 **1.09 MB/s**（单流 0.24–0.30） |
+| 裸 socket 上传（不经 HTTP） | 0.36 MB/s |
+| QUIC（hysteria）上传 5 MB | **1.26 MB/s**（TCP 同期 0.86） |
+| TCP 下载 ← VPS（对照） | 8.6 MB/s |
+| TCP 上传 → Cloudflare v6 / v4 | 3.10 / 2.93 MB/s |
+| UDP 洪水，VPS 收端持续实测 | **11.2 MB/s**（连续 9 秒稳定） |
+
+### 根因证据
+
+| 观察 | 数值 | 含义 |
+| --- | --- | --- |
+| ICMPv6 校园→VPS 丢包 | 1.7%（60 包）/ 6.7%（15 包，突发） | 该方向**确有丢包** |
+| 上传时 RTT | 115 ms（空闲 117 ms） | **无 bufferbloat**，不是排队 |
+| UDP 乱序（~2000 包/秒） | out_of_order = 0 | 不是重排问题 |
+| TCP 重传比 | 0.00% / 0.02% / 6.41%（三次） | 丢包呈突发，多数时间表面干净 |
+| VPS 接收窗口 `rcv_space` | **163–172 KB**，`rcv_ssthresh` 859 KB | 窗口被压住，rwnd/RTT ≈ 1.5 MB/s |
+| VPS 接收器本机自测 | 386–434 MB/s | 排除服务端处理瓶颈 |
+| VPS 负载 / 网卡 | 0.00 / errors=drops=0 | 排除 VPS 故障 |
+
+### 结论
+
+1. **瓶颈是「校园 → 香港 VPS」方向的随机丢包**（1.7–6.7%），叠加 117 ms RTT。
+2. CUBIC 在此条件下吞吐按 `MSS/(RTT·√p)` 量级坍塌，实测被压在 **0.5–0.9 MB/s**；接收窗口只有 ~170 KB（≈ rwnd/RTT 1.5 MB/s）进一步封顶。
+3. 同一时刻 UDP 能跑 **11.2 MB/s**、QUIC 能跑 **1.26 MB/s**，证明**路径本身有带宽**，是 TCP 的丢包响应把吞吐打没了。
+4. 不是校区总上行问题：到 Cloudflare 上传仍有 **3 MB/s**。
+5. 不是 VPS 问题：本机接收 400 MB/s、AWS 的 VM 早先上传到 VPS 有 10.8 MB/s。
+
+### 可用手段（按实测收益排序）
+
+| 手段 | 实测效果 |
+| --- | --- |
+| 改走 QUIC（hysteria）上传 | 0.86 → **1.26 MB/s**（+47%） |
+| 4 条并发 TCP | 0.9 → 1.09 MB/s（+20%，帮助有限） |
+| 先传到 Cloudflare 再中转 | 上行可用 ~3 MB/s（比直连快 3–6 倍） |
+| 降丢包（换线路/换落地） | 治本，需换 VPS 或换出口 |
+
+> 结论：直连上传慢是**线路丢包**导致，客户端调参（拥塞控制、窗口、并发）收益有限。

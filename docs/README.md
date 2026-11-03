@@ -2,6 +2,8 @@
 
 ## 当前入口
 
+- [11/03 上传方向深挖：1.7–6.7% 丢包打死 CUBIC，UDP 11.2 MB/s 证明路径有带宽，QUIC 上传 +47%](hk-vps-quic-egress-20261102.md)
+
 - [11/03 上传复测与测速端点筛查：校区→VPS 上行 5.3→0.79 MB/s（−84%）、下行仅 −7%，Cloudflare 对照正常，属方向性劣化](hk-vps-quic-egress-20261102.md)
 
 - [11/03 美国出口 TCP vs QUIC 与链路劣化测量：TCP SOCKS 4.10 MB/s 优于 QUIC 1.65；校园→VPS RTT 77→122 ms，吞吐仅降 7%](hk-vps-quic-egress-20261102.md)
