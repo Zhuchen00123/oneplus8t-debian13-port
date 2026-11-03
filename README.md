@@ -1,6 +1,28 @@
 # OnePlus 8T / KB2000 → Debian 13
 
+11/02 已将 hysteria2 常驻到连在 E8820S 上的 OnePlus 8T 服务器并保持 USB 有线：路由器补 usb0 ULA IPv6 与 NAT66、手机补回程路由后，QUIC 下载 9.3 MB/s、上传 5.3 MB/s（同链路 Wi-Fi 仅 1.5 MB/s）。电脑 DSH 的 dsh-bridge 自建隧道改为经手机转发接入香港 VPS，新增 HTTPS 入口 https://fuckdsh.lugang.xyz（Let's Encrypt、IPv6 直连、页面 0.34–0.47 s），明文 3000 端口已关闭；插件 25 秒重连上限与长期稳定性仍待观察。见[部署、实测与回退](docs/hk-vps-quic-egress-20261102.md)。
+
+11/02 已按用户要求让 `api.commandcode.ai` 走路由器 Clash：域名规则及USB入口实测命中FSCloud，DSH同款Node的普通fetch取得JSON200；其它真实IP的USB直连对照通过。仅修改路由器侧，DSH未改配置／重启，IPv6策略未动，真实对话长期稳定性待观察。见[实施与回退](docs/dsh-commandcode-router-proxy-20261102.md)。
+
+11/02 已实现同一根 USB 线由 E8820S 路由器供电并承载手机默认 IPv4 上网／DNS，HTTPS 与两应用 USB 入口通过；后续精确连接跟踪确认无显式代理的 USB IPv4 HTTPS 经 WAN NAT 直连。80秒9采样均80%停充、电池净电流0，电池侧净充电约0W；USB实际输入功率尚无可靠测量。路由器及手机原 Wi-Fi IPv6 保留，校园路由不变；长期供电、断线自动回退和冷启动尚未验收。见[实机结果与回退](docs/usb-router-20261102.md)。
+
+10/22 已按用户选择将双STA省电关闭设为持续运行配置：启动前生效、轻量守护维护，沿用原7.2驱动与原固件，酒馆／DSH及双连接验收通过。诊断候选和试验证据保留；长期稳定及读零根因仍未证。见[部署与回退](docs/wifi-ps-off-adopt-20261022.md)。
+
+10/10 已接入 DSH 官方 browser-use 与 Chrome DevTools provider，手机无头 Chromium 的中文填表/点击/截图、状态保持、会话隔离、HTTPS外网及项目外路径拒绝实测通过。新增浏览器目录兼容补丁和 DSH任务上限512，原桥接补丁与搜索/技能保留。见[官方浏览器使用、验收与回退](docs/dsh-browser-official-20261010.md)。
+
+10/10 已安装五个日常/coding skills，默认 Flash 原生加载、调试修复、四项测试及中文笔记验收通过。显式笔记入口为 `/srv/dsh/workspace/projects/personal-notes`，按用户选择暂不开自动记忆。见[技能使用、来源与回退](docs/dsh-daily-skills-20261010.md)。
+
+10/10 手机端 gh、jq、GitHub 登录和常驻观察已配置，公网 DSH 实际执行通过。新项目放 `/srv/dsh/workspace/projects/<项目名>`，`kebab-dsh doctor` 查健康记录。见[手机常驻环境](docs/dsh-phone-runtime-20261010.md)。
+
+10/10 已接入 Context7、Firecrawl 和 Devin Search，默认 Flash 的实际搜索与最终答复通过；18 个模型统一配置 500k/80k 和七档思考，默认 medium。两个 MCP 直连官方托管，Azure 未新增服务。见[搜索组合、模型设置与维护](docs/dsh-search-stack-20261010.md)。
+
 OnePlus 8T 中国版（kebab / SM8250）的主线 Linux 移植与服务器维护项目。
+
+10/10 DSH 常驻与手机入口已就绪：社区 bridge、宿舍/gdut 双 STA 局域网 HTTPS，以及共用原单实例的 CNB 公网入口。用户确认 gdut 手机能登录并收到回复；公网默认 Flash 实际对话、65秒WS和DSH约16秒正常退出恢复通过。地址/密码见受限 `local/dsh-access-20261009/ACCESS.md`，运行 `scripts/Get-DshAccess.ps1` 查询最新地址。见[常驻、访问与回退](docs/dsh-always-on-access-20261009.md)；新访问链路连续24小时与联合重启仍待观察。
+
+10/09 已将酒馆、SSH、MC 中继和原 cnb-mcp 占位服务／Cloudflare 连接器合并为 **一个 1 核 CNB 实例**，两个旧实例已关闭、旧保活器停用。全部入口及一次约123秒的自动重建恢复实测通过。见[单实例合并与维护](docs/cnb-consolidation-20261009.md)。
+
+10/08个人 agent 第一阶段已安装 DSH Web 0.2.0-rc.2、独立 ARM64 开发工具和常驻服务，接入 Azure clinepass；2 个模型、文件读取与 bash 工具实测通过。在项目目录运行 `.\scripts\Open-Dsh.ps1` 打开认证页面。见[安装、访问和回退](docs/dsh-phase1-20261008.md)；记忆／QQ／主动调度插件和 24 小时稳定性仍待后续阶段。
 
 10/06三段键现已内建于 `7.2.0-kebab-debian13-r3-slider+`。正常重启后自动识别、三档事件、真实界面切换和触摸已通过；原 r2 组保留回退。见[内建与重启验收](docs/slider-builtin-20261006.md)。
 
