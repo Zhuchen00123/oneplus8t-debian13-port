@@ -1,5 +1,7 @@
 # OnePlus 8T / KB2000 → Debian 13
 
+11/03 美国出口选型完成：TCP SOCKS（VPS:1080 → wg0 → VM）50MB 实测 4.10 MB/s，QUIC 方案仅 1.65 MB/s，页面延迟持平，已停用 QUIC。同日链路劣化测量：校园→VPS RTT 由 77 ms 升至 122 ms（+58%，p99 1.1 s、2/100 秒级停顿），吞吐仅降 7%（9.3→8.6 MB/s），性质是延迟而非带宽。
+
 11/03 InstaBox 美国链路已改为常驻：VM 侧 vps-link.service（Restart=always）把 VM sshd 发布在 VPS:22222，实测 kill 自愈、挂起恢复后仍可用；按用户要求暂不做上网加速。
 
 11/03 已可用 InstaBox 美国 VM 的网络上网：VM 反向 SSH 到香港 VPS 的 22222、本地 ssh -D 建 SOCKS5，出口 16.148.25.106（AWS 俄勒冈），页面约 1.1–1.5 s、下载 2.25 MB/s；一键脚本 scripts/Start-UsEgress.ps1。见[美国出口](docs/hk-vps-quic-egress-20261102.md)。
