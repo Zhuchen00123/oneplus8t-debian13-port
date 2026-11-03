@@ -1,5 +1,7 @@
 # OnePlus 8T / KB2000 → Debian 13
 
+11/03 新香港 lite VPS（hklite, 2403:4fc0:0:201::26c）已接管：改密、装公钥、加 DIRECT 规则。实测 IPv6 RTT 116.0ms / 抖动 0.52ms / 丢包 0%，上传 0.95–0.97 MB/s（比旧香港快 30%），下载 4.6 MB/s（略低于旧香港 5.3）。
+
 11/03 新日本 VPS（newnb-253, 2a14:7586:6109:1::2c0）实测：空载 RTT 92.6ms/抖动 1.29ms 优于香港（117.9/4.56），但大流量下 VPS→校园下载仅 0.03–0.15 MB/s（重传 6.9%、cwnd 掉到 11），远逊香港 3.8–8.6 MB/s，结论不迁移。路由器已加两条 DIRECT 规则和 WAN ICMPv6 echo（均带备份）。
 
 11/03 上行深挖结论：校园→VPS 方向存在 1.7–6.7% 随机丢包（117 ms RTT、无 bufferbloat、无重排），CUBIC 因此塌到 0.5–0.9 MB/s；同期 UDP 可达 11.2 MB/s、QUIC 1.26 MB/s、到 Cloudflare 上传 3 MB/s，证明是丢包而非带宽/VPS 问题。
