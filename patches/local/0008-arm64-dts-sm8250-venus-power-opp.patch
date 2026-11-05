@@ -1,0 +1,71 @@
+Subject: [PATCH] arm64: dts: qcom: sm8250: correct Venus power domains and OPPs
+
+Adapt the SM8250 DT fixes by Dmitry Baryshkov to the pinned Kebab r3 tree.
+Scale MX and MMCX together and describe the divided MVS0 clock frequency.
+No claim that this resolves the historical firmware assertion.
+
+Power domains: https://lore.kernel.org/r/20260604-iris-venus-fix-sm8250-v7-1-7bd2f0e5bae8@oss.qualcomm.com
+Frequencies: upstream commit 68ea007df9293fcb29d38219d73094bbf4b59673
+The media drivers in this tree already support the second OPP domain.
+
+--- a/arch/arm64/boot/dts/qcom/sm8250.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8250.dtsi
+@@ -4326,8 +4326,9 @@
+ 			interrupts = <GIC_SPI 174 IRQ_TYPE_LEVEL_HIGH>;
+ 			power-domains = <&videocc MVS0C_GDSC>,
+ 					<&videocc MVS0_GDSC>,
+-					<&rpmhpd RPMHPD_MX>;
+-			power-domain-names = "venus", "vcodec0", "mx";
++					<&rpmhpd RPMHPD_MX>,
++					<&rpmhpd RPMHPD_MMCX>;
++			power-domain-names = "venus", "vcodec0", "mx", "mmcx";
+ 			operating-points-v2 = <&venus_opp_table>;
+ 
+ 			clocks = <&gcc GCC_VIDEO_AXI0_CLK>,
+@@ -4351,24 +4352,28 @@
+ 			venus_opp_table: opp-table {
+ 				compatible = "operating-points-v2";
+ 
+-				opp-720000000 {
+-					opp-hz = /bits/ 64 <720000000>;
+-					required-opps = <&rpmhpd_opp_low_svs>;
+-				};
+-
+-				opp-1014000000 {
+-					opp-hz = /bits/ 64 <1014000000>;
+-					required-opps = <&rpmhpd_opp_svs>;
+-				};
+-
+-				opp-1098000000 {
+-					opp-hz = /bits/ 64 <1098000000>;
+-					required-opps = <&rpmhpd_opp_svs_l1>;
+-				};
+-
+-				opp-1332000000 {
+-					opp-hz = /bits/ 64 <1332000000>;
+-					required-opps = <&rpmhpd_opp_nom>;
++				opp-240000000 {
++					opp-hz = /bits/ 64 <240000000>;
++					required-opps = <&rpmhpd_opp_svs>,
++							<&rpmhpd_opp_low_svs>;
++				};
++
++				opp-338000000 {
++					opp-hz = /bits/ 64 <338000000>;
++					required-opps = <&rpmhpd_opp_svs>,
++							<&rpmhpd_opp_svs>;
++				};
++
++				opp-366000000 {
++					opp-hz = /bits/ 64 <366000000>;
++					required-opps = <&rpmhpd_opp_svs_l1>,
++							<&rpmhpd_opp_svs_l1>;
++				};
++
++				opp-444000000 {
++					opp-hz = /bits/ 64 <444000000>;
++					required-opps = <&rpmhpd_opp_svs_l1>,
++							<&rpmhpd_opp_nom>;
+ 				};
+ 			};
+ 		};

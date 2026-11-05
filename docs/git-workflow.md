@@ -2,6 +2,14 @@
 
 管理仓库保存规范、来源锁定、脚本、配置与脱敏证据。第三方仓库独立下载，镜像/个人信息忽略。现已配置origin指向[GitHub](https://github.com/Zhuchen00123/oneplus8t-debian13-port)，但管理仓库与公开库历史仍不同，不能直接推送本地完整refs。此前“未配置remote”仅为早期状态。
 
+## 2026-11-05 r4 Venus与限充发布
+
+用户明确授权正式启用r4并更新Git/推送。手机boot_a已更新并正常启动，Venus自动绑定和720p90帧逐帧对照通过；实际部署与回退记录见[本地完整报告](venus-video-decode-20261105.md)。本地管理提交仅纳入本次r4/Venus、限充修复、相关测试与状态记录，其他原有暂存工作保持。
+
+公开导出继续使用独立历史，基于此前已审核的三段键公开提交 `d6fac93b2f3648dcc90ebb8e6af82832a928acbb`，没有推管理仓库的旧refs。14个白名单文本（通用0008/0009补丁、解码探针、限充策略、启动模板和测试、独立说明）已提交为 `26f33fadc1f642f1b0f9c0c51e8d9f065c4453db`，推送至 [codex/r4-venus-20261105](https://github.com/Zhuchen00123/oneplus8t-debian13-port/tree/codex/r4-venus-20261105)。远端SHA回读一致，main仍为99c24fe…，未合并或创建PR。
+
+公开启动模板将本机manifest路径/摘要改为通用本地配置入口；0009仅重写说明头以移除私有证据路径，diff hunks保持，公开patch SHA另记入公开sources.lock。原厂固件、镜像、分区备份、原始日志、完整私有文档和管理历史未导出。公开目录在忽略的 `local/r4-git-publish-20261105/`，审核白名单/实际blob SHA及回执在 `local/venus-enable-20261105/public-*`。发布前后14个实际Git blob均匹配审核SHA；解码9、Linux init9、限充11测试通过，导出C测试使用最终真实r4头经ASan/UBSan及12万随机PASS。
+
 ## 2026-10-07 EmbeddingGemma 2 ONNX Q8发布
 
 用户明确要求提交并推送。本地试跑脚本、固定模型/依赖、清单和完整脱敏记录提交为`8b2fd1c2fd3e999fbeae7b17c0ca7b5bb3989e5c`，分支`codex/embeddinggemma-q8-trial-20261007`；按项目既有规则使用单次`Codex <codex@localhost>`身份，没有修改Git身份配置。用户原有未跟踪的电源路径文档保留，不纳入此次提交。

@@ -1,9 +1,11 @@
 #!/bin/bash
-# Runtime module on r2; startup health gate for the isolated r3 builtin.
+# Runtime module on r2; startup health gate for the r3/r4 builtin.
 set -euo pipefail
 [[ $EUID == 0 && $(uname -m) == aarch64 ]]
 snapshot=/sys/module/kebab_alert_slider/parameters/snapshot
-if [[ $(uname -r) == 7.2.0-kebab-debian13-r3-slider+ ]]; then
+kernel_release=$(uname -r)
+if [[ $kernel_release == 7.2.0-kebab-debian13-r3-slider+ ||
+      $kernel_release == 7.2.0-kebab-debian13-r4-venus+ ]]; then
   case "${1:-}" in
     start)
       # The I2C core probes builtin drivers once bus and vdd are available.

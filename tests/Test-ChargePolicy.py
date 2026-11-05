@@ -85,8 +85,38 @@ class Tests(unittest.TestCase):
         self.step(10)
         self.assertEqual(self.b.calls, [])
 
+    def test_tcpm_offline_with_power_good_can_inhibit_and_renew(self):
+        self.b.online = 0
+        self.b.capacity = 80
+        status = self.step(3)
+        self.assertEqual(self.b.calls, ['inhibit'])
+        self.assertEqual(status['requested_action'], 'inhibit')
+        self.assertEqual(status['online'], 0)
+        self.assertEqual(status['tcpm_online'], 0)
+        self.assertTrue(status['mp2762_power_good'])
+        self.assertEqual(status['input_evidence'], 'mp2762_reg13_power_good_bit1')
+
+        self.b.capacity = 78
+        status = self.step()
+        self.assertEqual(self.b.calls[-1], 'renew')
+        self.assertEqual(status['requested_action'], 'renew')
+        self.assertEqual(status['tcpm_online'], 0)
+        self.assertTrue(status['mp2762_power_good'])
+
+    def test_missing_power_good_rejects_online_and_offline_sources(self):
+        self.b.capacity = 90
+        self.b.snap['reg13'] = 0x0d  # POWER_GOOD bit 1 is clear; no fault bits.
+        for online in (0, 1):
+            self.b.online = online
+            status = self.step(3)
+            self.assertEqual(status['requested_action'], 'wait')
+            self.assertEqual(status['tcpm_online'], online)
+            self.assertFalse(status['mp2762_power_good'])
+            self.assertEqual(self.b.calls, [])
+
     def test_invalid_conditions_relinquish_owned_lease(self):
         changes = [('reg08', 0x26), ('reg09', 0x7c), ('reg13', 0xc3),
+                   ('reg13', 0x0d),
                    ('last_error', -5), ('recovering', 1)]
         for key, value in changes:
             self.setUp()
@@ -107,6 +137,7 @@ class Tests(unittest.TestCase):
         self.b.capacity = 90
         self.step(3)
         self.b.online = 0
+        self.b.snap['reg13'] &= ~0x02  # No MP2762 POWER_GOOD evidence after disconnect.
         self.step()
         self.assertEqual(self.b.calls[-1], 'restore')
 

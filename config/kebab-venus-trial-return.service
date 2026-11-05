@@ -1,0 +1,9 @@
+[Unit]
+Description=Return from the identified temporary Venus kernel
+ConditionKernelVersion=7.2.0-kebab-debian13-r4-venus+
+RefuseManualStart=yes
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/libexec/kebab-venus-return /var/lib/kebab-venus-trial/manifest.json --reboot
+TimeoutStartSec=45

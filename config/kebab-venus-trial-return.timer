@@ -1,0 +1,11 @@
+[Unit]
+Description=Bound the temporary Venus kernel trial
+ConditionKernelVersion=7.2.0-kebab-debian13-r4-venus+
+
+[Timer]
+OnBootSec=18min
+AccuracySec=1s
+Unit=kebab-venus-trial-return.service
+
+[Install]
+WantedBy=timers.target

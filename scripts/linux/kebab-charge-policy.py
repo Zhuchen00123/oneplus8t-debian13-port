@@ -8,6 +8,7 @@ import signal
 import time
 
 VERSION = 1
+MP2762_POWER_GOOD = 0x02
 DEFAULT_CONFIG = {
     'stop_percent': 80, 'resume_percent': 75, 'interval_seconds': 15,
     'confirm_samples': 3, 'valid_temperature_min_c': 5,
@@ -83,8 +84,10 @@ class Policy:
         cfg = self.config
         owned = bool(snap['owned'])
         safe_ctrl = not (snap['reg08'] & 0xe8) and bool(snap['reg08'] & 2)
-        eligible = (sample['online'] == 1 and safe_ctrl and
-                    not snap['reg09'] & 0x30 and bool(snap['reg13'] & 2) and
+        # The charger IC's POWER_GOOD bit is the input evidence. TCPM online
+        # can lag during a device restart and is recorded, but is not a gate.
+        eligible = (safe_ctrl and
+                    not snap['reg09'] & 0x30 and bool(snap['reg13'] & MP2762_POWER_GOOD) and
                     not snap['reg13'] & 0xc0 and snap['last_error'] == 0 and
                     not snap.get('recovering', 0) and
                     cfg['valid_temperature_min_c'] <= sample['temperature_c'] <=
@@ -117,6 +120,7 @@ def record(path, payload):
 def step(policy, backend, control):
     sample = backend.sample()
     snap = sample['snapshot']
+    power_good = bool(snap['reg13'] & MP2762_POWER_GOOD)
     supported = snap.get('allow_control') == 1 and snap.get('lease_seconds') == 90
     action = policy.decide(sample)
     if control and not supported:
@@ -135,7 +139,11 @@ def step(policy, backend, control):
             'stop_percent': policy.config['stop_percent'],
             'resume_percent': policy.config['resume_percent'],
             'capacity_percent': sample['capacity'], 'temperature_c': sample['temperature_c'],
-            'online': sample['online'], 'snapshot': snap,
+            # Keep the TCPM value truthful and make the actuation evidence explicit.
+            'online': sample['online'], 'tcpm_online': sample['online'],
+            'mp2762_power_good': power_good,
+            'input_evidence': 'mp2762_reg13_power_good_bit1',
+            'snapshot': snap,
             'inhibit_readback_verified': bool(control and snap['owned'] and
                                              not snap['reg08'] & 0x10 and
                                              snap['last_error'] == 0),
