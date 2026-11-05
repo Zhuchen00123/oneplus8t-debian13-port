@@ -1,0 +1,64 @@
+Subject: [PATCH] input: synaptics-tcm: preserve whole-slot 0x5a padding tails
+
+Accept a trailing run of 0x5a bytes only when it consists of complete object
+slots in the uncounted object loop. Keep other malformed tails rejected.
+This patch targets the builtin parser and does not rename the driver or change
+firmware formats.
+
+--- a/drivers/input/touchscreen/synaptics_tcm_report.h
++++ b/drivers/input/touchscreen/synaptics_tcm_report.h
+@@ -173,6 +173,30 @@
+ 	return 0;
+ }
+ 
++/* The KB2000 controller pads unused object slots with 0x5a bytes. Report the
++ * end offset when the remainder of the payload is nothing but whole 0x5a
++ * filled slots, otherwise 0.
++ */
++static unsigned int tcm_fill_tail_end(const u8 *payload, unsigned int total,
++				      unsigned int offset, unsigned int object_bits)
++{
++	unsigned int i, nbytes;
++
++	if (object_bits < 8 || (object_bits & 7) || (offset & 7))
++		return 0;
++	if (total - offset < object_bits)
++		return 0;
++	/* Whole slots only, so a partial or odd tail still fails the length check. */
++	if ((total - offset) % object_bits)
++		return 0;
++	nbytes = (total - offset) / 8;
++	for (i = offset / 8; i < offset / 8 + nbytes; i++) {
++		if (payload[i] != 0x5a)
++			return 0;
++	}
++	return total;
++}
++
+ static int tcm_parse_frame(const struct tcm_layout *l, const u8 *payload,
+ 			   unsigned int size, unsigned int max_objects,
+ 			   struct tcm_frame *out)
+@@ -194,9 +218,23 @@
+ 		struct tcm_object *o;
+ 
+ 		if (l->loop == 1 && !l->counted) {
++			unsigned int fill_end;
++
+ 			/* Only sub-byte end padding may follow the final complete object. */
+ 			if (total - offset < 8)
+ 				break;
++			/* Unused object slots are padded with 0x5a bytes. Such a slot is
++			 * not an object: its index field decodes to 10, which would
++			 * otherwise reject the whole report and take the finger-up
++			 * transition with it. Skip a 0x5a run that covers whole slots
++			 * all the way to the end of the payload.
++			 */
++			fill_end = tcm_fill_tail_end(payload, total, offset,
++						     l->object_bits);
++			if (fill_end) {
++				offset = fill_end;
++				break;
++			}
+ 		} else if (f.count == n) {
+ 			break;
+ 		}

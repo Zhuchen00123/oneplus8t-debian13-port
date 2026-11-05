@@ -70,6 +70,25 @@
       "input_driver_sha256": "58851b8ee7ee0ef34686733efe02839e7785de33f06b0cce2f9ab80eb4377b32",
       "role": "TCM full header accounting, malformed frame bounds and diagnostic rate limiting; no firmware or format changes",
       "hardware_validated": false
+    },
+    {
+      "file": "patches/local/0008-arm64-dts-sm8250-venus-power-opp.patch",
+      "sha256": "22350cd8151753e4e1a29f7bb5cbafbd5cac38bf5e49da8aef772d5e83570d4c",
+      "reviewed_against": "linux-sm8250 sm8250-7.2.0 source recorded above",
+      "upstream_references": [
+        "https://lore.kernel.org/r/20260604-iris-venus-fix-sm8250-v7-1-7bd2f0e5bae8@oss.qualcomm.com",
+        "https://github.com/torvalds/linux/commit/68ea007df9293fcb29d38219d73094bbf4b59673"
+      ],
+      "role": "SM8250 Venus power-domain and OPP adjustment; kernel configuration and matching modules remain part of a local build set",
+      "hardware_validation_note": "Included in temporary and persistent r4 decode validation; see docs/venus-r4.md for bounded scope"
+    },
+    {
+      "file": "patches/local/0009-input-synaptics-tcm-padding-tail.patch",
+      "sha256": "7f6511ad5de72ff9427bed09f7448638c67da577c29d276fcfd0cf14a1f3575b",
+      "reviewed_against": "linux-sm8250 sm8250-7.2.0 source recorded above",
+      "input_driver": "drivers/input/touchscreen/synaptics_tcm_report.h",
+      "role": "Accept only complete whole-slot 0x5a padding tails in the uncounted object parser loop",
+      "hardware_validation_note": "Builtin parser patch; test-tcm-protocol.c compiles against the patched kernel header"
     }
   ],
   "candidate_kernel_patches": [

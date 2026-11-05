@@ -14,6 +14,8 @@ OnePlus 8T 中国版 KB2000（kebab / SM8250 / Adreno 650）的社区主线 Linu
 - [来源和许可证说明](NOTICE.md)
 - [本分支：全屏只读状态面板与按需XFCE](docs/status-panel.md)
 - [三段键识别、构建与回退](docs/alert-slider.md)
+- [Venus r4正式启用、硬解验证与本地固件模板](docs/venus-r4.md)
+- [限充POWER_GOOD启动门槛修复](docs/charge-power-good.md)
 
 2026-10-06：本分支增加第三页网络与入口，显示本机校园地址及已有CNB酒馆/MC中继状态；快照只读、旧入口过期隐藏，不展示凭据或进行公网探测。11项回归及实机画面回读通过；新页面物理触摸、联合重启和长期温升未验收。
 

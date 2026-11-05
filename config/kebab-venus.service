@@ -1,0 +1,18 @@
+[Unit]
+Description=Initialize verified OnePlus 8T OEM Venus decoder
+ConditionKernelVersion=7.2.0-kebab-debian13-r4-venus+
+After=kebab-charge-policy.service kebab-alert-slider.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /usr/local/libexec/kebab-venus-init --load
+TimeoutStartSec=55
+MemoryMax=128M
+TasksMax=32
+Nice=10
+NoNewPrivileges=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

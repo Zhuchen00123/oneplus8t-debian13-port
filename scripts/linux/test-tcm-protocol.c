@@ -74,6 +74,105 @@ static void packet_tests(void)
   }
   b[0]=0;assert(tcm_decode_packet(b,sizeof(b),&p)==-EPROTO);
 }
+static void padding_tests(const struct tcm_layout *kb)
+{
+  u8 p[252];
+  struct tcm_frame f;
+  struct tcm_layout c;
+  unsigned int slots, off, i;
+
+  /* A 0x5a run is padding only when it contains whole object slots. */
+  for (slots = 1; slots <= 3; slots++) {
+    memset(p, 0, sizeof(p)); /* seven-byte gesture prefix */
+    memset(p + 7, 0x5a, slots * 7);
+    assert(!tcm_parse_frame(kb, p, 7 + slots * 7, 10, &f));
+    assert(f.count == 0); /* lift-all report */
+  }
+  for (slots = 1; slots <= 3; slots++) {
+    memset(p, 0, sizeof(p));
+    off = 56;
+    object(p, &off, 3, 1, 321, 654, 23, 45);
+    memset(p + 14, 0x5a, slots * 7);
+    assert(!tcm_parse_frame(kb, p, 14 + slots * 7, 10, &f));
+    assert(f.count == 1 && f.objects[0].index == 3);
+    assert(f.objects[0].x == 321 && f.objects[0].y == 654);
+  }
+
+  /* A mixed tail must not be silently dropped as controller padding. */
+  memset(p, 0, sizeof(p));
+  off = 56;
+  object(p, &off, 3, 1, 321, 654, 23, 45);
+  memset(p + 14, 0x5a, 14);
+  p[14 + 7 + 2] = 0x59;
+  bad_frame(kb, p, 28);
+
+  /* Eight bytes are not an integral number of seven-byte object slots. */
+  memset(p, 0, sizeof(p));
+  off = 56;
+  object(p, &off, 3, 1, 321, 654, 23, 45);
+  memset(p + 14, 0x5a, 8);
+  bad_frame(kb, p, 22);
+
+  /* Exercise the byte-aligned object layout at a deliberately unaligned offset. */
+  {
+    const u8 unaligned_prefix[] = {
+      16,7,1,6,4,7,4,8,12,9,12,11,12,12,12,3,0
+    };
+
+    assert(!tcm_compile_layout(unaligned_prefix,
+                               sizeof(unaligned_prefix), &c));
+    assert(c.object_bits == 56 && !c.counted);
+    memset(p, 0, sizeof(p));
+    off = 0;
+    put_bits(p, &off, 0, 7);
+    object(p, &off, 4, 1, 321, 654, 23, 45);
+    assert(off == 63);
+    memset(p + 8, 0x5a, 7);
+    bad_frame(&c, p, 15);
+  }
+
+  /* A byte-aligned offset still cannot make a 54-bit object slot pad-safe. */
+  {
+    const u8 unaligned_object[] = {
+      16,8,1,6,4,7,4,8,12,9,12,11,11,12,11,3,0
+    };
+
+    assert(!tcm_compile_layout(unaligned_object,
+                               sizeof(unaligned_object), &c));
+    assert(c.object_bits == 54 && !c.counted);
+    memset(p, 0, sizeof(p));
+    off = 8;
+    for (i = 0; i < 4; i++) {
+      put_bits(p, &off, i, 4); put_bits(p, &off, 1, 4);
+      put_bits(p, &off, 321, 12); put_bits(p, &off, 654, 12);
+      put_bits(p, &off, 23, 11); put_bits(p, &off, 45, 11);
+    }
+    assert(off == 224 && !(off & 7));
+    memset(p + 28, 0x5a, 7);
+    bad_frame(&c, p, 35);
+  }
+
+  /* Padding acceptance applies only to loop 1 without a count field. */
+  {
+    const u8 counted[] = {
+      24,8,1,6,4,7,4,8,12,9,12,3,25,8,0
+    };
+    const u8 all[] = {2,6,4,7,4,8,12,9,12,3,0};
+
+    assert(!tcm_compile_layout(counted, sizeof(counted), &c));
+    memset(p, 0, sizeof(p));
+    memset(p + 2, 0x5a, 7); /* count=0, suffix byte, then a fake slot */
+    bad_frame(&c, p, 9);
+
+    assert(!tcm_compile_layout(all, sizeof(all), &c));
+    memset(p, 0, sizeof(p));
+    off = 0;
+    put_bits(p, &off, 0, 4); put_bits(p, &off, 1, 4);
+    put_bits(p, &off, 321, 12); put_bits(p, &off, 654, 12);
+    memset(p + 4, 0x5a, 4);
+    bad_frame(&c, p, 8); /* loop 2 is fixed to max_objects */
+  }
+}
 int main(void)
 {
   packet_tests();
@@ -83,6 +182,7 @@ int main(void)
   unsigned int n, i, off;
   assert(!tcm_compile_layout(kb2000,sizeof(kb2000),&l));
   assert(l.object_bits == 56 && !l.counted && !l.pressure_bits && l.width_bits == 12);
+  padding_tests(&l);
   for (n = 0; n <= 10; n++) {
     memset(p,0,sizeof(p)); off = 56; /* seven-byte gesture prefix */
     for (i = 0; i < n; i++) object(p,&off,i,1,100+i,200+i,16+i,20+i);
