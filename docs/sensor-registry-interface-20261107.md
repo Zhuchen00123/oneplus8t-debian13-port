@@ -123,11 +123,66 @@ out[0] char[]     prop_value（>= 92 字节，NUL 结尾）
 
 ## 六、仍然未知的
 
-1. **DSP 会问哪些属性**：名字是运行时拼出来的（镜像里只有 `persist.vendor.` 这一个字面前缀），只有实机跑一次才能知道。日志会原样记下来。
+1. **DSP 会问哪些属性**：镜像里只有 `persist.vendor.` 这一个字面前缀，名字是运行时拼的。但原厂 `sns_reg.conf` 直接点名了两个（见第七节第 2 小节），实机日志可以用来证伪。
 2. **大小表的实际长度**：设备侧 skel 只要求 `in[0].s >= 8`，而我们的校验要求恰好 16。如果实际固件发的是 8 字节，daemon 会打印 `Invalid number of input numbers: 8 (expected 16)` 并回 `AEE_EBADPARM`——**这条日志就是下一个分叉点**，不需要再猜。
 3. **`get_property` 之后还会要什么**：`remote_handle_open` 只失败过一次，但上游 daemon 还有别的未实现路径（v4 已全部改成"回错误并继续"）。下一个未服务请求会带着 handle/method/缓冲区预览进日志。
 4. **这条接口与"读不到真实传感器数据"的关系**：它只是配置期的一次属性查询，**不是**传感器数据通道；通过它不代表传感器能用。
 
-## 七、下一步
+## 七、上机前的静态预检（第三轮）
+
+探针还没跑，但两件事可以先离线查清，免得上了机才发现载荷有洞。
+
+### 1. 上一轮请求的 745 条路径，载荷 v3 全部覆盖
+
+把 20:11 那份 3,921 行日志里的 `openat`/`stat`/`opendir` 参数全抽出来（**745 条不同路径**），按 `construct_root_dir()` 的真实映射逐条解析到载荷目录：
+
+| 检查项 | 结果 |
+| --- | --- |
+| 虚拟树无法解析的路径 | **0** |
+| 能解析但载荷里不存在的文件 | **0** |
+| 前缀分布 | `/mnt/vendor/persist` 740、`/vendor/etc/sensors` 3、`/sys/devices/soc0` 2 |
+
+也就是说那轮**没有一次失败是载荷缺文件**造成的（失败是接口不存在）。`/vendor/etc/acdbdata` 在树里有映射但从未被请求，载荷里也没有 `acdb/`，属于已知不影响当前流程的空缺。`/odm/etc/sensor/config` → 载荷 `sensors/odm-config/`（17 个文件，**含 `kona_bmi26x_0.json`**），第二轮"缺 `/odm` 映射导致 bmi26x 配置没被服务"的缺口在 v3 里已补上。
+
+### 2. `sns_reg.conf` 就是注册表的契约，它点名了 DSP 会问哪两个属性
+
+原厂 `/vendor/etc/sensors/sns_reg_config`（588 B）全文：
+
+```
+version=9
+file=hw_platform=/sys/devices/soc0/hw_platform
+file=platform_subtype=/sys/devices/soc0/platform_subtype
+file=platform_subtype_id=/sys/devices/soc0/platform_subtype_id
+file=platform_version=/sys/devices/soc0/platform_version
+file=soc_id=/sys/devices/soc0/soc_id
+file=revision=/sys/devices/soc0/revision
+file=output=/mnt/vendor/persist/sensors/registry/registry
+file=config=/odm/etc/sensor/config
+property=persist.vendor.sensors.enable.property=/mnt/vendor/persist/sensors/registry/file1
+property=persist.vendor.sensors.enable.property1=/mnt/vendor/persist/sensors/registry/file2
+```
+
+由此确定三件事：
+
+1. 注册表的 6 个动态字段全部取自 `/sys/devices/soc0/*`，载荷里都有且与现场 sysfs 同哈希——平台门控走的就是这条路。
+2. `file=config=/odm/etc/sensor/config` 证实 ODM 配置目录是注册表自己去找的，该映射必须存在。
+3. **两条 `property=` 点名了会被请求的属性**：`persist.vendor.sensors.enable.property` 与 `…property1`，取值落到注册表目录下的 `file1`/`file2`。不是猜的，是原厂配置自己写的。v5 对任何属性都返回空串并成功（Android `property_get` 对未设置的语义），所以预期这两条得到空值、不会生成 `file1`/`file2`。
+
+**这是探针的第一个可证伪预言**：实机日志里应出现至少两行
+`sns-registry: get_property 'persist.vendor.sensors.enable.property' -> ''`（及 `…property1`）。若出现别的名字，说明属性名在运行时还有别的来源；若一行都没有，说明 DSP 没走到属性查询。
+
+### 3. 注册表写入确实是 `fwrite`，而且会重试
+
+固件 `0x68b85c`–`0x68ba34` 的字符串把 `sns_registry_osa.c` 的文件操作列全了：`fopen failed file=%s error=%i, retrying` / `opendir …retrying` / `mkdir …retrying` / `rename …retrying` / `stat` / `closedir` / `unlink …retrying` / `fwrite failed error=%i` / `fread` / `readdir`。
+
+所以 20:11 那 **10 次 `Tried to open … for writing`** 不是 10 个不同写请求，而是**同一个逻辑写在重试**。整段没有"写失败就放弃初始化"的迹象——DSP 在第 10 次失败后照常去开 `sns_registry` 句柄，说明**写失败当前是被容忍的**：它影响的是版本号/校准能否落盘，不是服务能否起来。这也是当前不急着实现写支持的理由。
+
+同时 `set_property` 在整个 SLPI 镜像里**零命中**，再次确认 `sns_registry` 只有 `get_property` 一个方法。
+
+### 4. 顺带记下、本轮不处理
+
+`0x68bd54` 起是 `sns_remote_proc_state_sensor.c` 的字符串：`sleepstate` / `Remote_proc_state` / `sns_sig_remote_proc_state` / `SMP2P registration failed with error:%d`——传感器服务里有个"远端处理器状态"传感器要注册 SMP2P。属后续独立课题，本轮只记录。
+
+## 八、下一步
 
 仍然需要一次**最小、限时、可监控**的实机用户态试验（v5 + 私有载荷 v3）：目的只是让 DSP 走过 `sns_registry` 这一步并记录后续请求，不是取数据。风险与门槛与第二轮记录相同：可能触发协处理器故障或整机重启，需要明确批准与现场条件确认。**本轮没有做任何实机 DSP 操作。**
