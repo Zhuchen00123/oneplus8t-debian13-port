@@ -183,6 +183,53 @@ property=persist.vendor.sensors.enable.property1=/mnt/vendor/persist/sensors/reg
 
 `0x68bd54` 起是 `sns_remote_proc_state_sensor.c` 的字符串：`sleepstate` / `Remote_proc_state` / `sns_sig_remote_proc_state` / `SMP2P registration failed with error:%d`——传感器服务里有个"远端处理器状态"传感器要注册 SMP2P。属后续独立课题，本轮只记录。
 
-## 八、下一步
+## 八、AP 侧接口全集：只有 `sns_registry` 一个是我们必须补的（第四轮）
+
+上一轮之后还剩一个隐忧：探针会不会跑两步又要一个没实现的接口？这一轮把原厂镜像里**所有**"本地接口实现"翻了一遍，答案是**不会再有别的**。
+
+### 怎么判定的
+
+FastRPC 两个方向的命名容易混，先用一个可判定的特征把它们分开：**AP 侧实现（skel）**自己分拣 method 并直接干活（`sns_registry_skel` 就是调 `property_get`）；**AP 侧客户端（stub）**则是懒打开远端句柄再转发。反汇编 `libsns_device_mode_stub.so` 的 `sns_device_mode_skel_invoke`（`0x11d4`）正好是后者：
+
+```
+w22 = handle                      ; 全局 [0x4000+0x2e0]，初始 -1
+if (handle == -1) remote_handle_open("sns_device_mode", &handle)
+...
+remote_handle_invoke(handle, sc, args)   ; 尾部 blr，转发给 DSP
+```
+
+所以它名字里虽有 `_skel_invoke`，实际是"**去调 DSP 的 skel**"，方向是 AP → DSP。
+
+### 结果
+
+| 库 | 大小 | 判定 |
+| --- | --- | --- |
+| `libsns_registry_skel.so` | 15,376 B | **AP 侧实现**（唯一的传感器专用 skeleton）→ 必须由我们提供 |
+| `libsns_device_mode_stub.so` | 15,680 B | AP 侧**客户端**，DSP 提供 `sns_device_mode`（单方法 `set`） |
+| `libsns_low_lat_stream_stub.so` | 16,456 B | AP 侧**客户端**，DSP 提供低延迟流（`config/init/poll/stop/…` 7 个方法） |
+| `libsns_fastRPC_util.so` | 15,376 B | **不是接口**：只是帮别人打开 `sensorspd` 远端句柄的工具（`createstaticpd:sensorspd`、`/sys/kernel/boot_slpi`），导出 `sns_rpc_get_handle`/`sns_rpc_reset` |
+| `libsnsdiaglog.so` | 28,768 B | **不是接口**：C++ diag 日志（`sensors_diag_log::*`），无远程方法 |
+
+全镜像里含 `*_skel_invoke` 的库共 23 个，其余（`libadsprpc/libcdsprpc/libmdsprpc/libsdsprpc` 的通用 `%s_skel_invoke`、相机/音频/SNPE 等）都与传感器无关。
+
+**结论**：传感器 PD 需要的 AP 侧接口 = `apps_std`（文件）+ `adsp_default_listener`（启动）+ `remotectl`（句柄）+ **`sns_registry`**（属性）。前三个上游已有，第四个是 v5 补的——**这一类"缺接口"的未知项到此清零**。
+
+### 附带发现：AP 侧的传感器客户端通道本来就是通的
+
+设备上现在就能查到：
+
+```
+Service Version Instance Node  Port
+    400       1        0    9    13  Snapdragon Sensor Core service
+```
+
+也就是说 **SSC 的 QMI 服务已经通过 QRTR 注册在 node 9（SLPI）的 13 端口**，而 AP 侧访问它用的是 `AF_QIPCRTR` 套接字（`qrtr-ns` 在跑、`qrtr-lookup` 能列出），**完全不经过 hexagonrpcd**。这解释了整条链的形态：
+
+- `hexagonrpcd` 负责的是**让 SSC 把配置/注册表读进来**（反向隧道：DSP → AP 要文件）；
+- **取数据**是另一条路：AP → DSP，走 QRTR QMI（Android 上是 `libssc`/`sensors.ssc.so`，Linux 上是 libssc 那一类库）。
+
+两件事互不阻塞。等 SSC 拿到配置后，客户端侧不需要改内核、不需要新设备节点。另外确认现有 3 个 IIO 设备是 `spmi adc@3100`（PMIC ADC），**不是**运动传感器，所以设备上目前确实没有任何可用的加速度/陀螺/光照源。
+
+## 九、下一步
 
 仍然需要一次**最小、限时、可监控**的实机用户态试验（v5 + 私有载荷 v3）：目的只是让 DSP 走过 `sns_registry` 这一步并记录后续请求，不是取数据。风险与门槛与第二轮记录相同：可能触发协处理器故障或整机重启，需要明确批准与现场条件确认。**本轮没有做任何实机 DSP 操作。**
