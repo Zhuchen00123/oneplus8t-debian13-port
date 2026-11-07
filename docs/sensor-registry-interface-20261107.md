@@ -300,6 +300,53 @@ KEBAB_PROBE_CONFIRM=1 bash run-probe.sh --run 90   # 真正执行
 
 没有需要回退的东西：unit 是 `systemd-run` 的 transient 一次性单元，结束即消失；所有文件都在 `/tmp/kebab-ssc-probe-<时间戳>/`（0700），重启即清；没有写入任何分区、没有改 persist/校准、没有动内核与设备树。
 
-## 十一、下一步
+## 十二、首轮实机试验（2026-11-07 23:06 起，用户已批准）
+
+### 跑了什么
+
+用户批准后，按第十节的计划执行。第一次因为**运行器自身的传输层**跑不起来（不是设备问题）：
+
+- WSL 里 `ssh -b 192.168.1.195` 报 `Address family for hostname not supported`，`kebab` 别名解析到 `fc00::9c5` / `198.18.10.6` 都连不上；
+- 根因：**设备在 USB 子网 `192.168.8.1`，只有 Windows 侧的 OpenSSH 有那条路由和密钥**；WSL 的 `192.168.1.195` 是 Windows 自己的地址，连过去是 Windows 的 sshd。
+- 修法：运行器改为可覆盖的传输层（`KEBAB_SSH`/`KEBAB_SCP`/`KEBAB_SCP_BIND_OPT`/`KEBAB_WIN_PATHS`），在 WSL 里借用 `/mnt/c/Windows/System32/OpenSSH/ssh.exe`。另发现 **Windows 的 `scp.exe` 不支持 `-b`**，必须写成 `-o BindAddress=...`。
+
+第 0 步先在设备上验证了沙箱参数（`DevicePolicy=closed` + `DeviceAllow=/dev/fastrpc-sdsp rw` 下 `open` 成功、100 ms 退出），确认不会因为沙箱导致假失败。
+
+### 结果：daemon 起来了，DSP 一句话没说
+
+| 轮次 | 时长 | 结果 |
+| --- | --- | --- |
+| 第一轮 | 90 s | 单元跑到 RuntimeMaxSec 被停，**日志只有 3 行 systemd 记录** |
+| 第二轮 | 300 s | 同上，但换成 `stdbuf -oL -eL` 后拿到 daemon 自己的第一行 |
+
+第二轮的关键一行：
+
+```
+stdbuf[...]: Starting /tmp/kebab-ssc-probe-.../tool/hexagonrpcd (INIT_ATTACH_SNS) on /dev/fastrpc-sdsp
+```
+
+**这条说明 daemon 成功 attach 了**，并且此后 5 分钟**没有收到任何 DSP 请求**（`sns-registry` 0 行、`apps_std` 0 行、任何 `Could not open` 0 行）。
+
+### 第一轮"全静默"是运行器的 bug，不是设备的问题
+
+daemon 的 `Starting ...` 走 **stdout**，而 systemd 下 stdout 是管道 ⇒ 全缓冲 4 KB；单元被 `RuntimeMaxSec` 杀掉时缓冲区**没有 flush**，所以整轮输出全丢。用 `stdbuf -oL -eL` 包装后立刻可见。**这也是为什么第一轮看起来"什么都没发生"——它其实跑满了 90 秒。**
+
+### 与 20:11 那次的关键对比
+
+同一台机器、同一个 boot（`7065f22c…`，SLPI 自 11-05 21:52 起就没重启过）：
+
+| | 20:11（上一阶段） | 今天 |
+| --- | --- | --- |
+| 二进制 | 包内**原版** `usr/libexec/hexagonrpc/hexagonrpcd` | 我们的 v5 |
+| attach | 成功（同一行 `INIT_ATTACH_SNS`） | 成功 |
+| DSP 请求 | **attach 后 1.13 秒开始**，1.6 秒内 1,489 条 | **0 条**（5 分钟） |
+
+⇒ "监听器一出现 DSP 就会重试"这个假设**被今天的实验否掉了**；20:11 那次的请求更可能是 **SSC 自己的一次性初始化尝试**（或周期很长的重试）恰好落在那个窗口里。20:11 那次 daemon 在 3 秒后退出，初始化被打断，此后 SSC 不再敲门。
+
+### 没有造成影响
+
+三轮试验期间与结束后：`slpi/cdsp/adsp` 全部 `running`、`failed` 单元 0、`qrtr-lookup` 里 `400 Snapdragon Sensor Core service` 一直在、电池 88%/Not charging、负载 0.1–0.3、温度无明显变化。没有写分区、没动 persist、没重启任何 remoteproc。
+
+## 十三、下一步
 
 仍然需要一次**最小、限时、可监控**的实机用户态试验（v5 + 私有载荷 v3）：目的只是让 DSP 走过 `sns_registry` 这一步并记录后续请求，不是取数据。风险与门槛与第二轮记录相同：可能触发协处理器故障或整机重启，需要明确批准与现场条件确认。**本轮没有做任何实机 DSP 操作。**
