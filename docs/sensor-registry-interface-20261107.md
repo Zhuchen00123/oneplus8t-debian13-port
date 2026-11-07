@@ -384,4 +384,22 @@ echo start | sudo tee /sys/class/remoteproc/remoteproc0/state
 
 把 v5 与载荷留着，等你有大块时间（比如晚上）再做——因为 A 有把设备弄到必须重启的可能，最好人在旁边。
 
-**我的建议**：如果你现在能接受"最坏重启一次"，选 **B**（时序最可靠、且重启是你熟悉的操作）；如果想快，选 **A**，但请先确认你能物理接触设备。（v5 + 私有载荷 v3）：目的只是让 DSP 走过 `sns_registry` 这一步并记录后续请求，不是取数据。风险与门槛与第二轮记录相同：可能触发协处理器故障或整机重启，需要明确批准与现场条件确认。**本轮没有做任何实机 DSP 操作。**
+**我的建议**：如果你现在能接受"最坏重启一次"，选 **B**（时序最可靠、且重启是你熟悉的操作）；如果想快，选 **A**，但请先确认你能物理接触设备。
+
+### 两条路线的脚本已经写好并离线验证过（2026-11-07 第七轮）
+
+批准之后不用再临时写，直接跑对应脚本即可。两个都在 `local/sensors-20261107/probe/`：
+
+| 脚本 | 作用 | 确认开关 | 不确认时 |
+| --- | --- | --- | --- |
+| `opt-a-bounce-slpi.sh` | 挂监听器 → stop/start SLPI → 盯 120 秒 → 收日志 | `KEBAB_BOUNCE_CONFIRM=1` | 只打印计划（`--plan`） |
+| `opt-b-boot-listener.sh` | 上传候选件到 `/var/lib/kebab-ssc-listener` → 写 `/etc/systemd/system/kebab-ssc-listener.service` → `enable` | `KEBAB_INSTALL_CONFIRM=1` | 只打印计划 |
+
+`opt-b` 的 unit 用同一套沙箱参数（`PrivateNetwork`、`DevicePolicy=closed`、只放行 `/dev/fastrpc-sdsp`、`MemoryMax=256M`、`CPUQuota=50%`），`Restart=always`，`ExecStart` 包了 `stdbuf -oL -eL`（第三轮那个"日志被缓冲吞掉"的坑）。卸载：`opt-b-boot-listener.sh --uninstall`（停服务、禁自启、删 unit 与 `/var/lib` 目录）。
+
+离线验证发现并修掉两个真 bug：
+
+1. `opt-b` 原先把 unit 文件内容写成 `UNIT_CONTENT='$(printf ...)'`，单引号让 `$(...)` 根本不会展开——**模拟时才发现设备收到的是那段字面文本而不是 unit 内容**；改成 quoted heredoc。
+2. 载荷 tar 顶层是 `payload/`，原来 `-C $DEST/payload` 会解成 `payload/payload/...`；改成 `-C $DEST`。
+
+模拟方式：用假的 `ssh`/`scp` 把远端脚本原样回显，逐个检查展开结果（第九轮那套办法）。（v5 + 私有载荷 v3）：目的只是让 DSP 走过 `sns_registry` 这一步并记录后续请求，不是取数据。风险与门槛与第二轮记录相同：可能触发协处理器故障或整机重启，需要明确批准与现场条件确认。**本轮没有做任何实机 DSP 操作。**
