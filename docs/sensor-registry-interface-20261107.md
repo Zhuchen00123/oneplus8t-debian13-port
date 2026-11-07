@@ -260,6 +260,46 @@ AOSP 的 CHRE 里有现成实现（`platform/slpi/see/sns_qmi_client.c`，Apache
 
 如果表只有 8 字节，daemon 就拿不到输出缓冲大小，`value_size <= 0` 会让所有请求失败。所以"8 字节"那种情况本身跑不通，**16 是唯一自洽的取值**（仍是推断，实机日志的 `Invalid number of input numbers` 是最终判据，但概率已经很低）。
 
-## 十、下一步
+## 十、执行与判读（一页版，第六轮）
+
+### 前置核对（全部已离线验证，2026-11-07）
+
+| 对象 | SHA-256 | 大小 |
+| --- | --- | --- |
+| `hexagonrpc-kebab-source-v5-NOT-FOR-DEPLOY.tar` | `445dfcf5…c76` | 219,136 B |
+| `hexagonrpc-kebab-arm64-v5-NOT-FOR-DEPLOY.tar` | `b03725c0…425` | 686,080 B |
+| └ 包内 `hexagonrpcd` | `ee2ff935…77d` | 182,320 B |
+| `sensor-payload-v3-NOT-FOR-DEPLOY.tar` | `df99dc2c…cd5` | 2,918,400 B |
+
+已核对：三个 tar 的哈希与磁盘一致；源码包**逐文件等于当前工作树**（`diff -r` 空）；源码包里确实有 `hexagonrpcd/sns_registry.c` 与 `tests/test_sns_registry.c`；包内 `MANIFEST.txt` 记录了协议契约与全部产物哈希；探针脚本里的三个 `EXPECT_` 与上表一致。
+
+### 命令
+
+```bash
+cd local/sensors-20261107/probe
+bash run-probe.sh --plan                       # 只打印，不碰设备
+KEBAB_PROBE_CONFIRM=1 bash run-probe.sh --run 90   # 真正执行
+```
+
+### 判读表
+
+| 日志/现象 | 含义 | 下一步 |
+| --- | --- | --- |
+| `sns-registry: get_property 'persist.vendor.sensors.enable.property' -> ''` | 新接口被命中，且属性名与 `sns_reg.conf` 预言一致 | 协议这一段通了，看后面还要什么 |
+| 出现**别的**属性名 | 属性名还有别的来源（运行时拼接） | 把名字记下来，加进载荷 `properties/` |
+| 一条 `sns-registry` 都没有 | DSP 没走到属性查询（更早失败） | 看 `Could not find local interface` / 退出码 |
+| `Could not find local interface <X>` | 还有个没实现的本地接口 | 把 `<X>` 记下来；按第四轮方法去镜像里找 `lib<X>_skel.so` |
+| `Unsupported method: N (sc)` | 已知接口上的未知方法 | N 就是方法号（例如注册表写入） |
+| `Invalid number of input numbers: 8 (expected 16)` | 大小表实际是 8 字节（第九节推断被推翻） | 改 `check_inbuf_sizes`+`allocate_outbufs` 支持短表 |
+| 退出码 3 | 触到 64 条未服务上限，答完最后一条再停（不是崩溃） | 数一数日志里的 `kebab-unserved` 类型分布 |
+| 退出码 1 | FastRPC 传输/初始化失败 | 看 unit 日志前 20 行 |
+| `ssc` 从 `present` 变 `ABSENT` | 传感器服务在试验期间消失（可能重启） | 立刻停止后续试验，保留证据 |
+| `failed` 变大 / remoteproc 不是 running | 系统级异常 | 立刻停止，物理检查设备 |
+
+### 回退
+
+没有需要回退的东西：unit 是 `systemd-run` 的 transient 一次性单元，结束即消失；所有文件都在 `/tmp/kebab-ssc-probe-<时间戳>/`（0700），重启即清；没有写入任何分区、没有改 persist/校准、没有动内核与设备树。
+
+## 十一、下一步
 
 仍然需要一次**最小、限时、可监控**的实机用户态试验（v5 + 私有载荷 v3）：目的只是让 DSP 走过 `sns_registry` 这一步并记录后续请求，不是取数据。风险与门槛与第二轮记录相同：可能触发协处理器故障或整机重启，需要明确批准与现场条件确认。**本轮没有做任何实机 DSP 操作。**
