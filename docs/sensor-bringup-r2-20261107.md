@@ -129,6 +129,7 @@ v4 只做"让诊断跑得下去、并且留下证据"，不实现任何厂商协
 
 ## 七、下一步（需要明确批准）
 
+0. **同日补充**：`sns_registry` 的真实协议已经从原厂镜像里还原出来（单方法 `get_property`，报文 16 字节大小表 + 名字串 + 值缓冲），并实现了离线候选 v5，见[`sns_registry` 接口还原](sensor-registry-interface-20261107.md)。v5 只是把第一道门补上，仍然未部署、未上机。
 1. **本轮请求**：批准一次范围最小、限时、可监控的用户态试验——v4 诊断件 + 载荷 v3，仍在 root 专用隔离目录、`RuntimeMaxSec`、`PrivateNetwork`、设备白名单的 transient unit 里跑，出问题立即停止并保存证据。目标是拿到 `sns_registry` 的请求细节（handle/method/缓冲区），而不是拿到传感器数据。
 2. 若日志确认 `sns_registry` 协议形状，再离线实现只读版本；写入需求要单独设计私有可写副本。
 3. `engineermode` 校准项（`cali_coe`、`*_max_lux`、`als_bias`）作为第二项独立改动，单独评审。
