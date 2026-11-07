@@ -230,6 +230,36 @@ Service Version Instance Node  Port
 
 两件事互不阻塞。等 SSC 拿到配置后，客户端侧不需要改内核、不需要新设备节点。另外确认现有 3 个 IIO 设备是 `spmi adc@3100`（PMIC ADC），**不是**运动传感器，所以设备上目前确实没有任何可用的加速度/陀螺/光照源。
 
-## 九、下一步
+## 九、客户端那条路到底有多远（第五轮）
+
+第四轮发现 SSC 的 QMI 服务已经在 QRTR 上广播，当时我把它当成"更便宜的起步"，并提议先发一个只读的 QMI 版本查询。**这一轮查清后发现那个判断不成立**，如实更正。
+
+### 客户端协议长什么样
+
+AOSP 的 CHRE 里有现成实现（`platform/slpi/see/sns_qmi_client.c`，Apache-2.0），它把整条链讲得很清楚：
+
+| 层 | 内容 |
+| --- | --- |
+| QMI 服务 | `SNS_CLIENT_SVC`（service 400，instance 0） |
+| 请求 | `SNS_CLIENT_REQ_V01`，结构 `sns_client_req_msg_v01 { payload[], payload_len }` |
+| 响应 | `sns_client_resp_msg_v01 { client_id, result }` |
+| 上报 | `sns_client_report_ind_msg_v01 { client_id, payload[], payload_len }` |
+| 载荷 | **protobuf 编码的 `sns_client_request_msg`**（上报是 `sns_client_event_msg`） |
+
+即：QMI 只是信封，真正的语义全在 protobuf 里；而且 protobuf 的字段号**没有**存在 AP 侧库里（`libsnsapi.so` 里的 `sns_client_request_msg` 只出现在符号名中，没有 `FileDescriptorProto` 那样的描述块）。固件里倒是有 nanopb 的字段表符号（`sns_client_request_msg_fields`、`sns_suid_req_fields`、`sns_client_event_msg_sns_client_event_fields`），但那是 Hexagon 侧的数据结构，没有符号表就拿不到地址。
+
+**结论：往 SSC 发一条有语义的请求，需要先把 QMI 的 TLV 编号和 protobuf 的字段号都还原出来**——这比"发个版本查询"重得多。所以我不再建议把它当作探针之前的低成本预演；它应该是**SSC 起来之后**的独立工作流（更现实的做法是构建 libssc，而不是自己重写协议）。
+
+### 顺带修正一个更早的担心
+
+之前担心 `sns_registry` 的"大小表"可能是 8 字节而不是 16 字节。把 `listener.c` 的两处代码连起来看，16 是**结构上必须**的：
+
+- `check_inbuf_sizes()` 要求 `in[0].s == 4*(in_nums + in_bufs + out_bufs)`；
+- `allocate_outbufs()` 从同一张表取**输出缓冲的大小**（`sizes[in_bufs + i]`）来 malloc；
+- 设备侧 skel 校验 `value_size <= out[0].s`。
+
+如果表只有 8 字节，daemon 就拿不到输出缓冲大小，`value_size <= 0` 会让所有请求失败。所以"8 字节"那种情况本身跑不通，**16 是唯一自洽的取值**（仍是推断，实机日志的 `Invalid number of input numbers` 是最终判据，但概率已经很低）。
+
+## 十、下一步
 
 仍然需要一次**最小、限时、可监控**的实机用户态试验（v5 + 私有载荷 v3）：目的只是让 DSP 走过 `sns_registry` 这一步并记录后续请求，不是取数据。风险与门槛与第二轮记录相同：可能触发协处理器故障或整机重启，需要明确批准与现场条件确认。**本轮没有做任何实机 DSP 操作。**
