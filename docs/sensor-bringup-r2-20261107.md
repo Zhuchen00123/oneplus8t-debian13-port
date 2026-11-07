@@ -130,7 +130,9 @@ v4 只做"让诊断跑得下去、并且留下证据"，不实现任何厂商协
 ## 七、下一步（需要明确批准）
 
 0. **同日补充**：`sns_registry` 的真实协议已经从原厂镜像里还原出来（单方法 `get_property`，报文 16 字节大小表 + 名字串 + 值缓冲），并实现了离线候选 v5，见[`sns_registry` 接口还原](sensor-registry-interface-20261107.md)。v5 只是把第一道门补上，仍然未部署、未上机。
-1. **本轮请求**：批准一次范围最小、限时、可监控的用户态试验——v4 诊断件 + 载荷 v3，仍在 root 专用隔离目录、`RuntimeMaxSec`、`PrivateNetwork`、设备白名单的 transient unit 里跑，出问题立即停止并保存证据。目标是拿到 `sns_registry` 的请求细节（handle/method/缓冲区），而不是拿到传感器数据。
+1. **本轮请求**：批准一次范围最小、限时、可监控的用户态试验——v5 诊断件（含 `sns_registry` 接口）+ 载荷 v3，仍在 root 专用隔离目录、`RuntimeMaxSec`、`PrivateNetwork`、设备白名单的 transient unit 里跑，出问题立即停止并保存证据。目标是让 DSP 走过 `sns_registry` 并记录它接下来要什么，而不是拿到传感器数据。
+   - 运行器已就绪并通过离线验证：私有 `local/sensors-20261107/probe/run-probe.sh`（`--plan` 只打印计划、不碰设备；`--run` 需显式 `KEBAB_PROBE_CONFIRM=1`），见同目录 `README.md`。它固定校验两个候选件的 SHA-256、设备侧再校验一次后解包到 `/tmp/kebab-ssc-probe-<时间戳>/`（0700 root）、以 `DevicePolicy=closed` 只放行 `/dev/fastrpc-sdsp`、`MemoryMax=256M`、`CPUQuota=50%`、`RuntimeMaxSec` 运行，每 5 秒采健康样本，结束后停止并 `reset-failed`、把日志拉回 `evidence/`。
+   - 三道闸门已离线验证：无 `KEBAB_PROBE_CONFIRM=1` 拒绝执行；设备上已有探针 unit 拒绝执行；现有 unit 数量拿不到数字时拒绝执行而不是猜测。脚本内所有远端片段经 `bash -n` 校验（9 段全部通过），并用 `ssh`/`scp` 仿真确认没有本地变量泄漏到远端、`awk` 的 `$2`/`$4` 与 `$(wc -l …)` 都以正确形式到达设备。
 2. 若日志确认 `sns_registry` 协议形状，再离线实现只读版本；写入需求要单独设计私有可写副本。
 3. `engineermode` 校准项（`cali_coe`、`*_max_lux`、`als_bias`）作为第二项独立改动，单独评审。
 4. 只有实机证据显示供电不足时，才重新讨论 `ldoc8` 设备树候选；在此之前不制作、不启动。
