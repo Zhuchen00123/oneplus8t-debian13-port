@@ -246,7 +246,7 @@ AOSP 的 CHRE 里有现成实现（`platform/slpi/see/sns_qmi_client.c`，Apache
 | 上报 | `sns_client_report_ind_msg_v01 { client_id, payload[], payload_len }` |
 | 载荷 | **protobuf 编码的 `sns_client_request_msg`**（上报是 `sns_client_event_msg`） |
 
-即：QMI 只是信封，真正的语义全在 protobuf 里；而且 protobuf 的字段号**没有**存在 AP 侧库里（`libsnsapi.so` 里的 `sns_client_request_msg` 只出现在符号名中，没有 `FileDescriptorProto` 那样的描述块）。固件里倒是有 nanopb 的字段表符号（`sns_client_request_msg_fields`、`sns_suid_req_fields`、`sns_client_event_msg_sns_client_event_fields`），但那是 Hexagon 侧的数据结构，没有符号表就拿不到地址。
+即：QMI 只是信封，真正的语义全在 protobuf 里；而且 protobuf 的字段号**没有**以 `FileDescriptorProto` 的形式存在 AP 侧库里（见第十五节——字段号其实能从序列化函数里读出来）。固件里倒是有 nanopb 的字段表符号（`sns_client_request_msg_fields`、`sns_suid_req_fields`、`sns_client_event_msg_sns_client_event_fields`），但那是 Hexagon 侧的数据结构，没有符号表就拿不到地址。
 
 **结论：往 SSC 发一条有语义的请求，需要先把 QMI 的 TLV 编号和 protobuf 的字段号都还原出来**——这比"发个版本查询"重得多。所以我不再建议把它当作探针之前的低成本预演；它应该是**SSC 起来之后**的独立工作流（更现实的做法是构建 libssc，而不是自己重写协议）。
 
@@ -357,6 +357,31 @@ daemon 的 `Starting ...` 走 **stdout**，而 systemd 下 stdout 是管道 ⇒ 
 ### 没有造成影响
 
 三轮试验期间与结束后：`slpi/cdsp/adsp` 全部 `running`、`failed` 单元 0、`qrtr-lookup` 里 `400 Snapdragon Sensor Core service` 一直在、电池 88%/Not charging、负载 0.1–0.3、温度无明显变化。没有写分区、没动 persist、没重启任何 remoteproc。
+
+## 十二补、客户端协议：字段号已经从原厂库里取出来了（第八轮）
+
+上一节说"字段号拿不到"，这一轮找到了办法，**收回那句话的一半**。
+
+`libsnsapi.so` 虽然是原厂 AOSP-30 的产物，但**没有 strip**：`.dynsym` 里 3,273 个 `g DF .text` 符号，包含每个 protobuf 类的 `SerializeWithCachedSizes`。而 protobuf 的序列化函数对每个字段都是"先 `mov w0, #<字段号>`，再 `bl WireFormatLite::Write<类型>`"，于是**字段号 + 线格式**可以直接读出来：
+
+| 消息 | 字段（号:线格式） | 说明 |
+| --- | --- | --- |
+| `sns_client_request_msg` | 1:Message, 2:Fixed32, 3:Message, 4:Message | 请求信封（suid / msg_id / request / suspend_config） |
+| `sns_client_event_msg` | 1:Message, 2:Message | 上报信封（events / error） |
+| `sns_client_event_msg_sns_client_event` | 1:Fixed32, 2:Fixed64, 3:Bytes | 单条事件（msg_id / timestamp / payload） |
+| `sns_suid_req` | 1:String, 2:Bool, 3:Bool | **列出传感器**（data_type / register_updates / active） |
+| `sns_suid_event` | 1:String, 2:Message | 返回一个 SUID |
+| `sns_suid_sensor` | 1:Fixed64, 2:Fixed64 | SUID 本体 |
+| `sns_std_request` | 1:Message, 2:Bytes, 3:Bool | 配置请求 |
+| `sns_std_sensor_config` | 1:Float | 采样率 |
+| `sns_std_sensor_event` | 1:Float, 2:Enum | 数据 / 状态 |
+| `sns_registry_read_req` | 1:String | 注册表读请求 |
+
+**证据边界要说清**：字段**号与线格式是反汇编读出来的**（硬证据）；字段**名字**是依据 SSC 一贯布局补的（库里的描述符块被剥掉了，`sample_rate`/`register_updates` 这些字符串一个都搜不到），**属推断**。
+
+复现方式：取 `_ZNK<len><消息名>24SerializeWithCachedSizes` 的符号地址与长度，反汇编后配对 `mov w0, #N` 与随后那条 `bl ...WireFormatLite..Write<Type>`。
+
+这意味着"往 SSC 发一条列出传感器的请求"在**协议层面**已经不再是未知数；剩下的未知只有 QMI 信封的 TLV 编号（`sns_client_req_msg_v01` 的 payload/payload_len 编号），那个仍然没确认。
 
 ## 十三、下一步：需要一个"让传感器子系统重新初始化"的决定
 
