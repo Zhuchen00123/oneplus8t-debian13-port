@@ -381,7 +381,20 @@ daemon 的 `Starting ...` 走 **stdout**，而 systemd 下 stdout 是管道 ⇒ 
 
 复现方式：取 `_ZNK<len><消息名>24SerializeWithCachedSizes` 的符号地址与长度，反汇编后配对 `mov w0, #N` 与随后那条 `bl ...WireFormatLite..Write<Type>`。
 
-这意味着"往 SSC 发一条列出传感器的请求"在**协议层面**已经不再是未知数；剩下的未知只有 QMI 信封的 TLV 编号（`sns_client_req_msg_v01` 的 payload/payload_len 编号），那个仍然没确认。
+这意味着"往 SSC 发一条列出传感器的请求"在**协议层面**已经不再是未知数；剩下的未知只有 QMI 信封的 TLV 编号（`sns_client_req_msg_v01` 的 payload/payload_len 编号）。
+
+### QMI 信封：IDL 对象找到了，但只解到一半
+
+`libsnsapi.so` 导出 `SNS_CLIENT_SVC_qmi_idl_service_object_v01`（`.data`，0x170b18，0x48 字节）。读出来第一层是确定的：
+
+```
++0x00  version=6
++0x08  service_id = 400        ← 与 qrtr-lookup 里那条 400 完全对上
++0x0c  max_msg_len = 0xf240
++0x18/+0x20/+0x28/+0x30 → .rodata 里的 IDL 表
+```
+
+顺着指针看下去，表里能辨认出四个消息号 `0x0020 / 0x0021 / 0x0022 / 0x0023`，与 CHRE 的 `REQ / RESP / REPORT_IND` 对应（QMI 惯例也是这个编号）。但**再往下的 TLV 字段表是 libqmi 的私有紧凑编码**，我没有把格式完全解出来，所以 `payload` 与 `payload_len` 的 TLV 编号仍然是未知——这一条留作后续，不影响当前主线。
 
 ## 十三、下一步：需要一个"让传感器子系统重新初始化"的决定
 
