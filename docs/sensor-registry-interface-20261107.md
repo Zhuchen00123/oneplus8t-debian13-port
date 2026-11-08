@@ -396,6 +396,34 @@ daemon 的 `Starting ...` 走 **stdout**，而 systemd 下 stdout 是管道 ⇒ 
 
 顺着指针看下去，表里能辨认出四个消息号 `0x0020 / 0x0021 / 0x0022 / 0x0023`，与 CHRE 的 `REQ / RESP / REPORT_IND` 对应（QMI 惯例也是这个编号）。但**再往下的 TLV 字段表是 libqmi 的私有紧凑编码**，我没有把格式完全解出来，所以 `payload` 与 `payload_len` 的 TLV 编号仍然是未知——这一条留作后续，不影响当前主线。
 
+## 十四、实机：重启后 DSP 第一次主动要东西，然后卡在"写"上（第八轮下半段）
+
+用户批准路线 B（装开机自启 unit + 重启整机）。unit `kebab-ssc-listener.service` 装好后重启，新 boot `1419ceed…`，10:52:48 监听器在开机时起来，**DSP 第一次主动发请求**：
+
+```
+10:52:48  Starting … (INIT_ATTACH_SNS) on /dev/fastrpc-sdsp
+10:52:48  Could not open /mnt/vendor/persist/engineermode/cali_coe: No such file or directory
+10:52:48  Could not open oemconfig.so: No such file or directory
+10:52:49  Tried to open /mnt/vendor/persist/sensors/registry/registry/../temp.json for writing
+          × 3,355 次 / 75 秒（峰值 ~2,900 次/分，退避到 ~660 次/分），之后停止
+```
+
+**这推翻第三轮"写失败被容忍"的结论**——那个结论是从 20:11 那次 1.6 秒就退出的日志里读出来的，只看到重试的开头。现在看到完整形态：**DSP 会为同一个写打开重试上千次**，期间完全不往下走（`sns_registry` 请求 0 条）。所以写支持不是可选项，是必经之路。
+
+### r6：给 apps_std 加写支持
+
+上游 hexagonfs 是**只读设计**（源码注释 "Virtual read-only filesystem"），`apps_std_fopen_with_env` 对 `w`/`a` 直接返回 `AEE_EUNSUPPORTED`。r6 的改法：
+
+1. **路径归一 + 白名单**：先把设备路径做词法归一（折叠 `//`、消 `.`、解 `..`、越界即拒），再匹配白名单前缀（`/mnt/vendor/persist/sensors/registry/` 与 `/persist/sensors/registry/`），只允许**单层文件名**。DSP 那条 `registry/registry/../temp.json` 归一到 `…/sensors/registry/temp.json`，落到 `<payload>/sensors/temp.json`——**仍在私有副本里，不碰真 persist**。
+2. **可写句柄**：句柄号从 `4096` 起（hexagonfs 的 fd 只在 0..255），单独一张表；`fclose`/`fseek` 先判号段再分流。
+3. **`fwrite` 按方法号 5 实现**：上游 `.def` 里 5 号正好是空位（1/2/3/4 之后、9 之前），签名照 `fread` 对称猜成 `in[0]={fd,buf_size}`、`in[1]`=数据、`out[0]={written}`。**这是推断，不是确认**——如果号或布局不对，daemon 会打 `Invalid number of input numbers` 或 DSP 收到错误。
+
+x86_64 `gcc -fsyntax-only` 通过；设备内 `nice -n 15` 直接 gcc 构建成功（`2196f4f5…`，79,632 B；设备上没有 meson/ninja）。已部署到 `/var/lib/kebab-ssc-listener/bin/`，旧 v5 留作 `hexagonrpcd.v5.bak`（`ee2ff935…`）。
+
+### 现在卡在：需要再重启一次才能验证
+
+重启单元后 DSP **没有任何新请求**——它那 3,000 多次重试已经耗尽，不会因为重新 attach 而重来（这一点和"attach 触发初始化"的假设一致：init 只在开机后一次）。所以要验证 r6 只能再重启一次整机。
+
 ## 十三、下一步：需要一个"让传感器子系统重新初始化"的决定
 
 两条路，都需要在现有批准之外再单独点头：
