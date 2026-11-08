@@ -446,6 +446,16 @@ x86_64 `gcc -fsyntax-only` 通过；设备内 `nice -n 15` 直接 gcc 构建成�
 
 **未完成**：`apps_std::stat` 的真实形制（尤其是输出结构大小与大小表语义）。下一步应直接在固件的 OSA 层找 `stat` 的调用点，而不是继续从 daemon 侧试错。
 
+### r14 的突破与新卡点
+
+`allocate_outbufs()` 取的是表里第 `in_nums + in_bufs` 项，而本机 `stat` 那张 8 字节表是 `{0, 路径长度}`，于是输出缓冲被按 35 字节分配、装不下 96 字节的 stat 结构。r14 在 lenient 分支里把该项**强制抬到 96**（`tbl[1] = 96`），部署重启后：
+
+- `stat` 不再卡住，DSP **继续往下走了**；
+- 新出现 `in[1]` 是 `/sys/devices/soc0/soc_id`、`/sys/devices/soc0/revision`、`platform_version`、`platform_subtype_id` —— 也就是说它已经过了 `sns_reg_config` 的 stat，进入**平台识别**阶段；
+- 新卡点：`Could not read from directory: Bad file descriptor`（10 次），即 `opendir`/`readdir` 的句柄形制不对（很可能句柄是 u32，而我们按 u64 读 `inbufs[0]`）。
+
+**这就是下一轮要解的东西**：`apps_std` 的 `opendir`(26)/`readdir`(28)/`closedir`(27) 的句柄宽度。
+
 ## 十三、下一步：需要一个"让传感器子系统重新初始化"的决定
 
 两条路，都需要在现有批准之外再单独点头：
