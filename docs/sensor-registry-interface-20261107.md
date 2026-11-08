@@ -424,6 +424,28 @@ x86_64 `gcc -fsyntax-only` 通过；设备内 `nice -n 15` 直接 gcc 构建成�
 
 重启单元后 DSP **没有任何新请求**——它那 3,000 多次重试已经耗尽，不会因为重新 attach 而重来（这一点和"attach 触发初始化"的假设一致：init 只在开机后一次）。所以要验证 r6 只能再重启一次整机。
 
+## 十五、实机迭代：写通了，卡在 apps_std::stat 的缓冲区形制（第九轮）
+
+用户批准 B 之后又授权"重启不必审批"，于是用"改代码 → 部署 → 重启 → 读诊断"的循环推进。每轮结论如下（全部来自 daemon 自己的诊断输出，不是推测）：
+
+| 轮次 | 改动 | 结果 |
+| --- | --- | --- |
+| r6 | 写打开 + 白名单 + `fwrite`(方法号 5) | 路径拼错（`payloadsensors`） |
+| r7 | 补上 `/sensors/` | **写成功**：`Opened …/payload/sensors/temp.json (handle 4096)`、`write(4096, 174/94/…)`，`temp.json` 112 B 由 DSP 写入 |
+| r8/r9/r10 | 调 `stat` 的 def | 依次触发 `Invalid number of input numbers: 12 (expected 8)` / `buffer-count-mismatch`，逐步逼出形制 |
+| r11 | `sns_registry` def 改 (0,1,0,1) | 大小表确认为 8 字节，不是早先预测的 16 |
+| r12 | `stat` def 改 (0,1,0,1) | 计数对上了，但 `Invalid buffer size`：表内容 `{0, 35}` |
+| r13 | 对 `stat` 放宽尺寸校验 + 输出缓冲守卫 | 校验被跳过，但输出缓冲只有 35 字节，装不下 96 字节的 stat 结构，调用仍失败 |
+
+**已确证的硬事实**（可复现，均有日志）：
+
+- 属性名：DSP 问的是 **`hw_id`**（`in[1] size=6 text="hw_id"`），不是早先猜的 `persist.vendor.*`；
+- `sns_registry` 的 sc 是 `0x00020100`（in=2, out=1），大小表 **8 字节**；
+- `apps_std::stat` 在本机有两种形制：`0x1f030000`（in=3,out=0，路径 `…/registry/registry/..`）与 `0x1f020100`（in=2,out=1，路径 `/vendor/etc/sensors/sns_reg_config`）；
+- listener 的通用判据是 `in_count = in_bufs + 1`、`out_count = out_bufs + (out_nums && 1)`、表长 `4*(in_nums+in_bufs+out_bufs)`，这套判据与 DSP 在 `stat` 上给出的组合**无法同时满足**（8 字节表 + in=2/out=1 + 表内容 `{0,35}`），说明这里有一套我们没有完全还原的编码。
+
+**未完成**：`apps_std::stat` 的真实形制（尤其是输出结构大小与大小表语义）。下一步应直接在固件的 OSA 层找 `stat` 的调用点，而不是继续从 daemon 侧试错。
+
 ## 十三、下一步：需要一个"让传感器子系统重新初始化"的决定
 
 两条路，都需要在现有批准之外再单独点头：
