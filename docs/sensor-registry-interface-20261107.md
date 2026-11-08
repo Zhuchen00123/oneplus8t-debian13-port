@@ -456,6 +456,20 @@ x86_64 `gcc -fsyntax-only` 通过；设备内 `nice -n 15` 直接 gcc 构建成�
 
 **这就是下一轮要解的东西**：`apps_std` 的 `opendir`(26)/`readdir`(28)/`closedir`(27) 的句柄宽度。
 
+### r15/r16：句柄宽度不是问题，槽位被提前释放才是
+
+r15 把 `readdir`/`closedir` 改成按 u32 读句柄 —— 现象完全不变。r16 加了探针，拿到决定性数据：
+
+```
+opendir probe: /mnt/vendor/persist/sensors/registry/registry -> fd 3
+readdir probe: s=8 raw=03 00 00 00 00 00 00 00 handle=3     ×13
+Could not read from directory: Bad file descriptor
+```
+
+句柄传得很干净（u32=3，高 4 字节为 0），`opendir` 也确实返回了 3。而 `hexagonfs_readdir()` 只有一种情况返回 `-EBADF`：`fds[fileno] == NULL`（`hexagonfs.c:251-256`；`ops->readdir == NULL` 走的是 `-ENOSYS`）。
+
+⇒ **中间有人把这个槽关掉了**。候选：DSP 自己先 `closedir` 再 `readdir`、或我们的 `stat` 路径（`hexagonfs_openat` + `hexagonfs_close`）复用了同一个槽后释放。下一步给 `closedir` 加探针、并在 `hexagonfs_close` 里打印被关闭的槽，就能定位。
+
 ## 十三、下一步：需要一个"让传感器子系统重新初始化"的决定
 
 两条路，都需要在现有批准之外再单独点头：
