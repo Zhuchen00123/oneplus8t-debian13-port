@@ -489,6 +489,20 @@ Could not read from directory: Bad file descriptor
 
 **下一步修法**：`allocate_file_number()` 增加区间参数，目录句柄走高位区间（128–255），临时打开走低位，两者永不复用。
 
+### r24：隔离槽位已生效，但那 10 次 EBADF 与它无关
+
+在 `apps_std.c` 里加了 `pin_dir_high()`：`opendir` 成功后把目录句柄搬到 128–255 高区间（直接操作 `ctx->fds[]`，不改 hexagonfs 接口）。实测：
+
+```
+opendir probe: /mnt/vendor/persist/sensors/registry/registry -> fd 255
+ebadf=10   sns-registry=0
+```
+
+隔离**生效了**（句柄从 3 变成 255），但 10 次 `Bad file descriptor` 一次没少 ⇒ 那 10 次 `readdir` 用的不是我们分配的目录句柄，而是**一个来路不明的句柄 3**（正是低位临时打开用的槽号）。
+
+**收敛后的唯一问题**：DSP 拿着的那个 3 是从哪来的。两个候选：①我们的 `stat` 成功返回时把槽号泄漏进了返回缓冲区；②`opendir`(26)/`readdir`(28) 的方法号与厂商 IDL 不符，DSP 实际在调别的方法。
+**下一步探针**：`apps_std_stat` 成功时打印返回缓冲前几个字，看 3 是不是从那里出去的。
+
 **已走通的链路**：attach → DSP 写 `temp.json`（`fwrite` 方法号 5 有效）→ `apps_std::stat`（lenient + 强制 96 字节）→ 平台识别（`/sys/devices/soc0/{soc_id,revision,platform_version,platform_subtype_id}`）。**未到达**：`sns_registry` 属性查询（`hw_id`），本 boot 计数仍为 0。
 
 ## 十三、下一步：需要一个"让传感器子系统重新初始化"的决定
