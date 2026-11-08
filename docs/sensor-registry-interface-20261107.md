@@ -470,6 +470,27 @@ Could not read from directory: Bad file descriptor
 
 ⇒ **中间有人把这个槽关掉了**。候选：DSP 自己先 `closedir` 再 `readdir`、或我们的 `stat` 路径（`hexagonfs_openat` + `hexagonfs_close`）复用了同一个槽后释放。下一步给 `closedir` 加探针、并在 `hexagonfs_close` 里打印被关闭的槽，就能定位。
 
+## 十六、r15–r23：注册表枚举卡在虚拟 fd 槽位撞车
+
+用户在第九轮后授权"重启不必审批"，于是改成"改代码 → 部署 → 重启 → 读探针"的循环。逐轮结论（全部来自设备日志）：
+
+| 版本 | 假设 / 改动 | 结果 |
+| --- | --- | --- |
+| r15 | `readdir`/`closedir` 句柄按 u32 读（疑 u64 宽度错） | 现象不变 → 否决 |
+| r16 | `opendir`/`readdir` 加探针 | 句柄传的是 u32=3、高 4 字节为 0；`opendir` 也确实返回 3 |
+| r17 | `closedir` + `hexagonfs_close` 加探针 | 看到 `hexagonfs_close: slot 3` 出现 116 次（stat 的 open/close 抖动） |
+| r18 | `opendir` 强制补尾斜杠（区分文件/目录） | 无效 |
+| r19/r20 | `mapped_readdir` 加探针 | 底层 `DIR*` 正常（raw_fd=6），`readdir()` 不返回 NULL → **映射层无罪** |
+| r21 | `apps_std_readdir` 打印虚拟 fd 与其槽指针 | 决定性：`virt_fd=3 slot=(nil)` ×10，且**发生在 `opendir` 之前** |
+| r22 | `closedir` 不真关（保留句柄） | 无效 → r23 已回滚 |
+| r23 | 回滚 r22 | 部署中，无功能变化 |
+
+**结论（可复现）**：同一个句柄 3，先命中空槽 10 次（`Bad file descriptor`），之后才被 `opendir` 分配。`hexagonfs` 的槽分配是"取最小空位"，而 `stat` 等临时打开每次 open/close 都在反复占用、释放低位槽，于是**目录句柄与临时打开撞槽**。这不是协议问题，是我们自己 fd 表的管理问题。
+
+**下一步修法**：`allocate_file_number()` 增加区间参数，目录句柄走高位区间（128–255），临时打开走低位，两者永不复用。
+
+**已走通的链路**：attach → DSP 写 `temp.json`（`fwrite` 方法号 5 有效）→ `apps_std::stat`（lenient + 强制 96 字节）→ 平台识别（`/sys/devices/soc0/{soc_id,revision,platform_version,platform_subtype_id}`）。**未到达**：`sns_registry` 属性查询（`hw_id`），本 boot 计数仍为 0。
+
 ## 十三、下一步：需要一个"让传感器子系统重新初始化"的决定
 
 两条路，都需要在现有批准之外再单独点头：
