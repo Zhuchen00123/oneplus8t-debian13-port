@@ -1,0 +1,22 @@
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -406 +406 @@
+-                'Set-Cookie': `dsh_bridge_auth=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`,
++                'Set-Cookie': `dsh_bridge_auth=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`,
+@@ -471 +471 @@
+-        if (isLoopback && !isPublicTunnel && this.authManager) {
++        if (isLoopback && !isPublicTunnel && this.authManager?.allowLoopback === true) {
+@@ -502 +502 @@
+-            'Set-Cookie': `dsh_bridge_auth=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`,
++            'Set-Cookie': `dsh_bridge_auth=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`,
+@@ -509 +509 @@
+-            'Set-Cookie': `dsh_bridge_auth=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`,
++            'Set-Cookie': `dsh_bridge_auth=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`,
+@@ -694,2 +694,2 @@
+-      this.server.listen(this.localPort, '0.0.0.0', () => {
+-        this.logger.info('dsh-bridge: 代理已启动 0.0.0.0:%d -> 127.0.0.1:%d', this.localPort, this.targetPort);
++      this.server.listen(this.localPort, '127.0.0.1', () => {
++        this.logger.info('dsh-bridge: 代理已启动 127.0.0.1:%d -> 127.0.0.1:%d', this.localPort, this.targetPort);
+@@ -2292 +2292 @@
+-    config: config.auth ?? {},
++    config: { ...JSON.parse(readFileSync(configFile, 'utf8')).auth, enabled: true, scope: 'all', allowLoopback: false },

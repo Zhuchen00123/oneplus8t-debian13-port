@@ -1,0 +1,28 @@
+[Unit]
+Description=Independent DSH public relay controller
+After=network-online.target kebab-strelay-controller.service kebab-dsh.service
+Wants=network-online.target
+RequiresMountsFor=/srv/kebab-dshrelay
+ConditionPathIsMountPoint=/srv
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/srv/kebab-dshrelay
+RuntimeDirectory=kebab-dshrelay
+RuntimeDirectoryMode=0755
+ExecStart=/usr/bin/python3 /srv/kebab-dshrelay/controller.py
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=20
+UMask=0077
+Nice=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/kebab-dshrelay/private /srv/dsh/home/dsh-bridge /run/kebab-dshrelay
+MemoryMax=256M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

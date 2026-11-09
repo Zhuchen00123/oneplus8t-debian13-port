@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+case "${1:-status}" in
+  status) exec systemctl show kebab-dsh.service -p ActiveState -p SubState -p MainPID -p MemoryCurrent -p NRestarts ;;
+  doctor) exec sudo python3 /srv/dsh/ops/runtime_observer.py --show ;;
+  start|stop|restart) exec sudo systemctl "$1" kebab-dsh.service ;;
+  logs) sudo journalctl -u kebab-dsh.service -n 80 --no-pager | sed -E 's/([?&]token=)[^[:space:]]+/\1[redacted]/g' ;;
+  web-url) exec sudo python3 /srv/dsh/ops/web-access.py url ;;
+  shell) exec sudo -u dsh -H /bin/bash --rcfile /srv/dsh/ops/development.bashrc ;;
+  run)
+    shift
+    exec sudo -u dsh -H /bin/bash -c '. /srv/dsh/ops/dsh-env.sh; cd /srv/dsh/workspace; exec dsh "$@"' dsh "$@"
+    ;;
+  *) printf 'Usage: kebab-dsh status|doctor|start|stop|restart|logs|web-url|shell|run [dsh arguments]\n' >&2; exit 2 ;;
+esac

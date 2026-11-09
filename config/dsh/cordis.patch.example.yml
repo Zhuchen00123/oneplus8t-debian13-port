@@ -1,0 +1,13 @@
+[
+  {
+    "id": "agent-default-model",
+    "config": {
+      "provider": "openai-codex",
+      "model": "gpt-6.1-sol"
+    }
+  },
+  {
+    "id": "session-title-llm",
+    "disabled": true
+  }
+]

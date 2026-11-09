@@ -1,0 +1,40 @@
+[Unit]
+Description=Personal dsh agent (isolated ARM64 runtime)
+After=network-online.target kebab-st-azure-provider.service
+Wants=network-online.target
+RequiresMountsFor=/srv/dsh
+ConditionPathIsMountPoint=/srv
+
+[Service]
+Type=simple
+User=dsh
+Group=dsh
+WorkingDirectory=/srv/dsh/workspace
+Environment=HOME=/srv/dsh/home
+Environment=DSH_HOME=/srv/dsh/home
+Environment=DSH_TELEMETRY_DISABLED=1
+Environment=TMPDIR=/srv/dsh/cache/tmp
+Environment=npm_config_cache=/srv/dsh/cache/npm
+Environment=PATH=/srv/dsh/runtime/bin:/srv/dsh/dev/node/node_modules/.bin:/srv/dsh/app/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/srv/dsh/private/provider.env
+ExecStart=/srv/dsh/runtime/bin/node /srv/dsh/app/node_modules/@deepseek-ai/dsh/lib/bin.js web --no-open --port 3080
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+Nice=10
+CPUQuota=100%
+CPUAffinity=0 1 2 3 4 5 6
+MemoryHigh=1G
+MemoryMax=2G
+TasksMax=256
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/dsh/home /srv/dsh/cache /srv/dsh/workspace /srv/dsh/dev /srv/dsh/source /srv/dsh/backups
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=100
+
+[Install]
+WantedBy=multi-user.target

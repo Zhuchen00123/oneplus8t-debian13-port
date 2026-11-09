@@ -1,12 +1,107 @@
 {
   "schema_version": 1,
+  "dsh_mobile_access_prepared": {
+    "checked_at": "2026-10-08",
+    "status": "Historical 2026-10-08 preparation; public deployment subsequently authorized and completed, see dsh_always_on_access",
+    "package": "@wenbin_wb/dsh-bridge",
+    "upstream_version": "2.12.2",
+    "upstream_integrity": "sha512-huBM3WWMND9MsrIesV7nBHI35x7D7rn+t6iX9rUomU0Xg3/oVvz/ZBZle+iMBZz7edb6XY257wtFxusEdqBCeA==",
+    "patched_version": "2.12.2-kebab.1",
+    "patched_archive_sha256": "ac805a2647d33baffe92e47538c882e493721ba93478e3f7e32b970fbbd2884b",
+    "patch": "patches/dsh/0001-bridge-loopback-auth.patch",
+    "bridge_listen": "127.0.0.1:3082",
+    "proposed_cnb_ports": [
+      9011,
+      9013
+    ],
+    "cnb_relay_binary_sha256": "72e099e6aa0195ee9795bd1b60159f30aefbfe18687211a927b4dedd1d4b8873",
+    "evidence_directory": "local/dsh-deployment-20261008",
+    "report": "docs/dsh-mobile-access-20261008.md"
+  },
+  "dsh_remote_search_research": {
+    "checked_at": "2026-10-08",
+    "scope": "read-only local desktop configuration inspection and upstream research; not installed on server",
+    "evidence_directory": "local/dsh-remote-search-20261008",
+    "report": "docs/dsh-remote-search-20261008.md",
+    "repositories": [
+      {
+        "repository": "https://github.com/liguobao/ds-harness-remote",
+        "commit": "6a9113255d46c6bcd751909b646cc67ea1909c01",
+        "package": "ds-harness-remote",
+        "source_version": "0.5.0"
+      },
+      {
+        "repository": "https://github.com/JUANWANG-BUAA/dsh-full-remote",
+        "commit": "deba626e7922726c2f0a283fa784d5bda53471f1",
+        "package": "dsh-full-remote",
+        "source_version": "0.3.12"
+      },
+      {
+        "repository": "https://github.com/KyoMio/dsh-zen-remote",
+        "commit": "536068d2e6ff961d45d42bc6c9459d24d94cb578",
+        "package": "dsh-zen-remote",
+        "source_version": "2.0.0"
+      },
+      {
+        "repository": "https://github.com/anysearch-team/anysearch-dsh",
+        "commit": "788804a7c1fff2860e6c29451e48076ad5c4619a",
+        "package": "@anysearch/anysearch-dsh",
+        "source_version": "0.1.6"
+      },
+      {
+        "repository": "https://github.com/mimimaster/dsh-devin-search",
+        "commit": "7dfdf835c2601ad3a1ac29ede1520e3e66a4d036",
+        "package": "dsh-devin-search",
+        "source_version": "0.2.9"
+      },
+      {
+        "repository": "https://github.com/wenbin-wb/dsh-bridge",
+        "commit": "a4726a6542bea19d0a18a148035fe1120c6a537a",
+        "package": "@wenbin_wb/dsh-bridge",
+        "source_version": "2.12.2"
+      },
+      {
+        "repository": "https://github.com/april-jk/dsh-mobile-plugin",
+        "commit": "489a1a2c0f12246e478a93eb25683f87c1f33832",
+        "package": "@april-jk/dsh-mobile",
+        "source_version": "0.1.9"
+      }
+    ]
+  },
+  "dsh_phase1": {
+    "checked_at": "2026-10-08",
+    "repository": "https://github.com/deepseek-ai/deepseek-harness",
+    "tag": "dsh-v0.2.0-rc.2",
+    "commit": "639ed015397290b3745d163aafe02ffee4aa3f84",
+    "archive_sha256": "ea09af29bfbcd26467579da0a92875f9a81b175da2f01643ffb855e995627f24",
+    "source_kind": "GitHub API commit archive; no .git history; monorepo build not performed",
+    "npm_package": "@deepseek-ai/dsh",
+    "npm_version": "0.2.0-rc.2",
+    "npm_integrity": "sha512-EAJ3gPNcVt/uv8X19PMm9NkVhWgT7xXNMk0UKCVm+IQ5rpSQOcsMUa0HWlnYYVybKMsccjcRB21vVVsaXQ6IdA==",
+    "runtime_lock": "scripts/dsh/app/package-lock.json",
+    "development_lock": "scripts/dsh/dev/package-lock.json",
+    "node_version": "24.21.0",
+    "node_platform": "linux-arm64",
+    "node_archive_sha256": "6ad1325edbdb5649c379b75a237147a666c95d4f9ae8d340fef2d1575d289ad2",
+    "pnpm": "11.7.0",
+    "typescript": "6.0.3",
+    "tsx": "4.21.0",
+    "provider": "azure-clinepass",
+    "default_model": "cline-pass/deepseek-v4.1-flash",
+    "configuration_template": "config/dsh/cordis.patch.example.yml",
+    "evidence_directory": "local/dsh-deployment-20261008",
+    "phase_scope": "isolated Web service, development toolchain and model integration; no community plugins"
+  },
   "embeddinggemma_q8_trial": {
     "checked_at": "2026-10-07",
     "scope": "isolated CPU trial; does not replace the SillyTavern embedding provider",
     "model_repository": "https://huggingface.co/onnx-community/embeddinggemma-2-ONNX",
     "model_revision": "daa72c51243991dfcaf9f9137d2c573d8f7790c0",
     "dtype": "q8",
-    "modalities_downloaded": ["text", "vision"],
+    "modalities_downloaded": [
+      "text",
+      "vision"
+    ],
     "transformers_js": "4.3.1",
     "onnxruntime_node": "1.30.0",
     "node": "20.20.2",
@@ -387,6 +482,1065 @@
       "boot_success_tool_tests_passed": 8,
       "control_boot_status": "A-slot retry exhaustion recovered by Fastboot; same control image boots; authorized success-bit repair persisted through reboot; USB SSH and service autostart passed",
       "documentation": "docs/charge-policy-v1-20261004.md"
+    }
+  },
+  "cnb_shared_relay": {
+    "checked_at": "2026-10-09",
+    "repo": "https://cnb.cool/zc354/kebab-sillytavern-relay",
+    "branch": "main",
+    "commit": "0a77d4526e0ce6dcf517353586dd2867bf3fea4b",
+    "runner_cpus": 1,
+    "running_workspaces_verified": 1,
+    "ports": {
+      "mcp_placeholder": 9000,
+      "ssh": 9001,
+      "http_tunnel": 9002,
+      "sillytavern": 9003,
+      "mc": 9010
+    },
+    "relay_binary_sha256": "72e099e6aa0195ee9795bd1b60159f30aefbfe18687211a927b4dedd1d4b8873",
+    "mcp_placeholder_binary_sha256": "a26fd2fc0fc1fb7d0e4d2cb4d72c671e4d08333074747f2ca37c48200e7f920d",
+    "cloudflared_version": "2026.9.3",
+    "cloudflared_binary_sha256": "77e26d8d900e0b8469f416239d14b5f296525fdf79fee6f511ef55609e3fbac2",
+    "controlled_workspace_recovery_seconds": 123,
+    "report": "docs/cnb-consolidation-20261009.md",
+    "evidence_directory": "local/cnb-consolidation-20261009"
+  },
+  "dsh_always_on_access": {
+    "checked_at": "2026-10-10",
+    "package": "@wenbin_wb/dsh-bridge",
+    "upstream_version": "2.12.2",
+    "base_patched_version": "2.12.2-kebab.1",
+    "runtime_bridge_sha256": "8687ee32f6b5e3ca4e9dc2aba5e167fc54f0aea0ce56c00bff21fc144765024b",
+    "runtime_source_line_endings": "CRLF; matches prepared source after LF normalization",
+    "patches": [
+      {
+        "path": "patches/dsh/0001-bridge-loopback-auth.patch",
+        "sha256": "b05c31d095bc7166ffc0c5d088999cc8582ddcd100465ffb63f70650ab1ee5a4"
+      },
+      {
+        "path": "patches/dsh/0002-bridge-lan-https-origin.patch",
+        "sha256": "a8dabff4cc487c9a78548b03291081c754022027e4c8a134a549822b07d4d074"
+      },
+      {
+        "path": "patches/dsh/0003-bridge-cnb-websocket-nonce.patch",
+        "sha256": "d592ea416d6b523cde4522364989bfb58b137b9316cf58842e4d8a55f534e15c"
+      }
+    ],
+    "core_listen": "127.0.0.1:3080",
+    "bridge_listen": "127.0.0.1:3082",
+    "lan_tls_port": 3443,
+    "cnb_ports": [
+      9011,
+      9013
+    ],
+    "running_cnb_workspace_count": 1,
+    "normal_exit_recovery_seconds": 15.8,
+    "public_websocket_test_seconds": 65,
+    "campus_phone_acceptance": "User confirmed password login and model reply on gdut phone",
+    "default_model": "cline-pass/deepseek-v4.1-flash",
+    "report": "docs/dsh-always-on-access-20261009.md",
+    "evidence_directory": "local/dsh-access-20261009",
+    "not_verified": [
+      "new access topology continuous 24h",
+      "whole device reboot after changes",
+      "public off-campus phone manual acceptance"
+    ]
+  },
+  "dsh_coding_daily_recommendations": {
+    "checked_at": "2026-10-10",
+    "scope": "Read-only upstream research and local pinned DSH skill-filesystem source inspection; no installation, account authorization or server changes",
+    "report": "docs/dsh-coding-daily-stack-20261010.md",
+    "evidence_directory": "local/dsh-stack-research-20261010",
+    "repositories": [
+      {
+        "repository": "https://github.com/upstash/context7",
+        "commit": "522c4db4fa2e1e31f1b320f09fa8c8fab376987a",
+        "readme": "https://github.com/upstash/context7/blob/522c4db4fa2e1e31f1b320f09fa8c8fab376987a/README.md",
+        "archived": false
+      },
+      {
+        "repository": "https://github.com/github/github-mcp-server",
+        "commit": "eb47a99ddb866ca2b8a162920e6bda9521f33ebb",
+        "readme": "https://github.com/github/github-mcp-server/blob/eb47a99ddb866ca2b8a162920e6bda9521f33ebb/README.md",
+        "archived": false
+      },
+      {
+        "repository": "https://github.com/microsoft/playwright-mcp",
+        "commit": "b8b4183e099f136cbec0388a6088d4aa2f6b9685",
+        "readme": "https://github.com/microsoft/playwright-mcp/blob/b8b4183e099f136cbec0388a6088d4aa2f6b9685/README.md",
+        "archived": false
+      },
+      {
+        "repository": "https://github.com/ChromeDevTools/chrome-devtools-mcp",
+        "commit": "f08dbe152502d66e75fa07fb2588dc0feb42bc20",
+        "readme": "https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/f08dbe152502d66e75fa07fb2588dc0feb42bc20/README.md",
+        "archived": false
+      },
+      {
+        "repository": "https://github.com/anthropics/skills",
+        "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+        "readme": "https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/README.md",
+        "archived": false,
+        "skill_names": [
+          "academy-guide",
+          "algorithmic-art",
+          "brand-guidelines",
+          "canvas-design",
+          "claude-api",
+          "discernment-nudge",
+          "doc-coauthoring",
+          "docx",
+          "frontend-design",
+          "internal-comms",
+          "mcp-builder",
+          "pdf",
+          "pptx",
+          "skill-creator",
+          "slack-gif-creator",
+          "theme-factory",
+          "web-artifacts-builder",
+          "webapp-testing",
+          "xlsx"
+        ]
+      },
+      {
+        "repository": "https://github.com/obra/superpowers",
+        "commit": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+        "readme": "https://github.com/obra/superpowers/blob/bb92a77741419a4ab5f06e711a283343f1ada0c3/README.md",
+        "archived": false,
+        "skill_names": [
+          "brainstorming",
+          "diagnosing-superpowers",
+          "dispatching-parallel-agents",
+          "executing-plans",
+          "finishing-a-development-branch",
+          "receiving-code-review",
+          "requesting-code-review",
+          "subagent-driven-development",
+          "systematic-debugging",
+          "test-driven-development",
+          "using-git-worktrees",
+          "using-superpowers",
+          "verification-before-completion",
+          "writing-plans",
+          "writing-skills"
+        ]
+      },
+      {
+        "repository": "https://github.com/kepano/obsidian-skills",
+        "commit": "3ccff5338ea700537839b21900aa5358a0402c98",
+        "readme": "https://github.com/kepano/obsidian-skills/blob/3ccff5338ea700537839b21900aa5358a0402c98/README.md",
+        "archived": false,
+        "skill_names": [
+          "defuddle",
+          "json-canvas",
+          "knap",
+          "obsidian-bases",
+          "obsidian-cli",
+          "obsidian-markdown"
+        ]
+      },
+      {
+        "repository": "https://github.com/AskTheWay/dsh-auto-memory",
+        "commit": "08972390f9ebb3bfe7acf394d0b18748c4de449d",
+        "readme": "https://github.com/AskTheWay/dsh-auto-memory/blob/08972390f9ebb3bfe7acf394d0b18748c4de449d/README.md",
+        "archived": false,
+        "package": {
+          "name": "dsh-auto-memory",
+          "version": "0.7.0",
+          "engines": {
+            "node": "^22.19.0 || >=24.0.0"
+          },
+          "dependencies": {
+            "@deepseek-ai/schemastery": "^3.18.2",
+            "yaml": "^2.4.2"
+          },
+          "peerDependencies": {
+            "@deepseek-ai/cordis": ">=4.0.2 <5.0.0",
+            "@deepseek-ai/dsh-agent": ">=0.1.5-rc.2 <0.3.0",
+            "@deepseek-ai/dsh-atomic-write": ">=0.1.5-rc.2 <0.3.0",
+            "@deepseek-ai/dsh-home-paths": ">=0.1.5-rc.2 <0.3.0",
+            "@deepseek-ai/dsh-llm": ">=0.1.5-rc.2 <0.3.0",
+            "@deepseek-ai/dsh-session": ">=0.1.5-rc.2 <0.3.0",
+            "@deepseek-ai/dsh-system-prompt": ">=0.1.5-rc.2 <0.3.0",
+            "@deepseek-ai/dsh-tools": ">=0.1.5-rc.2 <0.3.0"
+          }
+        }
+      },
+      {
+        "repository": "https://github.com/Dely0/dsh-personal-workbench",
+        "commit": "787b3d8829066e8fb9a5a627f3cd5538f5327826",
+        "readme": "https://github.com/Dely0/dsh-personal-workbench/blob/787b3d8829066e8fb9a5a627f3cd5538f5327826/README.md",
+        "archived": false,
+        "package": {
+          "name": "@dely0/dsh-personal-workbench",
+          "version": "1.16.5",
+          "engines": {
+            "node": "^22.19.0 || >=24.0.0",
+            "pnpm": ">=11.7.0 <12"
+          },
+          "dependencies": {
+            "react": "^18.3.1"
+          },
+          "peerDependencies": {
+            "@deepseek-ai/cordis": "^4.0.1",
+            "@deepseek-ai/dsh-commands": "^0.1.5-rc.1 || ^0.2.0-rc.1",
+            "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6 || ^0.2.0-rc.1",
+            "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6 || ^0.2.0-rc.1",
+            "@deepseek-ai/dsh-tools": "^0.1.0-rc.6 || ^0.2.0-rc.1"
+          }
+        }
+      },
+      {
+        "repository": "https://github.com/john-walks-slow/dsh-proactive",
+        "commit": "d4cb9af5881f65581a888fdea8e138b63555285e",
+        "readme": "https://github.com/john-walks-slow/dsh-proactive/blob/d4cb9af5881f65581a888fdea8e138b63555285e/README.md",
+        "archived": false,
+        "package": {
+          "name": "dsh-proactive",
+          "version": "0.3.1",
+          "engines": {
+            "node": ">=22.5"
+          },
+          "peerDependencies": {
+            "@deepseek-ai/cordis": "^4.0.4",
+            "@deepseek-ai/dsh-agent": "^0.2.0-rc.1",
+            "@deepseek-ai/dsh-llm": "^0.2.0-rc.1",
+            "@deepseek-ai/dsh-session": "^0.2.0-rc.1",
+            "@deepseek-ai/dsh-session-persistence": "^0.2.0-rc.1",
+            "@deepseek-ai/dsh-tools": "^0.2.0-rc.1"
+          }
+        }
+      },
+      {
+        "repository": "https://github.com/Doist/todoist-mcp",
+        "commit": "c9bcda17a6d8fac13997813a6223b8974d7178ab",
+        "readme": "https://github.com/Doist/todoist-mcp/blob/c9bcda17a6d8fac13997813a6223b8974d7178ab/README.md",
+        "archived": false
+      },
+      {
+        "repository": "https://github.com/nspady/google-calendar-mcp",
+        "commit": "22dc618cba7bf67f55a9229051101e6efa2b750a",
+        "readme": "https://github.com/nspady/google-calendar-mcp/blob/22dc618cba7bf67f55a9229051101e6efa2b750a/README.md",
+        "archived": false
+      }
+    ],
+    "service_documentation": [
+      "https://docs.firecrawl.dev/mcp-server",
+      "https://developers.notion.com/guides/mcp/overview"
+    ],
+    "dsh_reference_commit": "639ed015397290b3745d163aafe02ffee4aa3f84",
+    "compatibility": "DSH rc.2 plugin gate, MCP authentication renewal, external skills tools/dependencies and ARM64 runtime have not been validated for these candidates"
+  },
+  "dsh_search_stack": {
+    "date": "2026-10-10",
+    "dsh_reference_commit": "639ed015397290b3745d163aafe02ffee4aa3f84",
+    "architecture": "Phone DSH uses official hosted Streamable HTTP MCP services; Azure existing model proxy retained, no new Azure process or CNB workspace",
+    "context7": {
+      "endpoint": "https://mcp.context7.com/mcp",
+      "authentication": "anonymous; real resolve-library-id and query-docs succeeded, remote quota may apply"
+    },
+    "firecrawl": {
+      "endpoint": "https://mcp.firecrawl.dev/v2/mcp",
+      "authentication": "existing desktop API credential, root-only EnvironmentFile; no secrets tracked",
+      "search_surface_probe": "/v2/mcp-search rejected this credential; retain tested full endpoint"
+    },
+    "devin": {
+      "package": "dsh-devin-search",
+      "version": "0.2.9",
+      "registry_integrity": "sha512-mCXsBzR893cSzHBaCqx55rnMfxPqcHtj4EVtDe8fn423JEQCfWmdAAYBShf4ZrblSwDhg6/9vdr//HwmkiBhTw==",
+      "archive_sha256": "eef99907fd2a2c70f9101ffaab21860e83f6e76eef135823bcee05ad23efa574",
+      "desktop_entry_byte_match": true,
+      "webSearch": true,
+      "codeSearch": false
+    },
+    "model_settings": {
+      "configured_models": 18,
+      "contextWindow": 500000,
+      "maxTokens": 80000,
+      "default_model": "cline-pass/deepseek-v4.1-flash",
+      "default_reasoning": "medium",
+      "reasoningEfforts": {
+        "off": "none",
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "acceptance": "Flash seven effort values with max_tokens=80000 accepted in short 200 responses; actual 500k input and 80k generation and distinct effect of all levels not load-tested"
+    },
+    "bridge_runtime_sha256": "8687ee32f6b5e3ca4e9dc2aba5e167fc54f0aea0ce56c00bff21fc144765024b",
+    "report": "docs/dsh-search-stack-20261010.md"
+  },
+  "dsh_phone_runtime": {
+    "date": "2026-10-10",
+    "host": "phone Debian ARM64",
+    "gh": {
+      "version": "2.102.0",
+      "release": "https://github.com/cli/cli/releases/tag/v2.102.0",
+      "archive_sha256": "7862c86c72f43df3a2d93ddde6f473285b4e2af61b494849846827e513ef6484",
+      "binary_sha256": "93308395c2d296a63a662742c6366e4db413d2a4870d07bd9b84e491c065d65d",
+      "official_checksums_verified": true,
+      "github_attestation_verified": true,
+      "installation": "/srv/dsh/dev/gh/2.102.0/bin/gh",
+      "authentication": "User-authorized existing login, dsh-private configuration; no credentials tracked"
+    },
+    "jq": {
+      "version": "1.7.1-6+deb13u4",
+      "source": "Debian trixie-security arm64",
+      "additional_packages": [
+        "libjq1",
+        "libonig5"
+      ],
+      "upgraded": 0,
+      "removed": 0
+    },
+    "observer": {
+      "timer": "kebab-dsh-runtime-observer.timer",
+      "interval_seconds": 300,
+      "external_interval_seconds": 3600,
+      "retained_daily_files": 31,
+      "state_directory": "/var/lib/kebab-dsh-runtime-observer",
+      "model_generation_requests": false,
+      "service_restart_actions": false
+    },
+    "project_parent": "/srv/dsh/workspace/projects",
+    "report": "docs/dsh-phone-runtime-20261010.md"
+  },
+  "dsh_office_recommendations": {
+    "date": "2026-10-10",
+    "scope": "Research only, phone DSH; no skill or MCP installation",
+    "report": "docs/dsh-office-skills-mcp-20261010.md",
+    "repositories": [
+      {
+        "repository": "https://github.com/magnus919/agent-skills",
+        "commit": "22b4723c549e2851ebae7e739cc5bd980ff4884a",
+        "archived": false,
+        "license": "MIT",
+        "candidate_path": "documents",
+        "validation": "Source review only; phone installation and tests not performed"
+      },
+      {
+        "repository": "https://github.com/openai/skills",
+        "commit": "49f948faa9258a0c61caceaf225e179651397431",
+        "archived": false,
+        "license": null
+      },
+      {
+        "repository": "https://github.com/microsoft/markitdown",
+        "commit": "4cc9fa17653d695d64fb9eee5b33d4de55ff84e8",
+        "archived": false,
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/haris-musa/excel-mcp-server",
+        "commit": "ee317590cfeb376d8d4090fba98a7d28b91889d4",
+        "archived": false,
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/kepano/obsidian-skills",
+        "commit": "3ccff5338ea700537839b21900aa5358a0402c98",
+        "archived": false,
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/GongRzhe/Office-Word-MCP-Server",
+        "commit": "a3bbbb6d6167e68cf855d73ef7dc6cd8cfbfedba",
+        "archived": true,
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/GongRzhe/Office-PowerPoint-MCP-Server",
+        "commit": "3631ba2ec0c24504476f78bf74d329c9be11caaa",
+        "archived": true,
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/docling-project/docling-mcp",
+        "commit": "5e1551a9b984f9a26349de6d23d02eccf5a69db2",
+        "archived": false,
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/gitbrent/PptxGenJS",
+        "commit": "3c9ec1b687c174952166f6a34b5e87ebf69fa469",
+        "archived": false,
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/python-openxml/python-docx",
+        "commit": "e45454602b53e8e572b179ccf1c91093ec9f4ed7",
+        "archived": false,
+        "license": "MIT"
+      }
+    ],
+    "pdf_skill": {
+      "path": "skills/.curated/pdf",
+      "license": "Apache-2.0 directory LICENSE.txt verified",
+      "dsh_adaptation_required": true
+    },
+    "restricted_anthropic_document_skills": [
+      "docx",
+      "pdf",
+      "pptx",
+      "xlsx"
+    ],
+    "default_stack": [
+      "Microsoft MarkItDown",
+      "haris-musa Excel MCP",
+      "OpenAI PDF skill",
+      "Obsidian Markdown/JSON Canvas"
+    ],
+    "office_family_skill": "magnus919/agent-skills documents: PDF/DOCX/XLSX/PPTX family skill; MIT, source-reviewed candidate, not installed",
+    "word_ppt_strategy": "Try the existing documents family skill first; customize with maintained python-docx/python-pptx/PptxGenJS if needed; archived GongRzhe MCPs are secondary candidates",
+    "compatibility": "ARM64 dependencies, fonts, conversions, render inspection and DSH discovery/tool calls not validated"
+  },
+  "dsh_daily_skills_deployment": {
+    "date": "2026-10-10",
+    "report": "docs/dsh-daily-skills-20261010.md",
+    "manifest": "config/dsh/skills/manifest.json",
+    "repositories": [
+      {
+        "repository": "https://github.com/kepano/obsidian-skills",
+        "commit": "3ccff5338ea700537839b21900aa5358a0402c98",
+        "path": "skills/obsidian-markdown",
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/obra/superpowers",
+        "commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+        "path": "skills/receiving-code-review",
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/obra/superpowers",
+        "commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+        "path": "skills/systematic-debugging",
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/obra/superpowers",
+        "commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+        "path": "skills/test-driven-development",
+        "license": "MIT"
+      },
+      {
+        "repository": "https://github.com/obra/superpowers",
+        "commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+        "path": "skills/verification-before-completion",
+        "license": "MIT"
+      }
+    ],
+    "installed_skills": [
+      "obsidian-markdown",
+      "receiving-code-review",
+      "systematic-debugging",
+      "test-driven-development",
+      "verification-before-completion"
+    ],
+    "validation": "Five native skill tools succeeded via public DSH; isolated regression 3 failures to 4 passing tests, unchanged tests, Markdown YAML/support docs verified; service PIDs and bridge hash retained",
+    "automatic_memory_enabled": false,
+    "new_mcp_or_native_plugins": false,
+    "install_archive_sha256": "77963b509933d6459611e917c22a56cdd160581a863c7bd9db18be02d5aea02f",
+    "config_backup_sha256": "3d175718029a2f35c20db6553cc81b62115471889c84f055b71f7e2a5458ada8"
+  },
+  "dsh_official_browser_deployment": {
+    "date": "2026-10-10",
+    "report": "docs/dsh-browser-official-20261010.md",
+    "repository": "https://github.com/deepseek-ai/deepseek-harness",
+    "commit": "639ed015397290b3745d163aafe02ffee4aa3f84",
+    "packages": [
+      {
+        "name": "@deepseek-ai/dsh-browser-use",
+        "version": "0.2.0-rc.2",
+        "registry_integrity": "sha512-B2J31SjeHOZIssee4XwmGSDG8lKx++AeQ6JqmmzlTvCh2Robz48NIlnz1FxROR8Mk10xLojsFnafpuTL/LahvQ==",
+        "sha256": "c4da8d8b151b3422f0e3a7c8583b118112d5c0de2fef693e98d773bbcedaa560",
+        "bytes": 5868,
+        "license": "MIT"
+      },
+      {
+        "name": "@deepseek-ai/dsh-experimental-browser-use-runtime",
+        "version": "0.2.0-rc.2",
+        "registry_integrity": "sha512-QCGXGZK9xrJX22mNVUFx8LjeJkAHOn4A2l1JCoKzRKO4e4m/H90v82SdIBxIxiEljsHJ+TpFyFY1GHWPucTobg==",
+        "sha256": "81292bd4f018bd40fe38b431d2ab42611bdd70d60e2545ab5360de80a0ca97c1",
+        "bytes": 14295,
+        "license": "MIT"
+      },
+      {
+        "name": "@deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp",
+        "version": "0.2.0-rc.2",
+        "registry_integrity": "sha512-i8lWa+VQAmDSY7o6/8aOxAQ/G595JBXPWneIZeJmN9IWSwWO1zeT/LVa1MBLbu7ReyV06nr/oqFQu/4FxHxfRA==",
+        "sha256": "4005dbc231ff1d0c26cb3cf6617997a346b9f4548c3065850eea811ae707bd00",
+        "bytes": 8602,
+        "license": "MIT"
+      },
+      {
+        "name": "chrome-devtools-mcp",
+        "version": "1.9.0",
+        "registry_integrity": "sha512-RnzXoJiUQ44hpOihWk90uOhLD/CnwDkDy0ldHMZONJ2nYQ+dWN1fq1luHHqyd+7FuYnyIlCY6uTThbN5ut9kSQ==",
+        "sha256": "5f753b1cbf5775c8e437113522cd10c1f0cefd16521e0572540d57860556c133",
+        "bytes": 2458275,
+        "license": "Apache-2.0"
+      }
+    ],
+    "chromium": "154.0.8037.92-1~deb13u1 arm64 Debian13",
+    "provider_config": "config/dsh/browser-official.patch.example.yml",
+    "runtime_patch": {
+      "package": "@deepseek-ai/dsh-experimental-browser-use-runtime",
+      "version": "0.2.0-rc.2",
+      "file": "lib/types/mcp.js",
+      "before_sha256": "329c0697050b972297301ef99612dfccbca63a15270186baef110fa24225906f",
+      "after_sha256": "4eb0bddb7e3744108e51c948f5d23cbf991947db0209c6153e10a42732f51a7d",
+      "devtools_workspace": "realpath Session cwd beneath /srv/dsh/workspace",
+      "unrestricted_paths": false,
+      "other_mcp_changed": false,
+      "patch": "patches/dsh/0004-browser-devtools-session-workspace.patch",
+      "additional_temp_root": true,
+      "abort_check": true
+    },
+    "tasks_max": 512,
+    "validation": "LAN default Flash native DevTools; form, screenshot, localStorage refresh, Session isolation, HTTPS, two exact denied file paths; active DSH browser processes cleaned after tests",
+    "before_backup_sha256": "9dac58be1bf80522c86e39d8c9536776c7b13c693eb58f8617660188c857c253",
+    "after_backup_sha256": "5d3e4dfa15469c1b8627857fe61e5e67c8519ab1d23fa44db8bfffe4d26dd0db",
+    "after_backup_bytes": 9178365
+  },
+  "dsh_browser_preview_market_research": {
+    "date": "2026-10-10",
+    "report": "docs/dsh-browser-market-20261010.md",
+    "queried_at_utc": "2026-10-10T09:35:09.106748+00:00",
+    "repositories": [
+      {
+        "repository": "omdsh-dev/dsh-browser",
+        "url": "https://github.com/omdsh-dev/dsh-browser",
+        "stars": 787,
+        "forks": 60,
+        "archived": false,
+        "created_at": "2026-08-06T09:05:10Z",
+        "pushed_at": "2026-10-01T07:58:07Z",
+        "open_issues_and_prs": 22,
+        "default_branch": "main",
+        "commit": "23895d7292495f665e5676d2f174d022bb3c3605",
+        "commit_date": "2026-10-01T07:58:07Z",
+        "license": "MIT"
+      },
+      {
+        "repository": "try-works/dsh-browser-agent",
+        "url": "https://github.com/try-works/dsh-browser-agent",
+        "stars": 1,
+        "forks": 1,
+        "archived": false,
+        "created_at": "2026-08-23T08:04:10Z",
+        "pushed_at": "2026-09-01T02:40:10Z",
+        "open_issues_and_prs": 0,
+        "default_branch": "main",
+        "commit": "cedf6d275b5e35cddab8ced72666641cc207fcff",
+        "commit_date": "2026-09-01T02:10:08Z",
+        "license": "ISC"
+      },
+      {
+        "repository": "imroc/dsh-embedded-browser",
+        "url": "https://github.com/imroc/dsh-embedded-browser",
+        "stars": 0,
+        "forks": 2,
+        "archived": false,
+        "created_at": "2026-09-14T03:35:21Z",
+        "pushed_at": "2026-09-23T10:02:09Z",
+        "open_issues_and_prs": 5,
+        "default_branch": "main",
+        "commit": "72998a7b8408ba053c478fd07789876da8893327",
+        "commit_date": "2026-09-23T10:02:07Z",
+        "license": "MIT"
+      },
+      {
+        "repository": "Fisfzy/dsh-ego-browser",
+        "url": "https://github.com/Fisfzy/dsh-ego-browser",
+        "stars": 217,
+        "forks": 37,
+        "archived": false,
+        "created_at": "2026-08-07T08:13:54Z",
+        "pushed_at": "2026-09-28T15:18:34Z",
+        "open_issues_and_prs": 6,
+        "default_branch": "master",
+        "commit": "c02428e25446bb26e1f8e09532d688090246cfe4",
+        "commit_date": "2026-09-28T15:18:13Z",
+        "license": "NOASSERTION"
+      },
+      {
+        "repository": "wqty123/dsh-browser",
+        "url": "https://github.com/wqty123/dsh-browser",
+        "stars": 106,
+        "forks": 7,
+        "archived": false,
+        "created_at": "2026-08-14T17:01:52Z",
+        "pushed_at": "2026-10-09T08:30:19Z",
+        "open_issues_and_prs": 1,
+        "default_branch": "master",
+        "commit": "b2cd3781dda3a169ef9b37fbf62ddfd7141e5327",
+        "commit_date": "2026-10-09T08:27:12Z",
+        "license": "MIT"
+      },
+      {
+        "repository": "Tencent/BrowserSkill",
+        "url": "https://github.com/Tencent/BrowserSkill",
+        "stars": 8553,
+        "forks": 610,
+        "archived": false,
+        "created_at": "2026-06-22T07:24:40Z",
+        "pushed_at": "2026-10-10T07:52:05Z",
+        "open_issues_and_prs": 71,
+        "default_branch": "main",
+        "commit": "ee13a46e503d0798739c9822bee96be905a21bf7",
+        "commit_date": "2026-10-10T07:52:05Z",
+        "license": "MIT"
+      }
+    ],
+    "installed": false,
+    "recommended_for_isolated_validation": "Fisfzy/dsh-ego-browser",
+    "compatibility": "ARM64, DSH 0.2.0-rc.2 and current bridge/relay not runtime-tested"
+  },
+  "dsh_browser_update_research_20261012": {
+    "date": "2026-10-12",
+    "report": "docs/dsh-browser-update-20261012.md",
+    "installed_or_upgraded": false,
+    "official": {
+      "repository": "deepseek-ai/deepseek-harness",
+      "commit": "d743267388641bc76f17c45ce8b4c231aed1d32c",
+      "queried_at_utc": "2026-10-12T13:42:43.320708+00:00",
+      "release": "dsh-v0.2.1-alpha.2",
+      "browser_cwd_fix": "f496f4bdcfc0f1537b937d3ac5c77a8c3f5374fa",
+      "bundled_chrome_devtools_mcp": "1.9.0",
+      "browser_alpha_packages": [
+        {
+          "name": "@deepseek-ai/dsh-browser-use",
+          "version": "0.2.1-alpha.2",
+          "published": "2026-10-09T08:17:18.733Z",
+          "dist_tags": {
+            "latest": "0.1.6-alpha.1",
+            "next": "0.2.0-rc.2",
+            "alpha": "0.2.1-alpha.2"
+          },
+          "integrity": "sha512-d6KnB67PP03Z8v/jmIXzJeNFVWy0LeUCtf4c4ovK2YrYRKbjknib2BQKFe2aE3bmG18fy8h+7pj2hTlxBDcYzQ=="
+        },
+        {
+          "name": "@deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp",
+          "version": "0.2.1-alpha.2",
+          "published": "2026-10-09T08:18:38.541Z",
+          "dist_tags": {
+            "latest": "0.1.6-alpha.1",
+            "next": "0.2.0-rc.2",
+            "alpha": "0.2.1-alpha.2"
+          },
+          "integrity": "sha512-/Xn/b4ymMG1r7zvdMF6xSTTP5V4gPNAjGjze+CSLsvtsWBpLQxniCzCSH32cwjqqgTpijmr7dP+NGB3Y6W5Rjw=="
+        },
+        {
+          "name": "@deepseek-ai/dsh-experimental-browser-use-runtime",
+          "version": "0.2.1-alpha.2",
+          "published": "2026-10-09T08:17:24.257Z",
+          "dist_tags": {
+            "latest": "0.1.6-alpha.1",
+            "next": "0.2.0-rc.2",
+            "alpha": "0.2.1-alpha.2"
+          },
+          "integrity": "sha512-DYP+4qdFBtT0+xboM0MvuvZ02RzPlH3dzZbJ1cPShv33vHgWk0Im8qD6z8Qi37HpIZgP5b0dfuwZa+i3MlD6+Q=="
+        }
+      ],
+      "downloaded_browser_tarballs_integrity_verified": true,
+      "fixed_source_files": [
+        {
+          "path": "packages/experimental/browser-use-runtime/src/mcp.ts",
+          "sha256": "86d4e57e357fb7c87d49326344b8e3c2398fbccd29e34f6568db6fe3764fccc8"
+        },
+        {
+          "path": "packages/experimental/browser-use-runtime/src/index.ts",
+          "sha256": "e5407a8f04418f246fd05120aba349bb530702198c73b86347459360fb77880b"
+        },
+        {
+          "path": "packages/experimental/browser-use-runtime/README.md",
+          "sha256": "bba4e29a4197cb76d60912757f49482e82f8e95ebea07ed858493ce55c392b29"
+        },
+        {
+          "path": "packages/experimental/browser-use-chrome-devtools-mcp/README.md",
+          "sha256": "75d69123c54dd18bf121db5f0d98c874de1fa24693092ecb8045dcdc9582e693"
+        },
+        {
+          "path": "packages/experimental/browser-use-playwright-mcp/src/index.ts",
+          "sha256": "886ee8f590fc8d2a7146378749ea2455b32b02b4a3cb8009159c9b4040a4bf3c"
+        },
+        {
+          "path": "packages/client/ui-sidebar-browser/README.md",
+          "sha256": "8f65ac7b9572925eadfc8d857863797bb2cb9dd7d2ec22853c7d8f6d0be28605"
+        },
+        {
+          "path": "packages/client/ui-sidebar-browser/src/index.ts",
+          "sha256": "eda8f35390ed2ed274f44e678fa74d7b12e74c2bef0ba4003452810b194d8fc7"
+        },
+        {
+          "path": "packages/mcp/mcp-client/src/connection.ts",
+          "sha256": "06dc1b3a1297b8b23f6ac5c44f3ba6740716c76db71c28cfb8f14d6c0340030e"
+        },
+        {
+          "path": "packages/experimental/browser-use-stagehand-native/package.json",
+          "sha256": "943a70a9847f60f65e93de3b0311e606b947860a418027d9d76e93d026dbbc0e"
+        }
+      ],
+      "server_browser_live_preview_found": false
+    },
+    "community": {
+      "queried_at_utc": "2026-10-12T13:57:22.091468+00:00",
+      "repositories": [
+        {
+          "repository": "Tencent/BrowserSkill",
+          "url": "https://github.com/Tencent/BrowserSkill",
+          "stars": 8708,
+          "forks": 620,
+          "archived": false,
+          "pushed_at": "2026-10-12T07:35:30Z",
+          "commit": "4c8616b12273ac5a22ce4adb494cac941e20de2a",
+          "commit_date": "2026-10-12T07:35:30Z"
+        },
+        {
+          "repository": "Fisfzy/dsh-ego-browser",
+          "url": "https://github.com/Fisfzy/dsh-ego-browser",
+          "stars": 227,
+          "forks": 37,
+          "archived": false,
+          "pushed_at": "2026-09-28T15:18:34Z",
+          "commit": "c02428e25446bb26e1f8e09532d688090246cfe4",
+          "commit_date": "2026-09-28T15:18:13Z"
+        },
+        {
+          "repository": "imroc/dsh-embedded-browser",
+          "url": "https://github.com/imroc/dsh-embedded-browser",
+          "stars": 0,
+          "forks": 2,
+          "archived": false,
+          "pushed_at": "2026-09-23T10:02:09Z",
+          "commit": "72998a7b8408ba053c478fd07789876da8893327",
+          "commit_date": "2026-09-23T10:02:07Z"
+        },
+        {
+          "repository": "wqty123/dsh-browser",
+          "url": "https://github.com/wqty123/dsh-browser",
+          "stars": 109,
+          "forks": 7,
+          "archived": false,
+          "pushed_at": "2026-10-12T10:55:59Z",
+          "commit": "c259d0733a343f6665aec198903d625dd3ce7204",
+          "commit_date": "2026-10-12T10:55:28Z"
+        },
+        {
+          "repository": "omdsh-dev/dsh-browser",
+          "url": "https://github.com/omdsh-dev/dsh-browser",
+          "stars": 807,
+          "forks": 64,
+          "archived": false,
+          "pushed_at": "2026-10-01T07:58:07Z",
+          "commit": "23895d7292495f665e5676d2f174d022bb3c3605",
+          "commit_date": "2026-10-01T07:58:07Z"
+        },
+        {
+          "repository": "try-works/dsh-browser-agent",
+          "url": "https://github.com/try-works/dsh-browser-agent",
+          "stars": 1,
+          "forks": 1,
+          "archived": false,
+          "pushed_at": "2026-09-01T02:40:10Z",
+          "commit": "cedf6d275b5e35cddab8ced72666641cc207fcff",
+          "commit_date": "2026-09-01T02:10:08Z"
+        },
+        {
+          "repository": "Nono-neko/dsh-browser",
+          "url": "https://github.com/Nono-neko/dsh-browser",
+          "stars": 12,
+          "forks": 0,
+          "archived": false,
+          "pushed_at": "2026-10-02T02:35:00Z",
+          "commit": "8cee0e63839eabc59cf331e36c6503ebd4ce5ccf",
+          "commit_date": "2026-10-02T01:48:01Z"
+        }
+      ]
+    },
+    "community_npm": [
+      {
+        "name": "dsh-embedded-browser",
+        "dist_tags": {
+          "latest": "0.3.0"
+        },
+        "latest": "0.3.0",
+        "published": "2026-09-21T09:54:24.323Z",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/imroc/dsh-embedded-browser.git"
+        },
+        "dsh": {
+          "engines": {
+            "dsh": ">=0.1.5-rc.2"
+          },
+          "bundle": {
+            "patch": "./cordis.patch.yml"
+          },
+          "client": {
+            "platform": "web"
+          }
+        },
+        "peerDependencies": null,
+        "integrity": "sha512-AcVmhRK5aNSqf3Oiv9EXpYpUNiO2aALaY3FcPMgXUpNqUiRL+pEeYHoutPac3NjZr2VbXIsQcvr12Cq92wyB8g=="
+      },
+      {
+        "name": "dsh-ego-browser",
+        "dist_tags": {
+          "latest": "0.8.6"
+        },
+        "latest": "0.8.6",
+        "published": "2026-09-28T15:12:00.173Z",
+        "repository": {
+          "url": "git+https://github.com/Fisfzy/dsh-ego-browser.git",
+          "type": "git"
+        },
+        "dsh": {
+          "bundle": {
+            "patch": "./cordis.patch.yml"
+          },
+          "client": {
+            "inject": [
+              "@deepseek-ai/dsh-client-locale",
+              "@deepseek-ai/dsh-client-ui-settings-plugins"
+            ],
+            "platform": "web"
+          },
+          "engines": {
+            "dsh": ">=0.1.2-rc.1"
+          }
+        },
+        "peerDependencies": {
+          "react": "^18.2.0",
+          "schemastery": "^3.18.0",
+          "@deepseek-ai/dsh-tools": ">=0.1.2-rc.1",
+          "@deepseek-ai/dsh-settings": ">=0.1.2-rc.1",
+          "@deepseek-ai/dsh-client-store": ">=0.1.2-rc.1",
+          "@deepseek-ai/dsh-client-locale": ">=0.1.2-rc.1",
+          "@deepseek-ai/dsh-client-ui-slots": ">=0.1.2-rc.1",
+          "@deepseek-ai/dsh-client-ui-settings-plugins": ">=0.1.2-rc.1"
+        },
+        "integrity": "sha512-bG503gvHBLCC9LdxALGHofEQpXAY3KZsv2Zq78RnlQKqgXn4CxAi6z61ZWxCy4I/TXJgb3ELQ2/hT/oiSYKpig=="
+      },
+      {
+        "name": "@ljwei-stak/dsh-ego-browser",
+        "dist_tags": {
+          "latest": "0.8.4"
+        },
+        "latest": "0.8.4",
+        "published": "2026-09-06T09:52:53.313Z",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/Fisfzy/dsh-ego-browser.git"
+        },
+        "dsh": {
+          "engines": {
+            "dsh": ">=0.1.2-alpha.1"
+          },
+          "bundle": {
+            "patch": "./cordis.patch.yml"
+          },
+          "client": {
+            "platform": "web",
+            "inject": [
+              "@deepseek-ai/dsh-client-locale",
+              "@deepseek-ai/dsh-client-ui-settings-plugins"
+            ]
+          }
+        },
+        "peerDependencies": {
+          "@deepseek-ai/dsh-client-locale": ">=0.1.1-rc.2",
+          "@deepseek-ai/dsh-client-store": ">=0.1.2-alpha.1",
+          "@deepseek-ai/dsh-client-ui-settings-plugins": ">=0.1.1-rc.2",
+          "@deepseek-ai/dsh-client-ui-slots": ">=0.1.1-rc.2",
+          "@deepseek-ai/dsh-settings": ">=0.1.1-rc.2",
+          "@deepseek-ai/dsh-tools": ">=0.1.1-rc.2",
+          "react": "^18.2.0",
+          "schemastery": "^3.18.0"
+        },
+        "integrity": "sha512-b0lPH/l2yx+gB0gryn79VlsSnXvKCYSBvLqzUdAsvg0moiDj87qkWc+y7/0FjiD0SP9Wc+3g+aHEnicxue1POA=="
+      },
+      {
+        "name": "@try-works/dsh-browser-agent",
+        "dist_tags": {
+          "latest": "0.6.0"
+        },
+        "latest": "0.6.0",
+        "published": "2026-08-23T13:16:34.381Z",
+        "repository": null,
+        "dsh": {
+          "bundle": {
+            "patch": "./cordis.patch.yml"
+          },
+          "client": {
+            "platform": "web",
+            "inject": [
+              "@deepseek-ai/dsh-client-runtime"
+            ],
+            "external": []
+          }
+        },
+        "peerDependencies": {
+          "@deepseek-ai/cordis": "^4.0.1",
+          "@deepseek-ai/dsh-tools": "^0.1.0-rc.5",
+          "@deepseek-ai/dsh-skill": "^0.1.0-rc.5",
+          "@deepseek-ai/schemastery": "^3.18.1"
+        },
+        "integrity": "sha512-T/gzWNF+yX4/N1npiJL2wcCLi5ca3pvcY5iQKKjobAB4IyXOSLP6vOOLUu77VkmEP+0RyIXWFt4LtCPwV2O5nw=="
+      },
+      {
+        "name": "dsh-builtin-browser",
+        "dist_tags": {
+          "latest": "0.4.7"
+        },
+        "latest": "0.4.7",
+        "published": "2026-10-12T10:58:54.747Z",
+        "repository": {
+          "url": "git+https://github.com/wqty123/dsh-browser.git",
+          "type": "git"
+        },
+        "dsh": {
+          "bundle": {
+            "patch": "./cordis.patch.yml"
+          },
+          "client": {
+            "inject": [
+              "@deepseek-ai/dsh-client-locale",
+              "@deepseek-ai/dsh-client-ui-slots",
+              "@deepseek-ai/dsh-client-ui-settings"
+            ],
+            "platform": "web"
+          },
+          "compatibility": {
+            "dsh": ">=0.1.1-rc.1 <0.3.0",
+            "profiles": [
+              "web",
+              "desktop"
+            ],
+            "dshReleases": {
+              "0.1.0-rc.8": "unknown",
+              "0.1.1-rc.1": "compatible",
+              "0.1.1-rc.2": "compatible",
+              "0.2.0-rc.1": "compatible",
+              "0.2.0-rc.2": "compatible",
+              "0.2.1-alpha.1": "compatible"
+            }
+          }
+        },
+        "peerDependencies": {
+          "@deepseek-ai/cordis": "^4.0.1",
+          "@deepseek-ai/dsh-llm": ">=0.1.1-rc.2 <0.3.0",
+          "@deepseek-ai/dsh-tools": ">=0.1.1-rc.2 <0.3.0",
+          "@deepseek-ai/schemastery": "^3.18.1",
+          "@deepseek-ai/dsh-client-locale": ">=0.1.1-rc.2 <0.3.0",
+          "@deepseek-ai/dsh-system-prompt": ">=0.1.1-rc.2 <0.3.0",
+          "@deepseek-ai/dsh-client-ui-slots": ">=0.1.1-rc.2 <0.3.0",
+          "@deepseek-ai/dsh-client-ui-settings": ">=0.1.1-rc.2 <0.3.0"
+        },
+        "integrity": "sha512-oTzSTctqxAP8ROKXZyRugMaMcoC945kMyL3uJndARTVNCQiMEyBemSV8viKzTzT9cynfeCXRc9lto93lyr5PNA=="
+      },
+      {
+        "name": "@wxg-prc-cpg/browser-skill-dsh-plugin",
+        "dist_tags": {
+          "latest": "0.3.2"
+        },
+        "latest": "0.3.2",
+        "published": "2026-09-30T04:23:21.178Z",
+        "repository": {
+          "url": "git+https://github.com/Tencent/BrowserSkill.git",
+          "type": "git",
+          "directory": "packages/dsh-plugin-browserskill"
+        },
+        "dsh": {
+          "bundle": {
+            "patch": "./cordis.patch.yml"
+          },
+          "client": {
+            "inject": [
+              "@deepseek-ai/dsh-client-ui-tool",
+              "@deepseek-ai/dsh-client-ui-layout"
+            ],
+            "external": [
+              "@deepseek-ai/dsh-client-ui-primitives"
+            ],
+            "platform": "web"
+          }
+        },
+        "peerDependencies": {
+          "react": "^18.2.0",
+          "@deepseek-ai/cordis": "^4.0.2",
+          "@deepseek-ai/dsh-llm": "^0.1.5-rc.3 || ^0.2.0-rc.1",
+          "@deepseek-ai/dsh-tools": "^0.1.5-rc.3 || ^0.2.0-rc.1",
+          "@deepseek-ai/schemastery": "^3.18.2",
+          "@deepseek-ai/dsh-attachment": "^0.1.5-rc.3 || ^0.2.0-rc.1",
+          "@deepseek-ai/dsh-client-ui-tool": "^0.1.5-rc.3 || ^0.2.0-rc.1",
+          "@deepseek-ai/dsh-client-ui-primitives": "^0.1.5-rc.3 || ^0.2.0-rc.1"
+        },
+        "integrity": "sha512-Z8m5KmNzCqc83M99q6pSPUwzFYr+RI4F1pQNCHp56rL/97Ogz7Z/YcWGEwYlvfSMWePjcib8aUQNpSVInW35AA=="
+      },
+      {
+        "name": "@nono-neko/dsh-browser",
+        "dist_tags": {
+          "latest": "0.4.0"
+        },
+        "latest": "0.4.0",
+        "published": "2026-10-02T01:52:02.772Z",
+        "repository": {
+          "url": "git+https://github.com/Nono-neko/dsh-browser.git",
+          "type": "git"
+        },
+        "dsh": {
+          "bundle": {
+            "patch": "./cordis.patch.yml"
+          },
+          "client": {
+            "inject": [
+              "@deepseek-ai/dsh-api-session-controller",
+              "@deepseek-ai/dsh-api-remotes",
+              "@deepseek-ai/dsh-client-locale",
+              "@deepseek-ai/dsh-client-connection",
+              "@deepseek-ai/dsh-client-ui-settings",
+              "@deepseek-ai/dsh-client-ui-renderer",
+              "@deepseek-ai/dsh-client-ui-session",
+              "@deepseek-ai/dsh-client-ui-settings-plugins"
+            ],
+            "platform": "web"
+          }
+        },
+        "peerDependencies": {
+          "react": "^18.2.0",
+          "react-dom": "^18.2.0"
+        },
+        "integrity": "sha512-YL2SAribrH+thycF7pY7iNt5Id+5FVTHxihk0kMJyMLfp6YInwu+x56yJLadcZiKxZa6dtIoQmSQgmOOEDLP0g=="
+      }
+    ],
+    "recommendation": "Keep installed official rc.2; evaluate ego 0.8.6 for remote interaction, with embedded-browser 0.3.0 as a lower-community-validation alternative.",
+    "unverified": [
+      "ARM64 third-party runtime",
+      "DSH rc.2 plugin loading",
+      "authenticated cross-device input and websocket compatibility",
+      "coexistence with official provider"
+    ]
+  },
+  "dsh_upgrade_20261021": {
+    "date": "2026-10-21",
+    "status": "deployed",
+    "core_version": "0.2.1-rc.2",
+    "core_integrity": "sha512-tvY+yhfKRifthbqPe/OK0AYxM5ZkvqfYq/jMYgJcEUxiRRL1Vwra3Ti5TB6AXgSWQdiPHYh/Vp6SJa9yHwMNuw==",
+    "browser_version": "0.2.1-rc.2",
+    "bridge_version": "2.15.0-kebab.1",
+    "devin_version": "0.2.9-kebab.1",
+    "report": "docs/dsh-upgrade-20261021.md",
+    "patches": {
+      "patches/dsh/upgrade-20261021/bridge-2.15.0-kebab.patch": "a63461a08aa1cd7c021feb72d980f7f02c33df7616d1ceb6e5195dcaa97545d9",
+      "patches/dsh/upgrade-20261021/browser-runtime-0.2.1-rc.2-kebab.patch": "a904a2f1baa0f233e67429f910213cfd2f77d79c6517dc4dcebb394becb5c482",
+      "patches/dsh/upgrade-20261021/devin-search-0.2.9-kebab.patch": "c4378a4f56b8b9da4cf03307fa11e0f7283bcce0185e663154dbf0bf28b51c58"
     }
   }
 }

@@ -1,0 +1,24 @@
+[Unit]
+Description=Independent DSH outbound WSS byte tunnel
+After=network-online.target kebab-dsh.service
+Wants=network-online.target
+RequiresMountsFor=/srv/kebab-dshrelay
+ConditionPathIsMountPoint=/srv
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/srv/kebab-dshrelay/private/client.env
+ExecStart=/usr/bin/python3 /srv/kebab-dshrelay/client.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+UMask=0077
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
