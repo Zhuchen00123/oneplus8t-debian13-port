@@ -2,6 +2,23 @@
 
 管理仓库保存规范、来源锁定、脚本、配置与脱敏证据。第三方仓库独立下载，镜像/个人信息忽略。现已配置origin指向[GitHub](https://github.com/Zhuchen00123/oneplus8t-debian13-port)，但管理仓库与公开库历史仍不同，不能直接推送本地完整refs。此前“未配置remote”仅为早期状态。
 
+## 2026-11-10 磁力计与 SSC 读数器发布
+
+用户要求更新 git。本地管理仓库提交 `7a2b79f`（磁力计打通、SSC 读数器、只读检查工具与文档；仓库里既有的 36 个暂存文件保持暂存、未并入本次提交）。
+
+公开导出沿用独立历史：基于 r4 Venus 公开分支末端 `26f33fadc1f642f1b0f9c0c51e8d9f065c4453db`，只新增 5 个白名单文本，提交为 `6852d7c89a06505e59014aa207331a9cbf5fd66d`，推送至 [codex/sensors-20261110](https://github.com/Zhuchen00123/oneplus8t-debian13-port/tree/codex/sensors-20261110)。远端回读一致；`main` 仍为 `99c24fe…`、`codex/r4-venus-20261105` 仍为 `26f33fa…`，未合并或创建 PR。
+
+| 公开文件 | blob SHA-256 |
+| --- | --- |
+| `docs/sensor-magnetometer-20261110.md` | `93af31c7815a86ddc23cd93f0df75964742387fbd599e9a5d747f756eb3ea887` |
+| `scripts/linux/kebab-mag-read.py` | `6f1c3f3d5bd8b07e5836bb150f9f1c74980f9f0b27f66a831a85ac7583fdb12e` |
+| `scripts/linux/kebab-ssc-inspect.py` | `749ee61761a03dd669e89813c34d7635c596065f2c038745dde04a6860ce0c0f` |
+| `scripts/linux/test-kebab-mag-read.py` | `9c385ecaa74cffcab76c08aa438ffbab214b76c01f1bac339882a22af7017e88` |
+| `scripts/linux/test-kebab-ssc-inspect.py` | `89d57dcfdc555d256054ecbd90e91699b86bfbb9253f151c25e19513ac94b15e` |
+
+公开树在无设备环境下自测通过（读数器 34 项、检查工具 9 项）；5 个文件归一化为 UTF-8 无 BOM、LF；私有信息扫描（内网 IP、`/srv/`、家目录、`gho_`/`sk-` 令牌、密钥头）无命中。**把传感器申报进 SMEM130 的看护模块、安装脚本与回退脚本属于本机私有部署，没有导出**，公开文档头部已注明这一点，并说明公开部分只覆盖协议流程、参数推导与上层读数器。
+
+导出目录在忽略的 `local/git-publish-20261110/`。网络方面：本机可用代理是 Windows 侧 SOCKS5 `127.0.0.1:12080`（hysteria），WSL 里配置的 `127.0.0.1:60243` 已不可用；因此本次 `clone`/`push` 用 Windows git 加 `-c http.proxy=socks5h://127.0.0.1:12080` 完成，提交在 WSL 侧执行。后续同一台机器上发布仍按此法，不要直接把管理分支推成公开同名分支。
 ## 2026-11-05 r4 Venus与限充发布
 
 用户明确授权正式启用r4并更新Git/推送。手机boot_a已更新并正常启动，Venus自动绑定和720p90帧逐帧对照通过；实际部署与回退记录见[本地完整报告](venus-video-decode-20261105.md)。本地管理提交仅纳入本次r4/Venus、限充修复、相关测试与状态记录，其他原有暂存工作保持。
