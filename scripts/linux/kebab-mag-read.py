@@ -69,6 +69,8 @@ WIDTHS = {
     "gravity": 3,
     "rotv": 4,
     "geomag_rv": 4,
+    # Front ambient light (stk33502): sns_ambient_light_event, first float is lux.
+    "wise_light": 5,
 }
 DEFAULT_TARGETS = ("mag", "geomag_rv")
 
@@ -182,6 +184,10 @@ def summarise(latest, rate, counts=None):
 
     if "heading_deg" not in record and "heading_flat_deg" in record:
         record["heading_deg"] = record["heading_flat_deg"]
+
+    light = latest.get("wise_light")
+    if light is not None:
+        record["lux"] = round(light[0], 2)
 
     extra = {k: list(v) for k, v in latest.items() if k not in ("mag", "geomag_rv", "rotv")}
     if extra:

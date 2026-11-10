@@ -157,6 +157,11 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(rec["orientation_source"], "rotv")
         self.assertAlmostEqual(rec["heading_deg"], 250.0, places=3)  # 90 - 200
 
+    def test_front_light_becomes_lux(self):
+        rec = magread.summarise({"wise_light": (102.0, 0.0, 5.0, 0.0, 0.0)}, 5.0, {"wise_light": 26})
+        self.assertEqual(rec["lux"], 102.0)
+        self.assertEqual(rec["values"]["wise_light"], [102.0, 0.0, 5.0, 0.0, 0.0])
+
     def test_other_datatypes_are_kept(self):
         rec = magread.summarise({"mag": (1.0, 2.0, 3.0), "accel": (0.1, 0.2, 9.8)}, 10.0,
                                 {"mag": 1, "accel": 1})
