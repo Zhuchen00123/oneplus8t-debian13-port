@@ -2,6 +2,18 @@
 
 管理仓库保存规范、来源锁定、脚本、配置与脱敏证据。第三方仓库独立下载，镜像/个人信息忽略。现已配置origin指向[GitHub](https://github.com/Zhuchen00123/oneplus8t-debian13-port)，但管理仓库与公开库历史仍不同，不能直接推送本地完整refs。此前“未配置remote”仅为早期状态。
 
+## 2026-11-10 SDX55 GNSS 打通发布
+
+用户要求更新 git。本地管理分支 `codex/sensors-20261107` 提交 `894613e`（`AGENTS.md`、`docs/sdx55-gnss-feasibility-20261110.md`、`docs/android-lab-p0-plan-20261110.md`；3 个文件、750 insertions，未并入工作区其它既有改动）。
+
+公开导出从已审核的 `codex/sensors-20261110` 末端 `0f917230b7b021524922065edaf94380c5cab9c7` 独立历史新建分支，只新增公开版文档 `docs/sdx55-gnss-20261110.md`，提交为 `dfab053ec7c8d77b6569a4ad4913d9689409030a`，推送至 [codex/gps-20261110](https://github.com/Zhuchen00123/oneplus8t-debian13-port/tree/codex/gps-20261110)。远端 SHA 回读一致；`main` 仍为 `99c24fe…`，未合并或创建 PR。
+
+| 公开文件 | blob SHA-1 | SHA-256 |
+| --- | --- | --- |
+| `docs/sdx55-gnss-20261110.md` | `54b8b2745e41be02274c21cc70a9455139d383f8` | `d9dc46c1cef497d736cf944a239b25655a94facaa21846f9c35b4839dce0ca40` |
+
+公开文档为独立重写版：不含精确坐标、`/srv/`、家目录、SSH 配置、本机 cell 位置或私有部署路径；只写硬件/协议、最小 QMI 序列、实测指标、GeoClue 接入与限制。守护进程、systemd 单元、agent 与私有证据未导出。隐私扫描（内网 IP、`/srv/`、`C:\`、`local/`、`gho_`、`sk-`、精确经纬度、密钥头）无命中；文件 UTF-8 无 BOM、LF。本次 `git push` 走 Windows git + `socks5h://127.0.0.1:12080` 直接成功，未使用 GitHub API 回退。
+
 ## 2026-11-10 磁力计与 SSC 读数器发布
 
 用户要求更新 git。本地管理仓库提交 `7a2b79f`（磁力计打通、SSC 读数器、只读检查工具与文档；仓库里既有的 36 个暂存文件保持暂存、未并入本次提交）。
