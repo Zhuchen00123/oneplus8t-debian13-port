@@ -69,10 +69,35 @@ WIDTHS = {
     "gravity": 3,
     "rotv": 4,
     "geomag_rv": 4,
-    # Front ambient light (stk33502): sns_ambient_light_event, first float is lux.
+    # Front ambient light (stk33502): 实测字段是 [原始计数, 增益档, lux, ...]，
+    # 第三项才是 lux（见 summarise）。
     "wise_light": 5,
 }
+
+# 接近光走另一套事件：消息号 769，字段全是 varint，不是 sns_std_sensor_event。
+# 实测 f1=1 遮挡（近）/0 无遮挡（远），f2 是原始 PS 计数（近 ~1000-1800，远 <100），
+# f3 是 status（3 = ready）。
+PROX_MID = 769
+
+# 这些只有状态变化时才发事件，窗口内 0 帧是正常结果，不是超时。
+EVENT_DRIVEN = frozenset({"proximity"})
+
+
+def decode_prox(body):
+    fields = {}
+    for number, wire, value in ssc.fields(body):
+        if wire == 0:
+            fields[number] = value
+    if 1 not in fields:
+        return None
+    return {"near": bool(fields.get(1)), "raw": int(fields.get(2, 0)),
+            "status": fields.get(3)}
 DEFAULT_TARGETS = ("mag", "geomag_rv")
+
+# 本地地磁总量实测 44–46 µT（与中国中东部约 46–47 µT 一致）。软铁物（铁板、铁架、
+# 音箱、磁吸支架）会把磁力线导走或聚拢，读数可以偏小到 32 µT、偏大到 300 µT，
+# 航向同时乱漂——传感器没坏，是测量环境不成立。留 ±15% 余量判异常；换地区要重设。
+FIELD_OK_UT = (40.0, 54.0)
 
 
 def decode_sample(body):
@@ -165,7 +190,14 @@ def summarise(latest, rate, counts=None):
         record["datatype"] = "mag"
         record["chip"] = {"x": round(x, 3), "y": round(y, 3), "z": round(z, 3)}
         record["device"] = {"x": round(dx, 3), "y": round(dy, 3), "z": round(dz, 3)}
-        record["magnitude_ut"] = round(field_magnitude(x, y, z), 3)
+        magnitude = field_magnitude(x, y, z)
+        record["magnitude_ut"] = round(magnitude, 3)
+        record["field_ok"] = FIELD_OK_UT[0] <= magnitude <= FIELD_OK_UT[1]
+        if not record["field_ok"]:
+            record["field_note"] = (
+                "|B| 不在 %.0f–%.0f µT，附近有铁磁物（铁板/铁架/音箱/磁吸支架）时航向不可信"
+                % FIELD_OK_UT
+            )
         record["horizontal_ut"] = round(math.hypot(dx, dy), 3)
         record["heading_flat_deg"] = round(heading_degrees(dx, dy), 1)
 
@@ -186,10 +218,19 @@ def summarise(latest, rate, counts=None):
         record["heading_deg"] = record["heading_flat_deg"]
 
     light = latest.get("wise_light")
-    if light is not None:
-        record["lux"] = round(light[0], 2)
+    if light is not None and len(light) >= 3:
+        # 实测字段是 [原始计数, 增益档, lux, ...]，不是"首项即 lux"：
+        # 暗环境读到 (105.3, 0, 5.0)，亮环境读到 (4040, 2, 416.0)。
+        # 原始计数除以增益才是线性的，lux 由 DSP 按档位换算后给出。
+        record["lux"] = round(light[2], 2)
+        record["light_raw"] = [round(light[0], 2), int(light[1])]
 
-    extra = {k: list(v) for k, v in latest.items() if k not in ("mag", "geomag_rv", "rotv")}
+    prox = latest.get("proximity")
+    if isinstance(prox, dict):
+        record["proximity"] = {"near": prox["near"], "raw": prox["raw"]}
+
+    extra = {k: list(v) for k, v in latest.items()
+             if k not in ("mag", "geomag_rv", "rotv", "proximity")}
     if extra:
         record["values"] = extra
     return record
@@ -217,7 +258,7 @@ class Reader:
         if not targets:
             raise ValueError("no targets requested")
         for target in targets:
-            if target not in WIDTHS:
+            if target not in WIDTHS and target != "proximity":
                 raise ValueError("unsupported datatype %r" % (target,))
         self.targets = tuple(targets)
         self.rate = rate
@@ -322,6 +363,8 @@ class Reader:
                 frame = sock.recv(65536)
             except socket.timeout:
                 if time.monotonic() - last > idle_timeout:
+                    if set(self.targets) <= EVENT_DRIVEN:
+                        return
                     raise TimeoutError("no sensor frames for %.1f s" % idle_timeout)
                 continue
             self.client.log("recv", frame)
@@ -336,6 +379,15 @@ class Reader:
                     continue
                 if mid == 128:
                     raise RuntimeError("SSC error event for %r: %s" % (datatype, body.hex()))
+                if datatype == "proximity":
+                    if mid != PROX_MID:
+                        continue
+                    parsed = decode_prox(body)
+                    if parsed is None:
+                        continue
+                    seen += 1
+                    yield datatype, parsed, parsed.get("status")
+                    continue
                 if mid != 1025:
                     continue
                 try:
@@ -372,6 +424,15 @@ def run_once(seconds, rate, trace=None, targets=DEFAULT_TARGETS):
     finally:
         reader.disable(wait_ack=True)
         reader.close()
+    if not latest and set(targets) <= EVENT_DRIVEN:
+        return {
+            "timestamp": time.time(),
+            "rate_hz": rate,
+            "samples": 0,
+            "per_sensor": {},
+            "event_driven": True,
+            "note": "事件驱动传感器，窗口内没有状态变化（0 帧是正常的）",
+        }
     return summarise(latest, rate, counts)
 
 

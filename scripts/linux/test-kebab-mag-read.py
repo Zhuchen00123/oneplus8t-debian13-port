@@ -157,10 +157,53 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(rec["orientation_source"], "rotv")
         self.assertAlmostEqual(rec["heading_deg"], 250.0, places=3)  # 90 - 200
 
-    def test_front_light_becomes_lux(self):
-        rec = magread.summarise({"wise_light": (102.0, 0.0, 5.0, 0.0, 0.0)}, 5.0, {"wise_light": 26})
-        self.assertEqual(rec["lux"], 102.0)
-        self.assertEqual(rec["values"]["wise_light"], [102.0, 0.0, 5.0, 0.0, 0.0])
+    def test_decode_proximity_event(self):
+        # 实测报文 0800101418032000：f1=near、f2=原始计数、f3=status、f4=保留
+        body = bytes.fromhex("0800101418032000")
+        parsed = magread.decode_prox(body)
+        self.assertFalse(parsed["near"])
+        self.assertEqual(parsed["raw"], 20)
+        self.assertEqual(parsed["status"], 3)
+
+    def test_decode_proximity_near(self):
+        body = bytes.fromhex("080110" + "c40d" + "1803")
+        parsed = magread.decode_prox(body)
+        self.assertTrue(parsed["near"])
+        self.assertEqual(parsed["raw"], 1732)
+
+    def test_event_driven_targets_are_marked(self):
+        self.assertIn("proximity", magread.EVENT_DRIVEN)
+        self.assertNotIn("mag", magread.EVENT_DRIVEN)
+
+    def test_summarise_reports_proximity(self):
+        rec = magread.summarise(
+            {"proximity": {"near": True, "raw": 1347, "status": 3}}, 5.0, {"proximity": 2})
+        self.assertEqual(rec["proximity"], {"near": True, "raw": 1347})
+        self.assertNotIn("proximity", rec.get("values", {}))
+
+    def test_field_ok_for_earth_strength(self):
+        rec = magread.summarise({"mag": (-24.0, -2.0, -37.0)}, 5.0, {"mag": 5})
+        self.assertTrue(rec["field_ok"])
+        self.assertNotIn("field_note", rec)
+
+    def test_field_flagged_when_iron_is_near(self):
+        # 铁板在旁：实测出现过 32 µT 与 305 µT 两种被扭曲的读数
+        for distorted in ((-22.5, -11.5, -20.3), (-255.7, 118.5, -116.8)):
+            rec = magread.summarise({"mag": distorted}, 5.0, {"mag": 5})
+            self.assertFalse(rec["field_ok"])
+            self.assertIn("铁磁", rec["field_note"])
+
+    def test_front_light_reports_lux_from_third_field(self):
+        # 实测：暗环境 (计数 105.3, 增益 0, lux 5.0)，亮环境 (计数 4040, 增益 2, lux 416)
+        rec = magread.summarise({"wise_light": (105.3, 0.0, 5.0, 0.0, 0.0)}, 5.0, {"wise_light": 26})
+        self.assertEqual(rec["lux"], 5.0)
+        self.assertEqual(rec["light_raw"], [105.3, 0])
+        self.assertEqual(rec["values"]["wise_light"], [105.3, 0.0, 5.0, 0.0, 0.0])
+
+    def test_front_light_bright_reading(self):
+        rec = magread.summarise({"wise_light": (4040.0, 2.0, 416.0, 0.0, 0.0)}, 5.0, {"wise_light": 30})
+        self.assertEqual(rec["lux"], 416.0)
+        self.assertEqual(rec["light_raw"], [4040.0, 2])
 
     def test_other_datatypes_are_kept(self):
         rec = magread.summarise({"mag": (1.0, 2.0, 3.0), "accel": (0.1, 0.2, 9.8)}, 10.0,
