@@ -8,6 +8,35 @@ MC最新修复交接在 `local/worktree-mc/mc/FIXES-20261005.md`；`local/ssh443
 
 ## 当前入口
 
+- [11/10 项目目的扩展：主线内核 Android 分析与自动化实验环境（Waydroid）路线图](android-lab-roadmap-20261110.md)
+
+- [11/10 Android 实验环境 P0 执行计划（待审核，含硬件矩阵与 GPS 方案）](android-lab-p0-plan-20261110.md)
+
+- [**11/11 相机收工状态（先看这个）**](../local/camera-r4-20261110/STATUS.md)：后摄 IMX586 **首次出帧**（5×15,024,000 B、4000×3000 RAW10）；实机确认 **C-PHY 3 trio**；VANA 电压区间修复；16 条已修缺陷；手机已回原镜像、看门狗已停
+- [11/11 相机候选启动、出帧与收工取证](r4-camera-boot-failure-20261111.md)：§18.1–18.133，含 boot header id、DTB 地址重叠、runner/watcher 的假通过与误杀、PHY 类型取证与实机判定、IMX586 VANA 电压区间根因、五帧实测与黑帧判据、模块编译架构/BTF/结构体大小三坑、恢复原镜像
+- [11/10 r4-camera 主报告](r4-camera-20261110.md)：C-PHY 移植、DTS 与驱动的最终形态
+- [11/10 r4-camera 候选内核任务：前摄 + 后主摄 IMX586，含 hotdog 主线参考源与复用/改造矩阵](r4-camera-task-20261110.md)
+
+- [11/10 相机 fastboot 循环 agent 执行说明（前摄 no-reboot、PON 入口、fastboot boot 均已验证；含 dtb_offset 布局、启动记账事故与恢复）](camera-fastboot-loop-20261110.md)
+
+- [11/09 传感器可用性清单：原厂 r31 上真正出数的只有 TCS3408 三路（ALS/RGB/闪烁）与 SX9324 两路 SAR；运动传感器原厂态不存在，仅候选态可用](sensor-inventory-20261109.md)
+
+- [11/09 传感器 E28 姿态试机：三段姿态实测完成，轴系定死——chip+Z=设备+Z、chip+X=设备+Y、chip+Y=设备−X（R=绕Z轴+90°）；registry 的恒等 orient 不能用于原始事件；两轮采样均完整恢复](sensor-posture-trial-20261109.md)
+
+- [11/09 传感器 E28 运动流离线验收：实际ODR 24.83/24.73Hz、12.5Hz请求兑现为80ms×2条报告、时间戳时钟19.2MHz、轴映射恒等；仅离线重解析＋只读registry，无新enable](sensor-motion-acceptance-20261109.md)
+
+- [11/09 传感器 E27 真实出数：BMI26x加速度118条／陀螺119条，各5秒采样与关闭成功，已完整恢复原组；常驻接入待做](sensor-motion-samples-20261109.md)
+
+- [11/09 传感器 E26 实机突破：四字节 SMEM 候选使18→50实例，标准BMI26x加速度／陀螺／温度AVAILABLE；已恢复原组，运动采样待验证](sensor-smem-trial-20261109.md)
+
+- [11/09 传感器注册门定位：SMEM130 型号目录全零，BMI260在注册前被跳过；后续E26已验证并恢复](sensor-smem-registration-20261109.md)
+
+- [11/09 传感器 r32 实机：120 秒完成、745 次私有提交、仍 18 实例，已恢复 r31；加速度／陀螺尚未出现](sensor-r32-trial-20261109.md)
+
+- [11/09 传感器：单次 SLPI 转储已取得，确认 FastRPC 扩展方法／stat／rename 错误并准备 r32；加速度／陀螺仍未出数](sensor-slpi-dump-20261109.md)
+
+- [11/09 传感器：独立 SSC 客户端读回 18 实例与 BMI26x 有效配置，定位 SSC QUP 描述表；加速度／陀螺仍待适配](sensor-progress-20261109.md)
+
 - [11/03 新香港 lite VPS 接管与实测：抖动 0.52ms、0% 丢包、上传快 30%，下载略低](hk-vps-quic-egress-20261102.md)
 
 - [11/03 新日本 VPS 链路实测：空载延迟更优但大流量重传 6.9%，下载仅 0.1 MB/s，不迁移](hk-vps-quic-egress-20261102.md)
