@@ -14,6 +14,8 @@ MC最新修复交接在 `local/worktree-mc/mc/FIXES-20261005.md`；`local/ssh443
 
 - [**11/11 相机收工状态（先看这个）**](../local/camera-r4-20261110/STATUS.md)：后摄 IMX586 **首次出帧**（5×15,024,000 B、4000×3000 RAW10）；实机确认 **C-PHY 3 trio**；VANA 电压区间修复；16 条已修缺陷；手机已回原镜像、看门狗已停
 - [**11/11 继续适配摄像头 prompt（可直接粘贴给新会话/worker）**](camera-resume-prompt-20261111.md)：自包含续作任务书——阶段 0 先补两处可复现性缺口（自动流程仍装 VANA 修复前的 imx586、修复版模块无 runner 消费；"688,128 B camss 未归档"经段和比对已证为误判），阶段 1 受光画面 + 前摄复测，阶段 2 速率表/test_pattern/VDIG，阶段 3 持久化需批准；含全部已核实事实、黑帧判据、打包与模块编译硬约束、禁止项与停点
+- [**11/11 相机 Titan ISP PoC 续作 prompt（新会话从这里开始）**](camera-titan-poc-resume-prompt-20261111.md)：路线 B 的入口——先用离线 B0 把 Titan 固件（CAMERA_ICP.elf，带符号+调试信息）的 HFI 协议提取出来，与上游 x1e80100 的 camss-icp.c 逐项比对，给出“能复用多少”的结论；含当前状态、步骤、环境坑、边界与验收标准
+- [11/11 相机 Titan ISP PoC 范围与判定标准](camera-titan-poc-scope-20261111.md)：为什么走 Titan（A5/ICP + BPS/IPE）、已核实的固件/调校数据/DT 证据与 SHA-256、B0–B3 分阶段判定标准、停止条件（连续两次失败即归档）与风险
 - [11/11 相机候选启动、出帧与收工取证](r4-camera-boot-failure-20261111.md)：§18.1–18.133，含 boot header id、DTB 地址重叠、runner/watcher 的假通过与误杀、PHY 类型取证与实机判定、IMX586 VANA 电压区间根因、五帧实测与黑帧判据、模块编译架构/BTF/结构体大小三坑、恢复原镜像
 - [11/10 r4-camera 主报告](r4-camera-20261110.md)：C-PHY 移植、DTS 与驱动的最终形态
 - [11/10 r4-camera 候选内核任务书（**已执行完毕，转为历史**）](r4-camera-task-20261110.md)：hotdog 主线参考源审计与复用/改造矩阵；顶部已标出与实测的三处出入（`=y` 应为 `=m`、PHY 已确证 C-PHY、VDIG 应为 1.104 V 而非 1.35 V），续作改用上面的 prompt
