@@ -1,0 +1,66 @@
+From 2b18f6c9238e487352ceb4728c112255bc3e971c Mon Sep 17 00:00:00 2001
+From: zhuchen <zhuchen@localhost>
+Date: Wed, 11 Nov 2026 02:33:51 +0800
+Subject: [PATCH] arm64: dts: qcom: kebab: give the rear module control pins a
+ pinctrl state
+
+The rear sensor node only claimed CAM_MCLK0.  Reset (78), CAM_CUSTOM1
+(139) and CAM_VDIG (117) were left without any pinctrl state, so their
+mux and bias stayed whatever the bootloader had set.  The community
+hotdog port, which drives the same IMX586 module, claims a state for
+every one of these pins, and the stock overlay for this device does too
+(function gpio, bias-disable, 2 mA drive in both its active and suspend
+states).  Add matching states and reference them from pinctrl-0.
+---
+ .../boot/dts/qcom/sm8250-oneplus-kebab.dts    | 30 ++++++++++++++++++-
+ 1 file changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts b/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
+index cea54f449..d4b02f2bd 100644
+--- a/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
++++ b/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
+@@ -1805,7 +1805,8 @@ camr_imx586: camera@1a {
+ 		custom1-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
+ 
+ 		pinctrl-names = "default";
+-		pinctrl-0 = <&cam_mclk0_default>;
++		pinctrl-0 = <&cam_mclk0_default>, <&camr_reset_default>,
++			    <&camr_custom1_default>, <&camr_vdig_default>;
+ 
+ 		orientation = <1>;
+ 
+@@ -2082,4 +2083,31 @@ cam_mclk4_default: cam-mclk4-default-state {
+ 		drive-strength = <4>;
+ 		bias-disable;
+ 	};
++
++	/*
++	 * Rear module control pins.  The stock overlay configures all three as
++	 * plain GPIOs with bias-disable and 2 mA drive; without a state here the
++	 * pads keep whatever mux and bias the bootloader left behind.  Roles from
++	 * the stock DTBO: 78 = CAM_RESET0, 139 = CAM_CUSTOM1, 117 = CAM_VDIG.
++	 */
++	camr_reset_default: camr-reset-default-state {
++		pins = "gpio78";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	camr_custom1_default: camr-custom1-default-state {
++		pins = "gpio139";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	camr_vdig_default: camr-vdig-default-state {
++		pins = "gpio117";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
+ };
+-- 
+2.47.3
+

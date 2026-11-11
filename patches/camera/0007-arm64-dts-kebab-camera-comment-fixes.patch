@@ -1,0 +1,54 @@
+From f4e07f88994105b266093e138533178962805e36 Mon Sep 17 00:00:00 2001
+From: kebab bringup <bringup@local>
+Date: Wed, 11 Nov 2026 04:09:16 +0800
+Subject: [PATCH] arm64: dts: qcom: kebab: correct the rear camera comment
+ block
+
+The header still described the D-PHY four-lane plan and the pin numbers
+from the first (wrong) DTBO reading: RESET tlmm145 and VANA tlmm26.  The
+node itself has been C-PHY three-trio on tlmm78/139/117 for a while, so
+the comment now matches the code and says plainly that the trio count
+still needs frame capture on this board to be believed.
+
+Comments only: the compiled DTB is byte-identical (c42f8555...).
+---
+ .../boot/dts/qcom/sm8250-oneplus-kebab.dts    | 21 +++++++++++--------
+ 1 file changed, 12 insertions(+), 9 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts b/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
+index 9ea6bea63..4b4a84fb2 100644
+--- a/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
++++ b/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
+@@ -1773,17 +1773,20 @@ &cci1 {
+  */
+ /*
+  * Rear main 48 MP camera: Sony IMX586 on CCI0 master 0 / CSIPHY0
+- * (vendor fragment@88: csiphy-sd-index = <0>, cci-master = <0>, GPIO labels
+- * CAM_MCLK0=tlmm94, CAM_RESET0=tlmm145, CAM_VANA=tlmm26).
++ * (vendor fragment@88: csiphy-sd-index = <0>, cci-master = <0>; control pins
++ * from this device's own DTBO, see the gpio block below:
++ * CAM_MCLK0=tlmm94, CAM_RESET0=tlmm78, CAM_CUSTOM1=tlmm139, CAM_VDIG=tlmm117).
+  *
+- * The link is described as D-PHY with four lanes because that is the only
+- * signalling mode the 7.2 CAMSS drivers can currently program (the CSID
+- * driver never sets its C-PHY PHY_TYPE_SEL bit). If the board turns out to
+- * use C-PHY this node has to change together with a CSID/CSIPHY patch; the
+- * driver itself accepts both.
++ * The link is described as C-PHY with three trios: the sensor driver picks
++ * the lane mode from the endpoint bus-type, and CAMSS was patched
++ * (patches/camera/0002) so an SM8250 CSIPHY programs a three-phase link
++ * instead of rejecting C-PHY.  The D-PHY alternative (four lanes plus
++ * clock-lanes = <7>) is what the v3c trial image uses and is not described
++ * here.
+  *
+- * Lane order <1 2 3 4> mirrors the working front IMX471 endpoint on this
+- * board; the rear assignment still has to be confirmed by capturing frames.
++ * Lane order <0 1 2> and the three-trio count come from the hotdog community
++ * port of the same IMX586 module; they still have to be confirmed by
++ * capturing frames on this board.
+  */
+ &cci0_i2c0 {
+ 	/* Sony IMX parts on this board are specified for 400 kHz. */
+-- 
+2.47.3
+

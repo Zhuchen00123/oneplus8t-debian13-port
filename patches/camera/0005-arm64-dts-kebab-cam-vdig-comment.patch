@@ -1,0 +1,48 @@
+From 96c786c59f4c2fadf02e7aa8580a2ebee6b662e4 Mon Sep 17 00:00:00 2001
+From: zhuchen <zhuchen@localhost>
+Date: Wed, 11 Nov 2026 02:51:59 +0800
+Subject: [PATCH] arm64: dts: qcom: kebab: correct the cam_vdig comment
+
+The comment claimed the stock overlay gives this rail as 1,100,000 uV.
+That figure belongs to cam1 (qcom,cam-sensor@1: cam_vdig = pm8008_l1);
+for the rear module the overlay points cam_vdig at pm8150a_s8 with
+1,350,000 uV.  Record what the vendor actually does instead, and note
+that mainline does not model that PMIC at all, so the property is only
+there to give the driver an enable handle and the diagnostic has to say
+what the rail really reads.
+---
+ .../boot/dts/qcom/sm8250-oneplus-kebab.dts      | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts b/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
+index d4b02f2bd..9ea6bea63 100644
+--- a/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
++++ b/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
+@@ -1566,11 +1566,20 @@ regulators {
+ 			pm8008_l1: ldo1 {
+ 				regulator-name = "pm8008_l1";
+ 				/*
+-				 * cam_vdig. The vendor tree gives this rail as
+-				 * a single point, rgltr-min == rgltr-max ==
+-				 * 1100000 uV, not a range.
++				 * cam_vdig. Be aware this is NOT what the stock
++				 * overlay uses: for the rear module (qcom,cam-sensor@0)
++				 * it points cam_vdig at pm8150a_s8 with
++				 * rgltr-min == rgltr-max == 1350000 uV, and the
++				 * 1100000 uV / pm8008_l1 pairing belongs to cam1, a
++				 * different camera.  Mainline does not model that
++				 * PMIC, its SMPS8 rails are already on for other
++				 * consumers, and CAM_VDIG (tlmm 117) gates whichever
++				 * of them reaches the module, so this property is only
++				 * here to give the driver a supply it can enable.
++				 * What the rail actually reads is checked by the
++				 * diagnostic (regulators_after_power).
+ 				 *
+-				 * 1100000 is NOT settable: the pm8008 LDO
++				 * 1104000 is NOT settable as 1100000: the pm8008 LDO
+ 				 * steps in 8 mV, so the core rounds min up to
+ 				 * 1104000 and max down to 1096000, gets
+ 				 * min > max and refuses:
+-- 
+2.47.3
+

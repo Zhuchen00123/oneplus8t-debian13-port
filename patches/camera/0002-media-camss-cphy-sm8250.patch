@@ -1,0 +1,1127 @@
+diff --git a/drivers/media/platform/qcom/camss/camss-csid-gen2.c b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
+index eadcb2f7e..a5b406cc8 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid-gen2.c
++++ b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
+@@ -183,6 +183,7 @@ static void __csid_configure_rx(struct csid_device *csid,
+ 	val = (lane_cnt - 1) << CSI2_RX_CFG0_NUM_ACTIVE_LANES;
+ 	val |= phy->lane_assign << CSI2_RX_CFG0_DL0_INPUT_SEL;
+ 	val |= phy->csiphy_id << CSI2_RX_CFG0_PHY_NUM_SEL;
++	val |= csid->phy.phy_sel << CSI2_RX_CFG0_PHY_TYPE_SEL;
+ 	writel_relaxed(val, csid->base + CSID_CSI2_RX_CFG0);
+ 
+ 	val = 1 << CSI2_RX_CFG1_PACKET_ECC_CORRECTION_EN;
+diff --git a/drivers/media/platform/qcom/camss/camss-csid-gen3.c b/drivers/media/platform/qcom/camss/camss-csid-gen3.c
+index 0fdbf75fb..a9c793490 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid-gen3.c
++++ b/drivers/media/platform/qcom/camss/camss-csid-gen3.c
+@@ -66,6 +66,7 @@
+ #define		CSI2_RX_CFG0_VC_MODE		3
+ #define		CSI2_RX_CFG0_DL0_INPUT_SEL	4
+ #define		CSI2_RX_CFG0_PHY_NUM_SEL	20
++#define		CSI2_RX_CFG0_PHY_TYPE_SEL	24
+ #define		CSI2_RX_CFG0_TPG_MUX_EN		BIT(27)
+ #define		CSI2_RX_CFG0_TPG_MUX_SEL	GENMASK(29, 28)
+ 
+@@ -115,6 +116,7 @@ static void __csid_configure_rx(struct csid_device *csid,
+ 
+ 	camss = csid->camss;
+ 	val = (phy->lane_cnt - 1) << CSI2_RX_CFG0_NUM_ACTIVE_LANES;
++	val |= phy->phy_sel << CSI2_RX_CFG0_PHY_TYPE_SEL;
+ 	val |= phy->lane_assign << CSI2_RX_CFG0_DL0_INPUT_SEL;
+ 
+ 	if (camss->tpg && csid->tpg_linked &&
+diff --git a/drivers/media/platform/qcom/camss/camss-csid.c b/drivers/media/platform/qcom/camss/camss-csid.c
+index 48459b46a..c8cb6f1a3 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid.c
++++ b/drivers/media/platform/qcom/camss/camss-csid.c
+@@ -540,14 +540,16 @@ static int csid_set_clock_rates(struct csid_device *csid)
+ {
+ 	struct device *dev = csid->camss->dev;
+ 	const struct csid_format_info *fmt;
++	const bool cphy = (csid->phy.phy_sel == CSID_PHY_SEL_CPHY);
++
+ 	s64 link_freq;
+ 	int i, j;
+ 	int ret;
+ 
+ 	fmt = csid_get_fmt_entry(csid->res->formats->formats, csid->res->formats->nformats,
+ 				 csid->fmt[MSM_CSIPHY_PAD_SINK].code);
+-	link_freq = camss_get_link_freq(&csid->subdev.entity, fmt->bpp,
+-					csid->phy.lane_cnt);
++
++	link_freq = camss_get_link_freq(&csid->subdev.entity, fmt->bpp, csid->phy.lane_cnt, cphy);
+ 	if (link_freq < 0)
+ 		link_freq = 0;
+ 
+@@ -1291,6 +1293,11 @@ static int csid_link_setup(struct media_entity *entity,
+ 
+ 			lane_cfg = &csiphy->cfg.csi2->lane_cfg;
+ 			csid->phy.lane_cnt = lane_cfg->num_data;
++			if (lane_cfg->phy_cfg == V4L2_MBUS_CSI2_CPHY)
++				csid->phy.phy_sel = CSID_PHY_SEL_CPHY;
++			else
++				csid->phy.phy_sel = CSID_PHY_SEL_DPHY;
++
+ 			csid->phy.lane_assign = csid_get_lane_assign(lane_cfg, lane_cfg->num_data);
+ 			csid->tpg_linked = false;
+ 		}
+diff --git a/drivers/media/platform/qcom/camss/camss-csid.h b/drivers/media/platform/qcom/camss/camss-csid.h
+index 5296b10f6..e65590b0d 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid.h
++++ b/drivers/media/platform/qcom/camss/camss-csid.h
+@@ -44,6 +44,11 @@ enum csid_testgen_mode {
+ 	CSID_PAYLOAD_MODE_NUM_SUPPORTED_GEN2 = 9, /* excluding disabled */
+ };
+ 
++enum csid_phy_sel {
++	CSID_PHY_SEL_DPHY = 0,
++	CSID_PHY_SEL_CPHY = 1
++};
++
+ struct csid_format_info {
+ 	u32 code;
+ 	u8 data_type;
+@@ -70,6 +75,7 @@ struct csid_phy_config {
+ 	u32 lane_assign;
+ 	u32 en_vc;
+ 	u8 need_vc_update;
++	enum csid_phy_sel phy_sel;
+ };
+ 
+ struct csid_device;
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
+index dac8d2ecf..818a544e7 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
++++ b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
+@@ -14,6 +14,7 @@
+ #include <linux/delay.h>
+ #include <linux/interrupt.h>
+ #include <linux/io.h>
++#include <linux/media-bus-format.h>
+ 
+ #define CSIPHY_3PH_LNn_CFG1(n)			(0x000 + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG1_SWI_REC_DLY_PRG	(BIT(7) | BIT(6))
+@@ -49,6 +50,19 @@
+ #define CSIPHY_3PH_CMN_CSI_COMMON_STATUSn(offset, common_status_offset, n) \
+ 	((offset) + (common_status_offset) + 0x4 * (n))
+ 
++#define CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(n) \
++	(0x0100 + ((n) * 0x4))
++#define CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(n) \
++	(0x0300 + ((n) * 0x4))
++#define CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(n) \
++	(0x0500 + ((n) * 0x4))
++#define CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(n) \
++	(0x0900 + ((n) * 0x4))
++#define CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(n) \
++	(0x0A00 + ((n) * 0x4))
++#define CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(n) \
++	(0x0B00 + ((n) * 0x4))
++
+ #define CSIPHY_DEFAULT_PARAMS		0
+ #define CSIPHY_LANE_ENABLE		1
+ #define CSIPHY_SETTLE_CNT_LOWER_BYTE	2
+@@ -58,6 +72,8 @@
+ #define CSIPHY_3PH_REGS			6
+ #define CSIPHY_SKEW_CAL			7
+ 
++#define CSIPHY_CPHY_DATA_RATE_DEFAULT_IDX	0
++
+ struct csiphy_lane_regs {
+ 	s32 reg_addr;
+ 	s32 reg_data;
+@@ -144,7 +160,283 @@ csiphy_lane_regs lane_regs_sa8775p[] = {
+ 	{0x0664, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
+ };
+ 
++/* GEN3 3PH sa8775p 1.5Gsps */
++/* 3 entries: 3 lanes (C-PHY) */
++static const struct
++csiphy_lane_regs lane_regs_sa8775p_3ph[] = {
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(23), 0xC8, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(34), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(35), 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(36), 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(6),  0x3E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(7),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(9),  0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(11), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(17), 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(51), 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(25), 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(55), 0x50, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(23), 0xC8, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(1),  0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(2),  0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(5),  0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(20), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(34), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(35), 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(36), 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(6),  0x3E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(7),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(8),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(9),  0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(10), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(11), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(17), 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(24), 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(51), 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(25), 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(55), 0x50, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(23), 0xC8, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(1),  0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(2),  0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(5),  0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(20), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(34), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(35), 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(36), 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(6),  0x3E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(7),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(8),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(9),  0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(10), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(11), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(17), 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(24), 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(51), 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(25), 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(55), 0x50, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(33), 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(32), 0x61, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(44), 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(33), 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(32), 0x61, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(44), 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(33), 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(32), 0x61, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(44), 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
++struct csiphy_lane_regs datarate_sa8775p_3ph_1p5Gsps[] = {
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(3),  0x24, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(3),  0x24, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(3),  0x24, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
++struct csiphy_lane_regs datarate_sa8775p_3ph_1p7Gsps[] = {
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(23), 0x56, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(26), 0xAE, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(27), 0x65, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(3),  0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(23), 0x56, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(26), 0xAE, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(27), 0x65, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(3),  0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(23), 0x56, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(26), 0xAE, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(27), 0x65, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(3),  0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(45),  0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
++struct csiphy_lane_regs datarate_sa8775p_3ph_2p5Gsps[] = {
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(23), 0xC8, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(23), 0xC8, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(23), 0xC8, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(45),  0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(34),  0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(45), 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
++struct csiphy_lane_regs datarate_sa8775p_3ph_3p5Gsps[] = {
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(45),  0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(34),  0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(45), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(45), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
++struct csiphy_lane_regs datarate_sa8775p_3ph_4p5Gsps[] = {
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(26), 0x80, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(23), 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(27), 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(3),  0x08, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(45),  0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN9_CSI_3PH_CTRLn_ADDR(34),  0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(45), 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN10_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(45), 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN11_CSI_3PH_CTRLn_ADDR(34), 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
++static struct data_rate_reg_info data_rate_settings_sa8775p_3ph[] = {
++	{
++		/* 1.5 GSpS */
++		.bandwidth = 1500000000,
++		.data_rate_reg_array_size = ARRAY_SIZE(datarate_sa8775p_3ph_1p5Gsps),
++		.data_rate_reg_array = datarate_sa8775p_3ph_1p5Gsps,
++	},
++	{
++		/* 1.7 GSpS */
++		.bandwidth = 1700000000,
++		.data_rate_reg_array_size = ARRAY_SIZE(datarate_sa8775p_3ph_1p7Gsps),
++		.data_rate_reg_array = datarate_sa8775p_3ph_1p7Gsps,
++	},
++	{
++		/* 2.5 GSpS */
++		.bandwidth = 2500000000,
++		.data_rate_reg_array_size = ARRAY_SIZE(datarate_sa8775p_3ph_2p5Gsps),
++		.data_rate_reg_array = datarate_sa8775p_3ph_2p5Gsps,
++	},
++	{
++		/* 3.5 GSpS */
++		.bandwidth = 3500000000,
++		.data_rate_reg_array_size = ARRAY_SIZE(datarate_sa8775p_3ph_3p5Gsps),
++		.data_rate_reg_array = datarate_sa8775p_3ph_3p5Gsps,
++	},
++	{
++		/* 4.5 GSpS */
++		.bandwidth = 4500000000,
++		.data_rate_reg_array_size = ARRAY_SIZE(datarate_sa8775p_3ph_4p5Gsps),
++		.data_rate_reg_array = datarate_sa8775p_3ph_4p5Gsps,
++	},
++};
++
++struct csiphy_lane_regs datarate_sm8250_3ph_2p5Gsps[] = {
++	{0x144, 0x32, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x164, 0x0B, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x16C, 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x344, 0x32, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x364, 0x0B, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x36C, 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x544, 0x32, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x564, 0x0B, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x56C, 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
++struct csiphy_lane_regs datarate_sm8250_3ph_3p5Gsps[] = {
++	{0x144, 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x164, 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x16C, 0x1D, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x9B4, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x344, 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x364, 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x36C, 0x1D, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0xAB4, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x544, 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x564, 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x56C, 0x1D, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0xBB4, 0x03, 0x01, CSIPHY_DEFAULT_PARAMS},
++};
++
++struct csiphy_lane_regs datarate_sm8250_3ph_4p5Gsps[] = {
++	{0x144, 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x164, 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x16C, 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x9B4, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x344, 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x364, 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x36C, 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0xAB4, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x544, 0xB2, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x564, 0x33, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x56C, 0x25, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0xBB4, 0x02, 0x01, CSIPHY_DEFAULT_PARAMS},
++};
++
++static struct data_rate_reg_info data_rate_settings_sm8250_3ph[] = {
++	{
++		/* 2.5 GSpS */
++		.bandwidth = 2500000000,
++		.data_rate_reg_array_size = ARRAY_SIZE(datarate_sm8250_3ph_2p5Gsps),
++		.data_rate_reg_array = datarate_sm8250_3ph_2p5Gsps,
++	},
++	{
++		/* 3.5 GSpS */
++		.bandwidth = 3500000000,
++		.data_rate_reg_array_size = ARRAY_SIZE(datarate_sm8250_3ph_3p5Gsps),
++		.data_rate_reg_array = datarate_sm8250_3ph_3p5Gsps,
++	},
++	{
++		/* 4.5 GSpS */
++		.bandwidth = 4500000000,
++		.data_rate_reg_array_size = ARRAY_SIZE(datarate_sm8250_3ph_4p5Gsps),
++		.data_rate_reg_array = datarate_sm8250_3ph_4p5Gsps,
++	},
++};
++
+ /* GEN2 1.0 2PH */
++/* 5 entries: clock + 4 lanes */
+ static const struct
+ csiphy_lane_regs lane_regs_sdm845[] = {
+ 	{0x0004, 0x0C, 0x00, CSIPHY_DEFAULT_PARAMS},
+@@ -219,6 +511,71 @@ csiphy_lane_regs lane_regs_sdm845[] = {
+ 	{0x0664, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
+ };
+ 
++/* GEN2 1.0 3PH */
++/* 3 entries: 3 lanes (C-PHY) */
++static const struct
++csiphy_lane_regs lane_regs_sdm845_3ph[] = {
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(23), 0x63, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(26), 0xac, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(27), 0xa5, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(1),  0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(3),  0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(2),  0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(5),  0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(20), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(6),  0x3e, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(7),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(8),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(9),  0x7f, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(10), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(11), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(17), 0x12, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(24), 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(51), 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(25), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN1_CSI_3PH_CTRLn_ADDR(55), 0x51, 0x00, CSIPHY_DEFAULT_PARAMS},
++
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(23), 0x63, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(26), 0xac, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(27), 0xa5, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(1),  0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(3),  0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(2),  0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(5),  0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(20), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(6),  0x3e, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(7),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(8),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(9),  0x7f, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(10), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(11), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(17), 0x12, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(24), 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(51), 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(25), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN3_CSI_3PH_CTRLn_ADDR(55), 0x51, 0x00, CSIPHY_DEFAULT_PARAMS},
++
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(23), 0x63, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(26), 0xac, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(27), 0xa5, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(1),  0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(3),  0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(2),  0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(5),  0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(20), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(6),  0x3e, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(7),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(8),  0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(9),  0x7f, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(10), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(11), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(17), 0x12, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(24), 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(51), 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(25), 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{CSIPHY_LN5_CSI_3PH_CTRLn_ADDR(55), 0x51, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
+ /* GEN2 1.1 2PH */
+ static const struct
+ csiphy_lane_regs lane_regs_sc8280xp[] = {
+@@ -957,8 +1314,6 @@ static void csiphy_reset(struct csiphy_device *csiphy)
+ 	writel_relaxed(0x1, csiphy->base +
+ 		      CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 0));
+ 	usleep_range(5000, 8000);
+-	writel_relaxed(0x0, csiphy->base +
+-		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 0));
+ }
+ 
+ static irqreturn_t csiphy_isr(int irq, void *dev)
+@@ -1084,6 +1439,167 @@ static void csiphy_gen1_config_lanes(struct csiphy_device *csiphy,
+ 	writel_relaxed(val, csiphy->base + CSIPHY_3PH_LNn_MISC1(l));
+ }
+ 
++/*
++ * csiphy_cphy_data_rate_config - Apply data-rate specific C-PHY overrides
++ *
++ * Applied on top of the base lane_regs. Selects the first table entry whose
++ * bandwidth >= the data rate derived from @link_freq (highest entry if none
++ * qualifies, default entry if @link_freq is unknown) and writes its overrides.
++ */
++/* GEN2 1.2.1 3PH, three C-PHY trios.
++ * Derived from the vendor SM8250 camera driver register set
++ * (techpack/camera ... cam_csiphy_1_2_1_hwreg.h, csiphy_3ph_v1_2_1_reg).
++ */
++static const struct
++csiphy_lane_regs lane_regs_sm8250_3ph[] = {
++	{0x0990, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0994, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0998, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0990, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0994, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0998, 0x1A, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x098C, 0xAF, 0x01, CSIPHY_DEFAULT_PARAMS},
++	{0x015C, 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0168, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0104, 0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x010C, 0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{0x0108, 0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
++	{0x0114, 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0150, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0188, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x018C, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0190, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0118, 0x3E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x011C, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0120, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0124, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0128, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x012C, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0160, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x01CC, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x01DC, 0x50, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0984, 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0988, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0980, 0x60, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x09AC, 0x35, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x09B0, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0800, 0x0E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0884, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A90, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A94, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A98, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A90, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A94, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A98, 0x1A, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A8C, 0xAF, 0x01, CSIPHY_DEFAULT_PARAMS},
++	{0x035C, 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0368, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0304, 0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x030C, 0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{0x0308, 0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
++	{0x0314, 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0350, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0388, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x038C, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0390, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0318, 0x3E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x031C, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0320, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0324, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0328, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x032C, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0360, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x03CC, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x03DC, 0x50, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A84, 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A88, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0A80, 0x60, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0AAC, 0x35, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0AB0, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0800, 0x0E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0884, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B90, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B94, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B98, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B90, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B94, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B98, 0x1A, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B8C, 0xAF, 0x01, CSIPHY_DEFAULT_PARAMS},
++	{0x055C, 0x46, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0568, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0504, 0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x050C, 0x12, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{0x0508, 0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
++	{0x0514, 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0550, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0588, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x058C, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0590, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0518, 0x3E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x051C, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0520, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0524, 0x7F, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0528, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x052C, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0560, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x05CC, 0x41, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x05DC, 0x50, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B84, 0x20, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B88, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0B80, 0x60, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0BAC, 0x35, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0BB0, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0800, 0x0E, 0x00, CSIPHY_DEFAULT_PARAMS},
++	{0x0884, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
++};
++
++static void csiphy_cphy_data_rate_config(struct csiphy_device *csiphy,
++					 struct data_rate_reg_info *settings,
++					 size_t num_settings,
++					 s64 link_freq, u8 settle_cnt)
++{
++	struct device *dev = csiphy->camss->dev;
++	const struct csiphy_lane_regs *r;
++	size_t idx, i;
++	u32 val;
++
++	if (!settings || !num_settings)
++		return;
++
++	if (!link_freq) {
++		/* Link frequency unknown; use the default (lowest) entry. */
++		idx = CSIPHY_CPHY_DATA_RATE_DEFAULT_IDX;
++	} else {
++		/* First entry that satisfies the rate, else the highest. */
++		for (idx = 0; idx < num_settings; idx++) {
++			if (settings[idx].bandwidth >= link_freq)
++				break;
++		}
++	}
++
++	dev_dbg(dev,
++		"CSIPHY using specific bandwidth %llu bits/s (entry %zu) for link_freq %lld\n",
++		settings[idx].bandwidth, idx, link_freq);
++
++	r = settings[idx].data_rate_reg_array;
++	for (i = 0; i < settings[idx].data_rate_reg_array_size; i++, r++) {
++		switch (r->csiphy_param_type) {
++		case CSIPHY_SETTLE_CNT_LOWER_BYTE:
++			val = settle_cnt & 0xff;
++			break;
++		case CSIPHY_SETTLE_CNT_HIGHER_BYTE:
++			val = (settle_cnt >> 8) & 0xff;
++			break;
++		default:
++			val = r->reg_data;
++			break;
++		}
++		writel_relaxed(val, csiphy->base + r->reg_addr);
++		if (r->delay_us)
++			udelay(r->delay_us);
++	}
++}
++
+ static void csiphy_gen2_config_lanes(struct csiphy_device *csiphy,
+ 				     u8 settle_cnt)
+ {
+@@ -1113,13 +1629,22 @@ static void csiphy_gen2_config_lanes(struct csiphy_device *csiphy,
+ 
+ static u8 csiphy_get_lane_mask(struct csiphy_lanes_cfg *lane_cfg)
+ {
+-	u8 lane_mask;
+-	int i;
++	u8 lane_mask = 0;
++	u8 offset = 0;
+ 
+-	lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
++	switch (lane_cfg->phy_cfg) {
++	case V4L2_MBUS_CSI2_CPHY:
++		offset = 1;
++		break;
++	case V4L2_MBUS_CSI2_DPHY:
++		lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
++		break;
++	default:
++		break;
++	}
+ 
+-	for (i = 0; i < lane_cfg->num_data; i++)
+-		lane_mask |= 1 << lane_cfg->data[i].pos;
++	for (int i = 0; i < lane_cfg->num_data; i++)
++		lane_mask |= BIT((lane_cfg->data[i].pos * 2) + offset);
+ 
+ 	return lane_mask;
+ }
+@@ -1154,16 +1679,111 @@ static void csiphy_lanes_enable(struct csiphy_device *csiphy,
+ {
+ 	struct csiphy_lanes_cfg *c = &cfg->csi2->lane_cfg;
+ 	struct csiphy_device_regs *regs = csiphy->regs;
++	struct data_rate_reg_info *data_rate_settings = NULL;
++	size_t num_data_rate_settings = 0;
+ 	u8 settle_cnt;
+ 	u8 val;
+ 	int i;
+ 
+-	settle_cnt = csiphy_settle_cnt_calc(link_freq, csiphy->timer_clk_rate);
++	switch (csiphy->camss->res->version) {
++	case CAMSS_845:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_DPHY) {
++			regs->lane_regs = &lane_regs_sdm845[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sdm845);
++		} else if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = &lane_regs_sdm845_3ph[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sdm845_3ph);
++		}
++		break;
++	case CAMSS_2290:
++	case CAMSS_6150:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_DPHY) {
++			regs->lane_regs = &lane_regs_qcm2290[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_qcm2290);
++		} else if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = NULL;
++			regs->lane_array_size = 0;
++		}
++		break;
++	case CAMSS_6350:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_DPHY) {
++			regs->lane_regs = &lane_regs_sm6350[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sm6350);
++		} else if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = NULL;
++			regs->lane_array_size = 0;
++		}
++		break;
++	case CAMSS_7280:
++	case CAMSS_8250:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_DPHY) {
++			regs->lane_regs = &lane_regs_sm8250[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8250);
++		} else if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = &lane_regs_sm8250_3ph[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8250_3ph);
++			data_rate_settings = data_rate_settings_sm8250_3ph;
++			num_data_rate_settings = ARRAY_SIZE(data_rate_settings_sm8250_3ph);
++		}
++		break;
++	case CAMSS_8280XP:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_DPHY) {
++			regs->lane_regs = &lane_regs_sc8280xp[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sc8280xp);
++		} else if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = NULL;
++			regs->lane_array_size = 0;
++		}
++		break;
++	case CAMSS_X1E80100:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_DPHY) {
++			regs->lane_regs = &lane_regs_x1e80100[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_x1e80100);
++		} else if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = NULL;
++			regs->lane_array_size = 0;
++		}
++		break;
++	case CAMSS_8550:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_DPHY) {
++			regs->lane_regs = &lane_regs_sm8550[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8550);
++		} else if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = NULL;
++			regs->lane_array_size = 0;
++		}
++		break;
++	case CAMSS_8650:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_DPHY) {
++			regs->lane_regs = &lane_regs_sm8650[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8650);
++		} else if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = NULL;
++			regs->lane_array_size = 0;
++		}
++		break;
++	case CAMSS_8300:
++	case CAMSS_8775P:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			regs->lane_regs = &lane_regs_sa8775p_3ph[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sa8775p_3ph);
++			data_rate_settings = data_rate_settings_sa8775p_3ph;
++			num_data_rate_settings = ARRAY_SIZE(data_rate_settings_sa8775p_3ph);
++		} else {
++			regs->lane_regs = &lane_regs_sa8775p[0];
++			regs->lane_array_size = ARRAY_SIZE(lane_regs_sa8775p);
++		}
++		break;
++	default:
++		break;
++	}
+ 
+-	val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
+-	for (i = 0; i < c->num_data; i++)
+-		val |= BIT(c->data[i].pos * 2);
++	if (!regs->lane_regs)
++		WARN_ONCE(1, "Missing lane_regs definition!\n");
+ 
++	settle_cnt = csiphy_settle_cnt_calc(link_freq, csiphy->timer_clk_rate);
++
++	val = csiphy_get_lane_mask(c);
+ 	writel_relaxed(val, csiphy->base +
+ 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 5));
+ 
+@@ -1171,9 +1791,60 @@ static void csiphy_lanes_enable(struct csiphy_device *csiphy,
+ 	writel_relaxed(val, csiphy->base +
+ 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 6));
+ 
+-	val = 0x02;
+-	writel_relaxed(val, csiphy->base +
+-		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 7));
++	switch (csiphy->camss->res->version) {
++	case CAMSS_8300:
++	case CAMSS_8775P:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			val = 0x5A;
++			writel_relaxed(val, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 7));
++			val = 0xE;
++			writel_relaxed(val, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 0));
++		} else {
++			val = 0x02;
++			writel_relaxed(val, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 7));
++			writel_relaxed(val, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 0));
++		}
++		break;
++	case CAMSS_8250:
++		if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY) {
++			/*
++			 * Three-trio C-PHY on CSIPHY v1.2.1: the vendor driver
++			 * programs CTRL7 = 0x52 and CTRL0 = 0x0e, passing through
++			 * CTRL0 = 0x03 for a millisecond first
++			 * (csiphy_common_reg_1_2_1[] in the downstream driver).
++			 */
++			writel_relaxed(0x52, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 7));
++			writel_relaxed(0x03, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 0));
++			usleep_range(1000, 1200);
++			writel_relaxed(0x0e, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 0));
++		} else {
++			val = 0x02;
++			writel_relaxed(val, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 7));
++			val = 0x0;
++			writel_relaxed(val, csiphy->base +
++				       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 0));
++		}
++		break;
++	case CAMSS_7280:
++	case CAMSS_8280XP:
++	case CAMSS_845:
++	default:
++		val = 0x02;
++		writel_relaxed(val, csiphy->base +
++			       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 7));
++		val = 0x0;
++		writel_relaxed(val, csiphy->base +
++			       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 0));
++		break;
++	}
+ 
+ 	val = 0x00;
+ 	writel_relaxed(val, csiphy->base +
+@@ -1184,6 +1855,15 @@ static void csiphy_lanes_enable(struct csiphy_device *csiphy,
+ 	else
+ 		csiphy_gen1_config_lanes(csiphy, cfg, settle_cnt);
+ 
++	/*
++	 * For C-PHY platforms with a data-rate settings table, apply the
++	 * data-rate specific overrides on top of the base lane_regs config.
++	 */
++	if (c->phy_cfg == V4L2_MBUS_CSI2_CPHY && data_rate_settings)
++		csiphy_cphy_data_rate_config(csiphy, data_rate_settings,
++					     num_data_rate_settings,
++					     link_freq, settle_cnt);
++
+ 	/* IRQ_MASK registers - disable all interrupts */
+ 	for (i = 11; i < 22; i++) {
+ 		writel_relaxed(0, csiphy->base +
+@@ -1213,53 +1893,16 @@ static int csiphy_init(struct csiphy_device *csiphy)
+ 		return -ENOMEM;
+ 
+ 	csiphy->regs = regs;
+-	regs->offset = 0x800;
+ 	regs->common_status_offset = 0xb0;
+ 
+ 	switch (csiphy->camss->res->version) {
+-	case CAMSS_845:
+-		regs->lane_regs = &lane_regs_sdm845[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sdm845);
+-		break;
+-	case CAMSS_2290:
+-	case CAMSS_6150:
+-		regs->lane_regs = &lane_regs_qcm2290[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_qcm2290);
+-		break;
+-	case CAMSS_6350:
+-		regs->lane_regs = &lane_regs_sm6350[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm6350);
+-		break;
+-	case CAMSS_7280:
+-	case CAMSS_8250:
+-		regs->lane_regs = &lane_regs_sm8250[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8250);
+-		break;
+-	case CAMSS_8280XP:
+-		regs->lane_regs = &lane_regs_sc8280xp[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sc8280xp);
+-		break;
+ 	case CAMSS_X1E80100:
+-		regs->lane_regs = &lane_regs_x1e80100[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_x1e80100);
+-		regs->offset = 0x1000;
+-		break;
+ 	case CAMSS_8550:
+-		regs->lane_regs = &lane_regs_sm8550[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8550);
+-		regs->offset = 0x1000;
+-		break;
+ 	case CAMSS_8650:
+-		regs->lane_regs = &lane_regs_sm8650[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8650);
+ 		regs->offset = 0x1000;
+ 		break;
+-	case CAMSS_8300:
+-	case CAMSS_8775P:
+-		regs->lane_regs = &lane_regs_sa8775p[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sa8775p);
+-		break;
+ 	default:
++		regs->offset = 0x800;
+ 		break;
+ 	}
+ 
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.c b/drivers/media/platform/qcom/camss/camss-csiphy.c
+index 539ac4888..a136cd278 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy.c
++++ b/drivers/media/platform/qcom/camss/camss-csiphy.c
+@@ -144,8 +144,9 @@ static int csiphy_set_clock_rates(struct csiphy_device *csiphy)
+ 	u8 bpp = csiphy_get_bpp(csiphy->res->formats->formats, csiphy->res->formats->nformats,
+ 				csiphy->fmt[MSM_CSIPHY_PAD_SINK].code);
+ 	u8 num_lanes = csiphy->cfg.csi2->lane_cfg.num_data;
++	const bool cphy = (csiphy->cfg.csi2->lane_cfg.phy_cfg == V4L2_MBUS_CSI2_CPHY);
+ 
+-	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes);
++	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes, cphy);
+ 	if (link_freq < 0)
+ 		link_freq  = 0;
+ 
+@@ -270,9 +271,10 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
+ 	u8 bpp = csiphy_get_bpp(csiphy->res->formats->formats, csiphy->res->formats->nformats,
+ 				csiphy->fmt[MSM_CSIPHY_PAD_SINK].code);
+ 	u8 num_lanes = csiphy->cfg.csi2->lane_cfg.num_data;
++	const bool cphy = (csiphy->cfg.csi2->lane_cfg.phy_cfg == V4L2_MBUS_CSI2_CPHY);
+ 	u8 val;
+ 
+-	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes);
++	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes, cphy);
+ 
+ 	if (link_freq < 0) {
+ 		dev_err(csiphy->camss->dev,
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.h b/drivers/media/platform/qcom/camss/camss-csiphy.h
+index 9d9657b82..657880282 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy.h
++++ b/drivers/media/platform/qcom/camss/camss-csiphy.h
+@@ -30,11 +30,13 @@ struct csiphy_lane {
+ 
+ /**
+  * struct csiphy_lanes_cfg - CSIPHY lanes configuration
++ * @phy_cfg:  interface selection (C-PHY or D-PHY)
+  * @num_data: number of data lanes
+  * @data:     data lanes configuration
+  * @clk:      clock lane configuration (only for D-PHY)
+  */
+ struct csiphy_lanes_cfg {
++	enum v4l2_mbus_type phy_cfg;
+ 	int num_data;
+ 	struct csiphy_lane *data;
+ 	struct csiphy_lane clk;
+@@ -60,6 +62,12 @@ struct csiphy_formats {
+ 	const struct csiphy_format_info *formats;
+ };
+ 
++struct data_rate_reg_info {
++	u64 bandwidth;
++	ssize_t  data_rate_reg_array_size;
++	struct csiphy_lane_regs *data_rate_reg_array;
++};
++
+ struct csiphy_device;
+ 
+ struct csiphy_hw_ops {
+diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
+index 2123f6388..8013aafde 100644
+--- a/drivers/media/platform/qcom/camss/camss.c
++++ b/drivers/media/platform/qcom/camss/camss.c
+@@ -32,6 +32,14 @@
+ #define CAMSS_CLOCK_MARGIN_NUMERATOR 105
+ #define CAMSS_CLOCK_MARGIN_DENOMINATOR 100
+ 
++/*
++ * C-PHY encodes data by 16/7 ~ 2.28 bits/symbol
++ * D-PHY doesn't encode data, thus 16/16 = 1 b/s
++ */
++#define CAMSS_COMMON_PHY_DIVIDENT 16
++#define CAMSS_CPHY_DIVISOR 7
++#define CAMSS_DPHY_DIVISOR 16
++
+ static const struct parent_dev_ops vfe_parent_dev_ops;
+ 
+ static const struct camss_subdev_resources csiphy_res_8x16[] = {
+@@ -4624,19 +4632,22 @@ struct media_pad *camss_find_sensor_pad(struct media_entity *entity)
+  * @entity: Media entity in the current pipeline
+  * @bpp: Number of bits per pixel for the current format
+  * @lanes: Number of lanes in the link to the sensor
++ * @cphy: If C-PHY encoding is used.
+  *
+  * Return link frequency on success or a negative error code otherwise
+  */
+ s64 camss_get_link_freq(struct media_entity *entity, unsigned int bpp,
+-			unsigned int lanes)
++			unsigned int lanes, const bool cphy)
+ {
+ 	struct media_pad *sensor_pad;
++	unsigned int div = lanes * 2 * (cphy ? CAMSS_CPHY_DIVISOR :
++					       CAMSS_DPHY_DIVISOR);
+ 
+ 	sensor_pad = camss_find_sensor_pad(entity);
+ 	if (!sensor_pad)
+ 		return -ENODEV;
+ 
+-	return v4l2_get_link_freq(sensor_pad, bpp, 2 * lanes);
++	return v4l2_get_link_freq(sensor_pad, CAMSS_COMMON_PHY_DIVIDENT * bpp, div);
+ }
+ 
+ /*
+@@ -4746,7 +4757,9 @@ static int camss_parse_endpoint_node(struct device *dev,
+ {
+ 	struct csiphy_lanes_cfg *lncfg = &csd->interface.csi2.lane_cfg;
+ 	struct v4l2_mbus_config_mipi_csi2 *mipi_csi2;
+-	struct v4l2_fwnode_endpoint vep = { { 0 } };
++	struct v4l2_fwnode_endpoint vep = { .bus_type = V4L2_MBUS_UNKNOWN };
++	struct v4l2_fwnode_endpoint remote_vep = { .bus_type = V4L2_MBUS_UNKNOWN };
++	struct fwnode_handle *remote_ep;
+ 	unsigned int i;
+ 	int ret;
+ 
+@@ -4754,21 +4767,49 @@ static int camss_parse_endpoint_node(struct device *dev,
+ 	if (ret)
+ 		return ret;
+ 
+-	/*
+-	 * Most SoCs support both D-PHY and C-PHY standards, but currently only
+-	 * D-PHY is supported in the driver.
+-	 */
+-	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY) {
++	switch (vep.bus_type) {
++	case V4L2_MBUS_CSI2_CPHY:
++	case V4L2_MBUS_CSI2_DPHY:
++		break;
++	default:
+ 		dev_err(dev, "Unsupported bus type %d\n", vep.bus_type);
+ 		return -EINVAL;
+ 	}
+ 
++	/* Get the remote (sensor) endpoint handle, e.g. imx686_ep1 */
++	remote_ep = fwnode_graph_get_remote_endpoint(ep);
++	if (!remote_ep) {
++		dev_dbg(dev, "No remote endpoint found for %pfw\n", ep);
++		return -ENODEV;
++	}
++
++	/* Parse the remote bus type and release the handle */
++	ret = v4l2_fwnode_endpoint_parse(remote_ep, &remote_vep);
++	fwnode_handle_put(remote_ep);
++	if (ret) {
++		dev_dbg(dev, "Failed to parse remote endpoint\n");
++		return ret;
++	}
++
++	/* The local (CSIPHY) and remote (sensor) ends must agree */
++	if (vep.bus_type != remote_vep.bus_type) {
++		dev_dbg(dev, "Bus type mismatch! Local (CSI-PHY): %u, Remote (Sensor): %u\n",
++			vep.bus_type, remote_vep.bus_type);
++		return -EINVAL;
++	}
++
++	dev_dbg(dev, "Verified link: both ends use bus-type %u\n", vep.bus_type);
++
+ 	csd->interface.csiphy_id = vep.base.port;
+ 
+ 	mipi_csi2 = &vep.bus.mipi_csi2;
+-	lncfg->clk.pos = mipi_csi2->clock_lane;
+-	lncfg->clk.pol = mipi_csi2->lane_polarities[0];
+ 	lncfg->num_data = mipi_csi2->num_data_lanes;
++	lncfg->phy_cfg = vep.bus_type;
++
++	if (lncfg->phy_cfg != V4L2_MBUS_CSI2_CPHY) {
++		lncfg->clk.pos = mipi_csi2->clock_lane;
++		lncfg->clk.pol = mipi_csi2->lane_polarities[0];
++	}
+ 
+ 	lncfg->data = devm_kcalloc(dev,
+ 				   lncfg->num_data, sizeof(*lncfg->data),
+diff --git a/drivers/media/platform/qcom/camss/camss.h b/drivers/media/platform/qcom/camss/camss.h
+index 93d691c8a..12b14ba8f 100644
+--- a/drivers/media/platform/qcom/camss/camss.h
++++ b/drivers/media/platform/qcom/camss/camss.h
+@@ -169,7 +169,7 @@ int camss_enable_clocks(int nclocks, struct camss_clock *clock,
+ void camss_disable_clocks(int nclocks, struct camss_clock *clock);
+ struct media_pad *camss_find_sensor_pad(struct media_entity *entity);
+ s64 camss_get_link_freq(struct media_entity *entity, unsigned int bpp,
+-			unsigned int lanes);
++			unsigned int lanes, const bool cphy);
+ int camss_get_pixel_clock(struct media_entity *entity, u64 *pixel_clock);
+ int camss_pm_domain_on(struct camss *camss, int id);
+ void camss_pm_domain_off(struct camss *camss, int id);

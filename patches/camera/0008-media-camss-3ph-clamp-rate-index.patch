@@ -1,0 +1,39 @@
+From 2097e640617e03bd9064d6af415cc51411ed7a09 Mon Sep 17 00:00:00 2001
+From: kebab-camera <kebab-camera@localhost>
+Date: Wed, 11 Nov 2026 07:32:21 +0800
+Subject: [PATCH] media: qcom: camss: 3ph: clamp the C-PHY data-rate table
+ index
+
+The selection loop leaves idx == num_settings when the link frequency is
+
+higher than every table entry, and settings[idx] is then read past the
+
+end of the array. Clamp to the highest entry, which is what the comment
+
+already promised.
+---
+ drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
+index 818a544e7..0d0d34010 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
++++ b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
+@@ -1575,6 +1575,14 @@ static void csiphy_cphy_data_rate_config(struct csiphy_device *csiphy,
+ 			if (settings[idx].bandwidth >= link_freq)
+ 				break;
+ 		}
++		/*
++		 * The loop leaves idx == num_settings when the link is faster
++		 * than every entry, and settings[idx] would then be out of
++		 * bounds. Clamp to the highest entry, as the comment above
++		 * promises.
++		 */
++		if (idx >= num_settings)
++			idx = num_settings - 1;
+ 	}
+ 
+ 	dev_dbg(dev,
+-- 
+2.47.3
+

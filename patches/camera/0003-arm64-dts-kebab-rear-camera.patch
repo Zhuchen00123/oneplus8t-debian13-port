@@ -1,0 +1,136 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts b/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
+index 74a962af7..cea54f449 100644
+--- a/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
++++ b/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts
+@@ -1623,9 +1623,8 @@ pm8008_l6: ldo6 {
+ 
+ 			pm8008_l7: ldo7 {
+ 				regulator-name = "pm8008_l7";
+-				/* cam_vana for the rear main sensor: 2.9 V */
+-				regulator-min-microvolt = <2900000>;
+-				regulator-max-microvolt = <2900000>;
++				regulator-min-microvolt = <1500000>;
++				regulator-max-microvolt = <3400000>;
+ 			};
+ 		};
+ 	};
+@@ -1648,23 +1647,6 @@ / {
+ 	 *   imx471 24-0010: Error reading reg 0x0016: -6
+ 	 *   imx471 24-0010: error -ENXIO: failed to read chip id
+ 	 */
+-	/*
+-	 * Rear main camera VANA load switch. The stock DTBO
+-	 * (fragment@88 / qcom,cam-sensor@0) labels tlmm 26 "CAM_VANA" and
+-	 * tlmm 156 "CAM_VANA2"; 156 is already owned by the front camera's
+-	 * switch above, so only 26 is claimed here. The rail behind it is
+-	 * PM8008 LDO7, which is set to 2.9 V below.
+-	 */
+-	vreg_cam_rear_vana: regulator-cam-rear-vana {
+-		compatible = "regulator-fixed";
+-		regulator-name = "vreg_cam_rear_vana";
+-		regulator-min-microvolt = <2900000>;
+-		regulator-max-microvolt = <2900000>;
+-		vin-supply = <&pm8008_l7>;
+-		gpio = <&tlmm 26 GPIO_ACTIVE_HIGH>;
+-		enable-active-high;
+-	};
+-
+ 	vreg_cam_front_vana: regulator-cam-front-vana {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "vreg_cam_front_vana";
+@@ -1696,9 +1678,15 @@ ports {
+ 		port@0 {
+ 			reg = <0>;
+ 
++			/*
++			 * CSIPHY-side lane numbering is 0-based, exactly like
++			 * csiphy4_front_ep below: csiphy_lanes_enable() builds
++			 * CTRL5 as BIT(pos * 2), so the sensor's 1-based
++			 * <1 2 3 4> must not be copied here.
++			 */
+ 			csiphy0_rear_ep: endpoint {
+-				bus-type = <MEDIA_BUS_TYPE_CSI2_CPHY>;
+ 				data-lanes = <0 1 2>;
++				bus-type = <MEDIA_BUS_TYPE_CSI2_CPHY>;
+ 				remote-endpoint = <&camr_imx586_ep>;
+ 			};
+ 		};
+@@ -1734,6 +1722,15 @@ csiphy4_front_ep: endpoint {
+ };
+ 
+ &cci0 {
++	/*
++	 * Same CCI v2 timing fix &cci1 already carries: the SCL table assumes
++	 * a 37.5 MHz CCI clock, and sm8250.dtsi leaves CAM_CC_CCI_0_CLK at
++	 * 19.2 MHz, which halves every requested bus rate. The rear sensor
++	 * lives on this controller, so it needs the corrected rate too.
++	 */
++	assigned-clocks = <&camcc CAM_CC_CCI_0_CLK>;
++	assigned-clock-rates = <37500000>;
++
+ 	status = "okay";
+ };
+ 
+@@ -1766,24 +1763,18 @@ &cci1 {
+  * GC5035 macro camera on a bus the IMX471 was never on.
+  */
+ /*
+- * Rear main 48 MP camera: Sony IMX586 on CCI0 master 0 / CSIPHY0, per the
+- * vendor tree and the stock DTBO (fragment@88: csiphy-sd-index = <0>,
+- * cci-master = <0>, gpio labels CAM_MCLK0 / CAM_RESET0 / CAM_VANA).
++ * Rear main 48 MP camera: Sony IMX586 on CCI0 master 0 / CSIPHY0
++ * (vendor fragment@88: csiphy-sd-index = <0>, cci-master = <0>, GPIO labels
++ * CAM_MCLK0=tlmm94, CAM_RESET0=tlmm145, CAM_VANA=tlmm26).
+  *
+- *   cam_vio  pm8008 L4 1.8 V
+- *   cam_vdig 1.104 V - modelled on pm8008 L1, the rail the front IMX471
+- *            already uses. The vendor node names pm8150a_s8 for this sensor;
+- *            that PM8150A buck is not described in mainline sm8250.dtsi yet,
+- *            so the equivalent 1.104 V PM8008 rail is used and the open
+- *            question is recorded in the r4-camera notes.
+- *   cam_vana pm8008 L7 2.9 V through the CAM_VANA switch on tlmm 26
+- *   cam_vaf  not wired: focus is out of scope for the first frames.
++ * The link is described as D-PHY with four lanes because that is the only
++ * signalling mode the 7.2 CAMSS drivers can currently program (the CSID
++ * driver never sets its C-PHY PHY_TYPE_SEL bit). If the board turns out to
++ * use C-PHY this node has to change together with a CSID/CSIPHY patch; the
++ * driver itself accepts both.
+  *
+- * The link is C-PHY with three trios at 698395833 Hz - the configuration the
+- * same IMX586 module uses on hotdog and the recovered Qualcomm mode
+- * description for this sensor. drivers/media/i2c/imx586.c also accepts a
+- * D-PHY four-lane endpoint, so a board that turns out to be D-PHY only needs
+- * bus-type/data-lanes/link-frequencies changed here.
++ * Lane order <1 2 3 4> mirrors the working front IMX471 endpoint on this
++ * board; the rear assignment still has to be confirmed by capturing frames.
+  */
+ &cci0_i2c0 {
+ 	/* Sony IMX parts on this board are specified for 400 kHz. */
+@@ -1793,7 +1784,7 @@ camr_imx586: camera@1a {
+ 		compatible = "sony,imx586";
+ 		reg = <0x1a>;
+ 
+-		vana-supply = <&vreg_cam_rear_vana>;
++		vana-supply = <&pm8008_l7>;
+ 		vdig-supply = <&pm8008_l1>;
+ 		vio-supply = <&pm8008_l4>;
+ 
+@@ -1801,7 +1792,17 @@ camr_imx586: camera@1a {
+ 		assigned-clocks = <&camcc CAM_CC_MCLK0_CLK>;
+ 		assigned-clock-rates = <19200000>;
+ 
+-		reset-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
++		/*
++		 * Rear module control pins, taken from this device's own DTBO
++		 * overlay (qcom,cam-sensor@0: gpios = <&tlmm 94> <&tlmm 78>
++		 * <&tlmm 139> <&tlmm 117>, labelled CAM_MCLK0, CAM_RESET0,
++		 * CAM_CUSTOM1 and CAM_VDIG) and cross-checked against the vendor
++		 * sensor dtsi.  CAM_CUSTOM1 gates the analog rail, CAM_VDIG the
++		 * digital one.
++		 */
++		reset-gpios = <&tlmm 78 GPIO_ACTIVE_LOW>;
++		vana-enable-gpios = <&tlmm 139 GPIO_ACTIVE_HIGH>;
++		custom1-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
+ 
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&cam_mclk0_default>;
