@@ -13,9 +13,10 @@ MC最新修复交接在 `local/worktree-mc/mc/FIXES-20261005.md`；`local/ssh443
 - [11/10 Android 实验环境 P0 执行计划（待审核，含硬件矩阵与 GPS 方案）](android-lab-p0-plan-20261110.md)
 
 - [**11/11 相机收工状态（先看这个）**](../local/camera-r4-20261110/STATUS.md)：后摄 IMX586 **首次出帧**（5×15,024,000 B、4000×3000 RAW10）；实机确认 **C-PHY 3 trio**；VANA 电压区间修复；16 条已修缺陷；手机已回原镜像、看门狗已停
+- [**11/11 继续适配摄像头 prompt（可直接粘贴给新会话/worker）**](camera-resume-prompt-20261111.md)：自包含续作任务书——阶段 0 先补两处可复现性缺口（自动流程仍装 VANA 修复前的 imx586、修复版模块无 runner 消费；"688,128 B camss 未归档"经段和比对已证为误判），阶段 1 受光画面 + 前摄复测，阶段 2 速率表/test_pattern/VDIG，阶段 3 持久化需批准；含全部已核实事实、黑帧判据、打包与模块编译硬约束、禁止项与停点
 - [11/11 相机候选启动、出帧与收工取证](r4-camera-boot-failure-20261111.md)：§18.1–18.133，含 boot header id、DTB 地址重叠、runner/watcher 的假通过与误杀、PHY 类型取证与实机判定、IMX586 VANA 电压区间根因、五帧实测与黑帧判据、模块编译架构/BTF/结构体大小三坑、恢复原镜像
 - [11/10 r4-camera 主报告](r4-camera-20261110.md)：C-PHY 移植、DTS 与驱动的最终形态
-- [11/10 r4-camera 候选内核任务：前摄 + 后主摄 IMX586，含 hotdog 主线参考源与复用/改造矩阵](r4-camera-task-20261110.md)
+- [11/10 r4-camera 候选内核任务书（**已执行完毕，转为历史**）](r4-camera-task-20261110.md)：hotdog 主线参考源审计与复用/改造矩阵；顶部已标出与实测的三处出入（`=y` 应为 `=m`、PHY 已确证 C-PHY、VDIG 应为 1.104 V 而非 1.35 V），续作改用上面的 prompt
 
 - [11/10 相机 fastboot 循环 agent 执行说明（前摄 no-reboot、PON 入口、fastboot boot 均已验证；含 dtb_offset 布局、启动记账事故与恢复）](camera-fastboot-loop-20261110.md)
 
