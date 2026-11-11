@@ -14,6 +14,7 @@ MC最新修复交接在 `local/worktree-mc/mc/FIXES-20261005.md`；`local/ssh443
 
 - [**11/11 相机收工状态（先看这个）**](../local/camera-r4-20261110/STATUS.md)：后摄 IMX586 **首次出帧**（5×15,024,000 B、4000×3000 RAW10）；实机确认 **C-PHY 3 trio**；VANA 电压区间修复；16 条已修缺陷；手机已回原镜像、看门狗已停
 - [**11/11 继续适配摄像头 prompt（可直接粘贴给新会话/worker）**](camera-resume-prompt-20261111.md)：自包含续作任务书——阶段 0 先补两处可复现性缺口（自动流程仍装 VANA 修复前的 imx586、修复版模块无 runner 消费；"688,128 B camss 未归档"经段和比对已证为误判），阶段 1 受光画面 + 前摄复测，阶段 2 速率表/test_pattern/VDIG，阶段 3 持久化需批准；含全部已核实事实、黑帧判据、打包与模块编译硬约束、禁止项与停点
+- [**11/11 相机 Titan ISP PoC B1 续作 prompt（自包含，可直接粘贴给新会话）**](camera-titan-b1-resume-prompt-20261111.md)：B0 已完成，下一阶段是把 HFI 线格式固化进 `tools/titan-hfi/`（C 头 + static_assert + Python 编解码 + 自动重抽 opcode 表）；文件自带全部硬事实（队列 956/24、包类型、opcode 1–0xF、async 包差 4 字节、payload 尺寸链），不用先读别的文档就能开工
 - [**11/11 相机 Titan ISP PoC B0 完成（HFI 协议 + 上游比对）**](camera-titan-hfi-b0-20261111.md)：纯离线从 `CAMERA_ICP.elf` 的 debug_info 还原出完整 HFI 线格式（队列头 956 B / 表头 24 B、包类型与域分组、opcode 1–0xF、payload ABI 840/2360/1600/14328 B），并与上游 x1e80100 `camss-icp-hfi.h` 逐项比对：传输层一致，**async 命令包差 4 字节**；**上游 RFC 的 HFI 引擎实现根本不存在**；结论是“能借骨架不能借肉”，给出分项复用度与 B1/B2 分级判据
 - [**11/11 相机 Titan ISP PoC 续作 prompt（新会话从这里开始）**](camera-titan-poc-resume-prompt-20261111.md)：路线 B 的入口——先用离线 B0 把 Titan 固件（CAMERA_ICP.elf，带符号+调试信息）的 HFI 协议提取出来，与上游 x1e80100 的 camss-icp.c 逐项比对，给出“能复用多少”的结论；含当前状态、步骤、环境坑、边界与验收标准
 - [11/11 相机 Titan ISP PoC 范围与判定标准](camera-titan-poc-scope-20261111.md)：为什么走 Titan（A5/ICP + BPS/IPE）、已核实的固件/调校数据/DT 证据与 SHA-256、B0–B3 分阶段判定标准、停止条件（连续两次失败即归档）与风险
