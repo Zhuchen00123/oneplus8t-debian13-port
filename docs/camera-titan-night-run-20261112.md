@@ -1,160 +1,272 @@
-# Titan ISP 夜间攻坚任务书（2026-11-11 夜 → 11-12 晨）
+# Titan ISP 夜间攻坚任务书 v2（2026-11-11 夜 → 11-12 晨）
 
-> 用法：新会话**只读本文件即可开工**。用户已授权今夜连续工作、不做 token 预算。
-> **今夜的唯一不可逆动作（刷机）被明确禁止**，理由见 §3。
-> 开工第一件事：建 `local/titan-b2/night/STATE.md`，之后每推进一步就更新它（会话若断，靠它续命）。
+> **v2 变更：允许刷机，但必须走 §4 的安全协议。** 用户已授权全自动、含刷写。
+> 用法：新会话只读本文件即可开工。开工第一件事：建 `local/titan-b2/night/STATE.md`，之后每推进一步就更新它。
+> **一句话纪律：先证明能救，再允许弄坏；先用 RAM 启动验，再持久化。**
 
 ---
 
-## 0. 今夜目标（先读，避免白干）
+## 0. 目标与概率
 
-**"把 ISP 驱动起来出图"今夜做不到，请不要朝这个方向硬撞。** 原因不是协议（协议已经全解了），而是**固件装载链路**：原厂 DT 证明 ICP 走的是"保留内存 + 独立 SMMU 上下文（SID 0x20e2 等）+ 放开 A5 复位"，不是普通的 PAS，也不是直接 request_firmware 到某个设备窗口。这条链要写一个真驱动，不是一夜的量。
+协议层已经全解（B0/B1），硬件映射已离线定位（B2）。现在卡的是**固件装载链路**：ICP 用「DDR 保留内存 + 独立 SMMU 上下文 + A5 复位」起固件，不是 PAS、也不是普通 request_firmware。
 
-今夜按优先级做四件事，**每一件都可独立验收**：
-
-| 级别 | 目标 | 验收证据 | 概率 |
+| 级别 | 目标 | 验收 | 概率 |
 | --- | --- | --- | --- |
-| **P0** | 解原厂 vendor 镜像里的相机内核模块，产出**权威装载蓝图**（固件怎么进内存、A5 怎么放复位、SMMU 怎么配、三个窗口各自干什么） | 一份带地址/寄存器/字符串出处的 md，每条结论可回溯到文件偏移 | **≥95%** |
-| **P1** | 零刷机把 ICP 上电，只读 dump 三个窗口，**实测验证** `0xac10058/0xac10014/0xac10044` 这组推断 | 断电/上电对照的原始 hex + 一条明确判定（证实/证伪/不确定） | 70% |
-| **P2** | 做出"明天一刷即测"的候选包：DT 片段 + 驱动骨架 + 离线编译通过 | 编译日志 + 产物 SHA + 未刷写声明 | 85% |
-| **P3** | 机会主义：若 P0 发现 A5 有零刷机旁路（如 ITCM 直写口），再推进到"固件跑起来" | 能读到固件写过的寄存器证据 | <15% |
+| **P0** | 解 vendor 镜像里的相机模块，产出权威装载蓝图（固件怎么进内存 / A5 怎么放复位 / SMMU 怎么配 / 三窗口职责 / 顺序） | 带文件偏移出处的 md | ≥95% |
+| **P1** | **恢复通道演练 + known-good 基线**（零写入） | 进城/出城/RAM 启动三段实测记录 | ≥95% |
+| **P2** | 「零改动」内核重建 + **RAM 启动**通过（证明构建→打包→启动链路） | 启动后 ssh 回来 + dmesg 干净 | 85% |
+| **P3** | DT 加 `cam-a5` + 固件 carveout，RAM 启动通过后**持久化**，再用框架上电只读 dump | 断电/上电对照 hex + 映射判定 | 70% |
+| **P4** | 机会主义：A5 真的跑起来（读到固件写过的寄存器） | 证据 + 判定 | 20% |
+| — | 出图 / V4L2 / IQ 参数 | — | 今夜不做 |
 
-**今夜明确不做**：出图、V4L2 节点、IQ 参数（`com.qti.tuned.default.bin` 格式还没解，这是 B3 的活）。
+**允许刷机后最大的变化**：P3 从"明天再做"变成"今夜可做"，而且走正规框架上电（比寄存器直写稳）。但 P4 依旧难，因为它要写 SMMU 上下文驱动。
 
 ---
 
-## 1. 环境（全部已验证可用）
+## 1. 环境（全部实测可用）
 
 | 项 | 值 |
 | --- | --- |
-| 工作树（唯一） | `/mnt/f/codexprojects/oneplus8t/.agents/worktrees/camera-titan-poc` |
-| 分支 | `codex/camera-titan-poc-20261111`，HEAD 至少 `fe259bd` |
-| 内核源码 | `/mnt/f/codexprojects/oneplus8t/sources/linux`（含 `drivers/clk/qcom/camcc-sm8250.c`、`drivers/media/platform/qcom/camss/`） |
-| 手机 | **`ssh -F /home/zhuchen/.ssh/kebab.conf -o BatchMode=yes kebab`** ← 今晚就用这条，已实测通 |
-| 手机状态 | Debian 13，`7.2.0-kebab-debian13-r4-venus+`，boot id `ed3ae39d`，sudo 免密可用 |
-| 固件 | `local/camera-r4-20261110/analysis/CAMERA_ICP.elf`（3,922,232 B，SHA `cb98cec2…`） |
-| 原厂 DTB 拆分 | `/mnt/f/codexprojects/oneplus8t/local/sensors-20261107/stock-dtb-split/stock-000.dtb` |
-| vendor 镜像 | `/mnt/f/codexprojects/oneplus8t/local/sensors-20261107/stock-vendor/vendor_a.img`（967,815,168 B，EROFS） |
-| erofs 工具 | `local/sensors-20261107/erofs-tool/usr/bin/{fsck,dump}.erofs`，需 `LD_LIBRARY_PATH=local/sensors-20261107/erofs-tool/usr/lib/x86_64-linux-gnu`（缺 `libdeflate.so.0`） |
-| dtc | **WSL 里有**（`/usr/bin/dtc`），别再造解析器 |
+| 工作树 | `/mnt/f/codexprojects/oneplus8t/.agents/worktrees/camera-titan-poc`，分支 `codex/camera-titan-poc-20261111` |
+| 手机 | `ssh -F /home/zhuchen/.ssh/kebab.conf -o BatchMode=yes kebab`（sudo 免密） |
+| 手机内核 | `7.2.0-kebab-debian13-r4-venus+`，boot id `ed3ae39d`，**current-slot: a** |
+| **进城（进 fastboot）** | 手机侧 `sudo kebab-reboot-fastboot`（PON helper，含 vermagic 自检）→ 约 20 秒进 fastboot |
+| **fastboot 在哪** | **Windows 侧**：`E:\adroid\platform-tools\fastboot.exe`（v37.0.0）。WSL 无 USB、无 fastboot，但可经 interop 调 `/mnt/e/adroid/platform-tools/fastboot.exe`（已实测能跑） |
+| fastboot 能力 | `unlocked: yes`，`max-download-size: 805306368`（768 MB，boot 包约 47 MB） |
+| 内核源码 | `/mnt/f/codexprojects/oneplus8t/sources/linux` |
+| 固件 | `local/camera-r4-20261110/analysis/CAMERA_ICP.elf`（SHA `cb98cec2…`） |
+| 原厂 DTB | `/mnt/f/codexprojects/oneplus8t/local/sensors-20261107/stock-dtb-split/stock-000.dtb` |
+| vendor 镜像 | `…/local/sensors-20261107/stock-vendor/vendor_a.img`（967 MB，EROFS） |
+| erofs 工具 | `local/sensors-20261107/erofs-tool/usr/bin/{fsck,dump}.erofs` + `LD_LIBRARY_PATH=…/erofs-tool/usr/lib/x86_64-linux-gnu` |
+| dtc | WSL 自带 `/usr/bin/dtc` |
 | git 身份 | `git -c user.name='Codex' -c user.email='codex@localhost'` |
 
-`/tmp` 不跨 run_code 调用保留；中间产物一律写 `local/`（已 gitignore）。
+**坑**：`fastboot devices` 在无设备时会**阻塞**，所有 fastboot 命令一律加 `timeout 10`（或 `timeout 120`，给闪写留时间）。`/tmp` 不跨调用保留，中间产物写 `local/`。
 
 ---
 
-## 2. 今夜已经探明的环境能力（别再猜，直接用）
+## 2. 今夜已验证的环境能力
 
-我开工前跑过只读探针，结论如下：
-
-| 能力 | 状态 | 对今晚的意义 |
+| 能力 | 状态 | 意义 |
 | --- | --- | --- |
-| `CONFIG_OF_OVERLAY` | **未开** | 运行时 DT overlay 不可用 → 想加 DT 节点必须重编内核 |
-| `CONFIG_CONFIGFS_FS` + 已挂载 | 有 | 但仍受上一条限制 |
-| `CONFIG_DEVMEM=y` + `CONFIG_STRICT_DEVMEM=y` | 有，`/dev/mem` 可 root 读写 | **device 区（非 RAM）可直读**，Stage A 可用它兜底 |
-| `CONFIG_MODULE_SIG=y` 但 `MODULE_SIG_FORCE` 未开 | 可加载未签名模块 | 自写 .ko 能 load（项目里 taint=12800 就是证据） |
-| camcc 驱动 | **已绑定**：`ad00000.clock-controller → cam_cc-sm8250` | 时钟与 GDSC 都在框架里，可被模块取用 |
-| clk debugfs | 四个时钟都在：`cam_cc_fast_ahb_clk_src / cam_cc_icp_ahb_clk / cam_cc_icp_clk / cam_cc_icp_clk_src` | 可以读 rate/enable_count 做旁证 |
-| `titan_top_gdsc` | `off-0`（冷态） | **必须我们自己上电**，读之前 |
-| `/proc/iomem` | `0ac00000-0ac1afff` **无人认领**（camss 只占 0xac6a000 起） | 与 camss 不冲突，可安全 ioremap |
-| 注意 | `/proc/iomem` 里的 `00ac0000-00ac5fff: ac0000.geniqup` 是**另一个地址**（差 16 倍，不是 20 倍） | 别混 |
+| `CONFIG_OF_OVERLAY` | **未开** | 运行时 DT overlay 不可用 → 要 DT 节点只能重编内核刷 boot_a |
+| `CONFIG_DEVMEM=y` + `STRICT_DEVMEM=y` | `/dev/mem` 可读写 device 区 | 零刷机的兜底路径 |
+| `MODULE_SIG` 有但 `MODULE_SIG_FORCE` 未开 | 可加载未签名 .ko | 探针模块能直接 load |
+| camcc | 已绑定 `cam_cc-sm8250`，四个 ICP 时钟在 debugfs | 框架可用 |
+| `titan_top_gdsc` | `off-0` 冷态 | 必须自己上电 |
+| `0ac00000-0ac1afff` | `/proc/iomem` 中无人认领 | 与 camss（0xac6a000+）不冲突 |
+| `/proc/config.gz` | `CONFIG_IKCONFIG_PROC=y` | **可直接取到运行内核的完整配置** ← 重建内核的关键 |
 
 ---
 
-## 3. 路线判定（必须照此执行）
+## 3. 权限分级（按这个执行）
 
-| 路线 | 内容 | 判定 |
+| 级别 | 动作 | 是否需要闸门 |
 | --- | --- | --- |
-| A. 运行时 DT overlay | 加 `qcom,cam-a5` 节点，让框架认领时钟/GDSC | **不可行**（OF_OVERLAY 未开），放弃 |
-| **B. 零刷机模块**（今晚主路线） | 自写 .ko：用 `of_clk_get_from_provider()` 手工构造 `<&camcc 38/39/40/33>` 取到四个 clk（或用 `/dev/mem` 直写 camcc 寄存器兜底）；GDSC 直接写 `0xad0c144` 的 SW_COLLAPSE；然后 ioremap 三窗口只读 dump | **执行** |
-| C. 重编内核 + 刷 boot_a | 正路，但**今夜的不可逆动作** | **禁止**，理由见下 |
+| **T0** | 只读侦察、离线分析、加载只读探针模块 | 随时 |
+| **T1** | `fastboot boot <img>`（RAM 启动，**不写任何分区**） | 随时，可反复 |
+| **T2** | `fastboot flash boot_a <img>` | **必须过 §4 全部闸门** |
+| **T3** | 刷 boot_b / dtbo / super / misc / erase / `--set-active` | **禁止** |
 
-**为什么今夜禁刷**：刷坏 boot_a = 手机不上电 = agent 深夜失联，你早上拿到的是一块砖；而这个仓库主工作树还有 **289 个未提交改动**、手机还跑着常驻服务。**今天不刷也完全够推进**（P0 是纯离线，P1 走路线 B），唯一需要刷的那一步（装 ICP 的 SMMU + carveout 驱动）本来就要你在场做回滚演练。**把不可逆动作留到天亮，是今晚最稳的决定。**
-
-若某一步的结论是"不刷就做不下去"，**记录下来、停手、写报告**，不要自作主张刷机。
+T3 为什么禁：boot_b 是你最后的兜底；dtbo 与 super 与本次无关；`--set-active`/`erase` 会毁掉可恢复性。
 
 ---
 
-## 4. 执行顺序
+## 4. 刷机安全协议（S1–S8，缺一不可）
+
+### S1 恢复通道演练（零写入，**不做完不许 T2**）
+
+1. 记录 `boot_id` + 时间；
+2. `ssh kebab 'sudo kebab-reboot-fastboot'`（连接会断，正常）；
+3. 轮询：`until timeout 5 fastboot.exe devices | grep -qi fastboot; do sleep 3; done`，上限 120 秒；
+4. `fastboot.exe getvar current-slot` → 必须是 `a`；
+5. `fastboot.exe boot <known-good.img>` ← **RAM 启动，零写入**；
+6. 等 ssh 回来（上限 8 分钟，每 15 秒探一次）；
+7. 把「进城耗时 / 出城耗时 / 镜像 SHA」写进 STATE.md。
+
+**任何一步失败 → 今夜不许 T2**，改为只做 P0、P2 的离线部分，并在报告里写明原因。
+
+### S2 known-good 基线（必须从设备取，不要信仓库里的旧镜像）
+
+    ssh kebab 'sudo dd if=/dev/disk/by-partlabel/boot_a of=/tmp/boot_a.img bs=4M status=none; sha256sum /tmp/boot_a.img'
+    scp -F … kebab:/tmp/boot_a.img local/titan-b2/night/known-good/boot_a-<bootid>.img
+    本地再算一次 sha256，与设备侧一致才收
+
+以后每次持久化成功，**把新镜像登记为新的 known-good**（回滚目标是「最近的能启动的那个」，不是最老的）。
+
+### S3 候选镜像离线校验（每条都要过，写进 STATE.md）
+
+1. **配置从设备取**：`ssh kebab 'sudo zcat /proc/config.gz'` → 作为 `.config`；
+2. **LOCALVERSION 必须一致**：新内核 `uname -r` 必须还是 `7.2.0-kebab-debian13-r4-venus+`。
+   **这条是硬要求**：手机靠 USB gadget 提供 192.168.8.1 的 ssh 通道，vermagic 一变，`/lib/modules` 里的模块（含 venus/camss）就加载失败，严重时**网络都回不来**。
+3. 反编译新 DTB 复核：`scripts/dtc/dtc -I dtb -O dts`，确认 a5 节点、carveout、无语法错；
+4. 镜像大小 < 768 MB；
+5. 记录候选 SHA-256。
+
+### S4 先 RAM 启动，再持久化
+
+`fastboot.exe boot candidate.img` → 起来后必须逐项确认：
+
+- ssh 回来；
+- `dmesg | grep -iE 'oops|panic|BUG:'` 空；
+- `lsmod` 与刷前一致（模块没掉）；
+- `modinfo` 的 vermagic == `uname -r`；
+- 若加了 a5 节点：`/sys/firmware/devicetree/base/soc/qcom,a5@ac00000` 存在。
+
+**全部通过才允许 flash。** 若 `fastboot boot` 报 `Failed to load/authenticate`（项目里出现过）：这是镜像头/AVB 问题，**不要**改成 flash 绕过，先修镜像。
+
+### S5 持久化：一次一个 generation
+
+`fastboot.exe flash boot_a candidate.img` → `fastboot.exe reboot`。
+只写 boot_a；**绝不写 boot_b**；不 `--set-active`；不 `erase`；不刷 dtbo/super/misc。
+同一份改动最多刷 **2 次**；整夜 flash 总数 ≤ **6**。
+
+### S6 自动回滚看门狗（flash 前就要启好，别刷完才想起）
+
+    # 伪代码：先启动看门狗，再执行 flash
+    flash boot_a candidate
+    if wait_ssh 8min:            # 每 15 s 探一次
+        mark_good candidate; 更新 known-good; continue
+    log "boot failed -> rollback step 1"
+    fastboot flash boot_a known-good      # 回滚 1
+    if wait_ssh 5min: mark candidate_bad; 本 generation 停止 T2; continue
+    log "rollback 1 failed -> rollback step 2 (RAM boot)"
+    fastboot boot known-good              # 回滚 2，不写
+    if wait_ssh 5min: 标记 flash 通路异常; **今夜停止所有 T2**; 转 RAM-boot only
+    write WAKE-ME.md; stop everything
+
+`WAKE-ME.md` 必须包含：当前状态、已刷/未刷什么、回滚命令原文、known-good 路径与 SHA、需要人手做什么（通常是「长按电源 + 音量上 进 fastboot」）。
+
+### S7 熔断
+
+- 同一镜像连续 2 次启动失败 → 标记 bad，回滚，**不再试**；
+- 手机 ssh 失联 10 分钟 → 只做只读诊断；30 分钟 → 收工写报告；
+- 任何「必须改 boot_b / 必须 erase」的念头 → 立即停止，写报告。
+
+### S8 记录
+
+每次 T1/T2 之前，先把「要做什么 / 回滚目标 / 候选 SHA / boot_id」写进 STATE.md，再动手。任何一次进入 fastboot 都要记时间戳（进城/出城耗时是后续排障的关键数据）。
+
+---
+
+## 5. 执行顺序
 
 ### G0 开工自检（10 分钟）
-1. `git -C … rev-parse --abbrev-ref HEAD` 必须是 `codex/camera-titan-poc-20261111`；`git log -1` 至少含 `fe259bd`。
-2. `ssh -F /home/zhuchen/.ssh/kebab.conf -o BatchMode=yes kebab 'uname -r; uptime'`。
-3. 建 `local/titan-b2/night/STATE.md`，写清当前阶段与下一步。
+分支/HEAD 正确；ssh 通；建 STATE.md。
 
-### G1（P0，纯离线，最高优先级，预计 2–4 小时）
+### G1 恢复通道演练 + known-good（S1 + S2，约 30–45 分钟）
+**这是今晚一切写入的前提。** 演练通过后把结果写进 STATE.md，并在报告里注明「T2 已解锁」。
 
-解 `vendor_a.img`，找相机模块。**目标是回答五个问题，不是把镜像翻个底朝天**：
+### G2（P0）离线装载蓝图（2–3 小时）
 
-1. **固件怎么进内存**：搜 `CAMERA_ICP` / `request_firmware` / `.elf` / `mdt`；确认是"读文件→按 ELF program header 拷到某地址"，还是经 SCM PAS。**内存目标地址是关键**（是不是 `iova-mem-region-firmware` 的 IOVA 0？还是某个物理窗口？）。
-2. **A5 怎么放复位**：找写 `a5_csr` / `0x18000` 偏移、或 `SCM` 调用的片段；有没有 `firmware base` / `boot_addr` 之类的寄存器。
-3. **三个窗口各自干什么**：`a5_qgic`（中断控制器）/ `a5_sierra`（**HFI 寄存器就在这**）/ `a5_csr`（控制）——找 mmap 后的使用点对证。
-4. **SMMU 怎么配**：SID 表（DT 里 14 个：0x20e2/0x24e2/0x2000/0x2001/0x2400/0x2401/0x2060/0x2061/0x2460/0x2461/0x2020/0x2021/0x2420/0x2421）、firmware 区 IOVA 0 + 5 MiB、shared 区、CPAS 谁来编程。
-5. **顺序**：上电 → 装固件 → 写队列表指针 → 放复位，到底什么顺序（HFI 队列表指针必须在放复位**之前**写，否则固件读不到）。
+解 `vendor_a.img` 找相机模块，只回答五个问题：
 
-**做法提示**：
-- `fsck.erofs --extract=` 或 `dump.erofs` 先列出 `/lib/modules` 与 `/vendor/lib/modules` 下的 cam* 文件，**只解需要的几个**（镜像 967 MB，别全量解）。
-- 模块可能不是 .ko 而是 builtin（在 `/vendor/lib/modules/modules.builtin` 里）；若如此，改从 **vendor 的 `cam_a5/cam_icp` 用户态库**（`camera.` 或 `libcam*`）与 **固件里的字符串**交叉——b0 已证明 HFI 常量都在 .text 里，装载逻辑同理可能在 A5 固件里。
-- 也可以反查 **ABL / bootloader** 里有没有 ICP 初始化（`local/abl-reference-*`）。
-- 每条结论必须写"出处：文件 + 偏移/符号 + 原文片段"。
+1. **固件怎么进内存**：搜 `CAMERA_ICP` / `request_firmware` / `elf`；确认是按 ELF program header 拷到 carveout，还是别的。**carveout 已定位：物理 0x8dc00000，5 MiB**（`pil_camera_region@8dc00000`，`no-map`，compatible 为 removed-dma-pool），ICP SMMU 把它映射成 IOVA 0。请核实驱动是按物理地址直写还是经 IOMMU 映射后写。
+2. **A5 怎么放复位**：哪个寄存器 / 有没有 SCM 调用 / 有没有 firmware base 寄存器。
+3. **三窗口职责**：qgic（中断）/ sierra（**HFI 寄存器在这**）/ csr（控制）。
+4. **SMMU 怎么配**：14 个 SID、iova 各区的 start/len、谁编程 CPAS。
+5. **顺序**：上电 → 装固件 → 写队列表指针 → 放复位（**队列表指针必须在放复位之前**）。
 
-**G1 交付**：`docs/camera-titan-b2-load-blueprint-20261112.md`（新文件），含上述五问的答案 + 证据 + **仍不确定的项**。
+产出 `docs/camera-titan-b2-load-blueprint-20261112.md`，每条结论带「文件 + 偏移 + 原文」。
 
-### G2（P1，上机，只读，预计 2–3 小时）
+### G3（P2）零改动内核的构建链路验证（1–1.5 小时）
 
-写零刷机探针模块（放 `local/titan-b2/probe/`，不入库）：
+1. 取设备 config；
+2. 只改**无功能**的一处（或干脆不改），完整构建 + 打包；
+3. `fastboot boot` 起来 → 通过 → 说明「构建→打包→启动」全链路可用；
+4. **这一步先不要 flash**，省一次写入预算。
 
-1. 上电：`titan_top_gdsc` 的 GDSCR 在 camcc `0xad0c144`，清 SW_COLLAPSE 后轮询 PWR_ON；
-2. 时钟：四路（`fast_ahb 100→400MHz`、`icp_clk_src 400/480/600MHz`，按 nominal 取 400/600）；**必须先 set_rate 再 enable**；
-3. ioremap 三个窗口，**按 qgic → csr → sierra 顺序**，每窗先读 `0x00`，异常立即 bail；
-4. **断电/上电对照**：同一地址 GDSC 关闭时读一次、开启后读一次 —— 差值是"块真的活了"的唯一证据；
-5. 重点读：`0xac10008/0xac10010/0xac10014/0xac10044/0xac10058/0xac10060/0xac10074`；
-6. 退出时恢复：关时钟、GDSCR 置回 collapse、卸载干净。
+若构建不出来（缺工具链/缺 config），立刻记录并转向「只做 P0 + 只读 dump」，不要硬撑。
 
-**硬禁忌**：Stage A **绝不写 `0xac1xxxx`** 的任何寄存器；不写 camcc 的 `0xad0xxxx` 以外地址；不碰 camss 的 0xac6a000+。
+### G4（P3a）DT 加节点 → RAM 启动 → 持久化（1.5–2 小时）
 
-若 `of_clk_get_from_provider` 取不到时钟，退化方案：`/dev/mem` 直写 camcc RCG/CBCR（偏移从 `camcc-sm8250.c` 里读，别猜）。
+DT 改动（照抄原厂，值已核对）：
 
-**G2 交付**：原始 hex 落到 `local/titan-b2/night/dumps/` + 一句明确判定写进 STATE.md。
+- `reserved-memory`：`no-map` 0x8dc00000 + 0x500000（**先检查与现有 reserved-memory、memory@ 节点无重叠**）；
+- `qcom,a5@ac00000`：三窗口 reg、四路 clocks、`power-domains = <&camcc TITAN_TOP_GDSC>`、`interrupts <0 0x1cf 1>`；
+- 可选：ICP SMMU client（`iommus`，SID 0x20e2…）；
+- `status = "okay"`，且**不要**给它绑一个会抢资源的驱动（今晚用自写探针）。
 
-### G3（P2，纯离线，预计 1–2 小时）
+流程：构建 → `fastboot boot` → 全部检查通过 → **才** `flash boot_a` + 看门狗。
 
-把 G1 的结论变成明天可刷的东西：
-- DT 片段：`cam-a5` 节点（值全部照抄原厂，已在下面 §5）+ 固件 carveout reserved-memory + ICP SMMU client 节点；
-- 驱动骨架：按 G1 的装载顺序写伪代码即可，**不要求编译出可跑驱动**；
-- 若能编译：交叉编译一次，记录 toolchain 与产物 SHA。
-- **不刷**。
+### G5（P3b）上电 + 只读 dump（1–1.5 小时）
 
-### G4（P3，机会主义，剩余时间）
+有了 DT 节点，走框架最干净：模块里 `devm_clk_bulk_get` + `devm_pm_domain_attach`，按 §10.1 的频率表 set_rate → enable → ioremap 三窗口读。
+**顺序**：qgic → csr → sierra；每窗先读 0x00，异常 bail；**做 GDSC off/on 对照**（差值是「块活了」的唯一证据）。
+重点地址：`0xac10008/0x10/0x14/0x44/0x58/0x60/0x74`。
+**Stage A 绝不写 0xac1xxxx。**
 
-只有 G1 明确给出"零刷机旁路"时才做，例如 A5 有 ITCM 直写口、或 CPAS 有自举路径。否则直接跳到 G5。
+### G6（P4，机会主义）
 
-### G5 收尾（**07:00 前必须开始**）
-1. 手机恢复到干净状态：模块卸载、时钟关、GDSC 关、无残留 ioremap；`dmesg | tail` 无 oops；必要时重启一次并确认 ssh 与常驻服务回来。
-2. 写 `docs/camera-titan-night-report-20261112.md`：今夜做了什么、证了什么、没证什么、明天的第一步。
-3. 提交（只 `docs/` 与 `tools/`，固件与 dump 留 `local/`）。
-4. 给用户一段 200 字内的结论 + 明天的三件事。
+仅当 G2 给出明确可行路径时才做（例如 A5 有直写口、或固件装载可以不依赖 SMMU）。否则跳过。
+
+### G7 收尾（**07:00 前必须开始**）
+
+1. 手机回干净状态：模块卸载、时钟关、GDSC 关；`dmesg` 无 oops；必要时重启并确认 ssh + 常驻服务回来。
+2. 若新内核有不稳定迹象 → **主动回滚到 known-good**，不要留给用户一个半坏的机器。
+3. 写 `docs/camera-titan-night-report-20261112.md`：做了什么 / 证了什么 / 没证什么 / 明天第一步。
+4. 提交（只 `docs/` 与 `tools/`，固件/dump/镜像留 `local/`）。
 
 ---
 
-## 5. 已确证的事实（直接抄，不要重新推导）
+## 6. 硬边界
 
-### 5.1 ICP 硬件（原厂 DT 实证，`dtc` 反编译 `stock-000.dtb`）
+1. **只写 boot_a**；boot_b / dtbo / super / misc / persist / EFS 一概不碰；不 `erase`、不 `--set-active`。
+2. 不写 persist / 校准数据；不动 `/srv`；不改网络、SSH、密码、限充、温控、看门狗配置。
+3. 不装常驻服务/unit/timer；模块用完 `rmmod`。
+4. Stage A **绝不写 0xac1xxxx**；不碰 camss 的 `0xac6a000+`。
+5. 同一子步骤连续 2 次失败 → 停手、记录、换路线或收工。
+6. **每次 T2 之前必须确认看门狗已就绪**；没有看门狗不许 flash。
 
-    qcom,a5@ac00000 {                       // 注意：这是 cam-icp 的兄弟节点，不是子节点
-        compatible = "qcom,cam-a5";
+---
+
+## 7. 证据纪律
+
+- 每个结论带「命令 + 原始输出 + 文件/偏移」，没有证据写「未证」。
+- 原始输出落 `local/titan-b2/night/`，带时间戳；每次进/出 fastboot 都记。
+- `insmod` 前后各抓一次 `dmesg`。
+- 每次改动手机前记录 `boot_id` + 时间 + 目的，收尾对照。
+- **刷机相关的一切（镜像 SHA、命令原文、返回码）必须原样落盘**，这是明早复核的唯一依据。
+
+---
+
+## 8. 交付物
+
+| 文件 | 内容 |
+| --- | --- |
+| `docs/camera-titan-b2-load-blueprint-20261112.md` | P0 装载蓝图（五问 + 证据 + 不确定项） |
+| `docs/camera-titan-night-report-20261112.md` | 总报告（含刷机台账：每次 flash 的时间、镜像、SHA、结果、回滚） |
+| `local/titan-b2/night/STATE.md` | 断点续作状态 |
+| `local/titan-b2/night/known-good/` | 从设备取的 boot_a 镜像 + SHA |
+| `local/titan-b2/night/dumps/` | 寄存器 dump |
+| `tools/titan-icp/` | 可复用离线脚本（可选） |
+
+---
+
+## 9. 明天交接（写在报告末尾）
+
+1. 若 G5 证实映射：写真正的 ICP 驱动第一步（上电 → 装固件到 0x8dc00000 → 配 SMMU → 写 QTBL 指针 → 放复位）。
+2. 若 G5 证伪：重新审视窗口映射（可能 a5_sierra 不是 HFI 所在），先从固件侧的 CPAS 访问点反推。
+3. 无论结果如何：B3（IQ 参数来源）仍是出图的硬前置，`com.qti.tuned.default.bin` 格式未解。
+
+---
+
+## 10. 已确证事实（直接抄）
+
+### 10.1 硬件（原厂 DT 实证，dtc 反编译）
+
+    qcom,a5@ac00000 {
         reg = <0xac00000 0x6000  0xac10000 0x8000  0xac18000 0x3000>;
-        reg-names = "a5_qgic", "a5_sierra", "a5_csr";
-        reg-cam-base = <0x0 0x10000 0x18000>;   // 注意：它就是 reg-0xac00000，不是独立证据
+        reg-names = "a5_qgic","a5_sierra","a5_csr";
+        reg-cam-base = <0x0 0x10000 0x18000>;   // 就是 reg-0xac00000，非独立证据
         interrupts = <0x0 0x1cf 0x1>;           // GIC SPI 463
-        camss-vdd-supply = <&titan_top_gdsc>;   // camcc GDSCR @0xad0c144
-        clock-names = "soc_fast_ahb","icp_ahb_clk","icp_clk_src","icp_clk";
-        clocks = <&camcc 0x21 &camcc 0x26 &camcc 0x28 &camcc 0x27>;  // 33/38/40/39
-        clock-rates = <100M 0 400M 0 … 400M 0 600M 0>;              // 见下表
+        camss-vdd-supply = <&titan_top_gdsc>;   // GDSCR @0xad0c144
+        clocks = <&camcc 0x21 0x26 0x28 0x27>;  // 33/38/40/39
         fw_name = "CAMERA_ICP.elf";
         ubwc-ipe-fetch-cfg = <0x707b 0x7083>;  ubwc-ipe-write-cfg = <0x161ef 0x1620f>;
         ubwc-bps-fetch-cfg = <0x707b 0x7083>;  ubwc-bps-write-cfg = <0x161ef 0x1620f>;
     };
+    pil_camera_region@8dc00000 { no-map; reg = <0x0 0x8dc00000 0x0 0x500000>; };
 
 | level | soc_fast_ahb | icp_clk_src |
 | --- | --- | --- |
@@ -163,88 +275,32 @@
 | svs_l1 | 300 MHz | 600 MHz |
 | nominal / turbo | 400 MHz | 600 MHz |
 
-- camcc 时钟编号：`FAST_AHB_CLK_SRC=33, ICP_AHB_CLK=38, ICP_CLK=39, ICP_CLK_SRC=40`（`include/dt-bindings/clock/qcom,camcc-sm8250.h`）
-- `titan_top_gdsc`：`camcc-sm8250.c` 里 `.gdscr = 0xc144`、`PWRSTS_OFF_ON`、`POLL_CFG_GDSCR`
-- `CAM_CC_ICP_BCR = 0xc070`（这是 **reset**，bit0=assert；正常态应写 0）
-- ICP 的 SMMU：`iova-mem-region-firmware` = IOVA `0x0` 长度 `0x500000`（5 MiB，正好装下 ELF 的 0x0/0x100000 两段 + 0x150000 heap + 0x350000 页表）；SIDs 见 §4 G1 第 4 问
-- 另有独立节点 `qcom,cam-icp`（compatible `qcom,cam-icp`，`compat-hw-name = "qcom,a5","qcom,ipe0","qcom,bps"`，`icp_pc_en`），是**装配节点**不是驱动
+- camcc：`FAST_AHB_CLK_SRC=33, ICP_AHB_CLK=38, ICP_CLK=39, ICP_CLK_SRC=40`
+- `titan_top_gdsc`：`.gdscr = 0xc144`，`PWRSTS_OFF_ON`，`POLL_CFG_GDSCR`
+- `CAM_CC_ICP_BCR = 0xc070` 是 **reset**（bit0=assert，正常态 0）
+- ICP SMMU：`iova-mem-region-firmware` = IOVA 0x0 / 0x500000（正好装下 ELF 的 0x0、0x100000 两段 + 0x150000 堆 + 0x350000 页表）；14 个 SID 见 §5 G2
 
-### 5.2 固件侧的 HFI 寄存器（A5 视角 → AP 侧，**推断**，正是 G2 要证的）
+### 10.2 固件侧 HFI 寄存器（推断，G5 要证）
 
-| A5 地址 | AP 地址（推断） | 用途（B0 反汇编实证） |
+| A5 地址 | AP（推断） | 用途 |
 | --- | --- | --- |
-| `0xe0010058` | `0xac10058` | 队列表指针（`HFI_QueueGetQHdr` 读它） |
-| `0xe0010014` | `0xac10014` | 抬 host 中断（写 1） |
-| `0xe0010060` | `0xac10060` | 状态清除（写 0x10/0x20/0x120） |
-| `0xe0010044` | `0xac10044` | fwEntryFunction 读 |
-| `0xe0010074` | `0xac10074` | MemMapUmdCdmRegions |
-| `0xe0010008/0x10` | `0xac10008/0x10` | 未定 |
-| `0xe0040000/0x3c` | `0xac40000/0xac4003c` | **CPAS**（不是 CDM，B0 曾标错） |
+| 0xe0010058 | 0xac10058 | 队列表指针 |
+| 0xe0010014 | 0xac10014 | 抬 host 中断（写 1） |
+| 0xe0010060 | 0xac10060 | 状态清除（0x10/0x20/0x120） |
+| 0xe0010044 | 0xac10044 | fwEntryFunction 读 |
+| 0xe0010074 | 0xac10074 | MemMapUmdCdmRegions |
+| 0xe0040000 / 0x3c | 0xac40000 / 0xac4003c | **CPAS**（B0 曾误标 CDM） |
 
-**三条必须记住的边界**（我复核 B2 预研时发现的）：
-1. `reg-cam-base` 只是 `reg − 0xac00000`（ipe0 0xac9a000→0x9a000 可证），**不构成**"A5 0xe0000000 ↔ AP 0xac00000"的证据；真正支撑它的是"三窗口是 A5 块连续三段"+"0xe0040000 正好落在 cam-cpas(0xac40000)"。
-2. **不能外推**：固件还摸 `0xe0070000/0xe0090000/0xe00bd000`，按同规则会落到 0xac70000（主线 camss 的 csiphy3！）/0xac90000/0xacbd000 —— 显然不是 CDM。这几段是 CPAS 内部视图，**别照搬**。
-3. 所以 §5.2 的表是"高置信推断，待 G2 实测证伪"，文档里请这样写。
+**不能外推**：固件还摸 0xe0070000 / 0xe0090000 / 0xe00bd000，按同规则会落到 csiphy3(0xac70000) / 0xac90000 / 0xacbd000，显然不是 CDM —— 那几段是 CPAS 内部视图。
 
-### 5.3 HFI 协议（B1 已固化，别重解）
+### 10.3 HFI 协议（B1 已固化，直接用 tools/titan-hfi/）
 
-- 队列头 `956 B`、队列表头 `24 B`、3 队列（0=cmd 1=msg 2=dbg）、索引以 **4 字节字** 为单位、队列表必须在单一 4 KiB 映射内、单包上限 **6019 B**
-- 包类型：SYS `0x10001–0x10006`；MSG `0x20001+`（EVENT_NOTIFY `0x20008`）；IPE/BPS `0x01010008`(CREATE_HANDLE) / `0x0101000A`(ASYNC DIRECT) / `0x0101000E`(ASYNC INDIRECT)
-- **async 命令包与上游差 4 字节**：`nUserArg1(u64)@12, nUserArg2(u64)@20, nNumHandles@28, hHandles[]@32, payload@32+4×nNumHandles`
-- DIRECT 要求 `nSize ≥ 负载 + 32 + 4n`；INDIRECT 只要 `≥40`，负载为 32 位 SMMU 地址（**整个 HFI 只认 32 位地址**）
-- opcode 1–0xF 与负载尺寸：840 / 2360 / 16 / 8 / 1600 / 14328 / 16 / 8 / 16 / 16 / 16 / 16 / 16(未识别) / 20 / 20
-- 代码在 `tools/titan-hfi/`（C 头 + Python 编解码 + 单测），**直接复用**
+- 队列头 956 B / 表头 24 B / 3 队列（cmd, msg, dbg）/ 索引以 4 字节字计 / 单包上限 6019 B
+- 包类型：SYS 0x10001–0x10006；MSG 0x20001+（EVENT 0x20008）；IPE/BPS 0x01010008 / 0x0101000A / 0x0101000E
+- **async 命令包与上游差 4 字节**：nUserArg1@12、nUserArg2@20、nNumHandles@28、hHandles@32、payload@32+4n
+- opcode 1–0xF 负载：840 / 2360 / 16 / 8 / 1600 / 14328 / 16 / 8 / 16 / 16 / 16 / 16 / 16 / 20 / 20
 
----
 
-## 6. 硬边界（违反即失败）
 
-1. **今夜不刷任何分区**（尤其 boot_a / boot_b / dtbo / super / persist）。
-2. 不写 `persist` / EFS / 校准数据；不动 `/srv`。
-3. 不改网络、SSH、密码、限充、电源键、温控、看门狗配置。
-4. 不装常驻服务/unit/timer；模块只在需要时 insmod、用完 rmmod。
-5. **Stage A 绝不写 `0xac1xxxx`**；不碰 camss 的 `0xac6a000+`。
-6. 任何时候**不超过 2 次连续失败**在同一子步骤上 —— 停手、记录、换路线或收工。
-7. 手机 ssh **连续 10 分钟不通** → 停止所有写操作，只做只读诊断；**30 分钟不通** → 收工写报告（说明是否需要人工介入）。
-8. 重启手机前先在 STATE.md 写明"要重启、当前 boot id、目的是什么"；重启后 5 分钟内确认 ssh 与常驻服务回来，否则按第 7 条处理。
 
----
 
-## 7. 证据纪律（这条决定明早你是拿到结论还是拿到幻觉）
-
-- 每个结论必须附**命令 + 原始输出片段 + 文件/行号或偏移**；没有证据的结论写"未证"。
-- 所有原始输出落盘到 `local/titan-b2/night/`，文件名带时间戳。
-- 不允许"应该""大概""通常"作为结论；只允许"实测到 X"或"未测"。
-- 每次 `insmod` 前先 `dmesg -c` 或记录尾标，之后立刻抓 `dmesg`。
-- 改动手机前记录 `boot_id` + 时间 + 目的，收尾时对照。
-
----
-
-## 8. 交付物
-
-| 文件 | 内容 |
-| --- | --- |
-| `docs/camera-titan-b2-load-blueprint-20261112.md` | P0 权威装载蓝图（五问 + 证据 + 不确定项） |
-| `docs/camera-titan-night-report-20261112.md` | 今夜总报告（做了什么/证了什么/没证什么/明天第一步） |
-| `local/titan-b2/night/STATE.md` | 随时更新的断点续作状态 |
-| `local/titan-b2/night/dumps/` | G2 的原始寄存器 dump |
-| `tools/titan-icp/`（可选） | 任何可复用的离线脚本 |
-
-提交信息：`docs(camera): …` / `tools(camera): …`。
-
----
-
-## 9. 明天的三件事（写在报告末尾，别自己执行）
-
-1. 用户在场时，用 P2 的候选包做**一次**内核构建 + boot_a 刷写 + 回滚演练（DT 里加 cam-a5 + 固件 carveout + ICP SMMU client）。
-2. 写真正的 ICP 驱动第一步：上电 → 装固件到 carveout（IOVA 0）→ SMMU 上下文 → 写队列表指针 → 放复位。
-3. 若 A5 起来：走 HFI 握手（SYS_INIT → INIT_DONE，期望 `deviceTitanVersion = 7` = Kona）。
-
----
-
-## 10. 最后：不要做的事
-
-- 不要重新推导 B0/B1 已经证明的东西（HFI 结构、opcode、包尺寸都在 `tools/titan-hfi/` 里）。
-- 不要相信任何"定死"的说法（包括本文件 §5.2 的表，它是推断）。
-- 不要为了赶进度跳过 G1（离线蓝图）—— 它是今夜唯一能真正缩短明天路径的东西。
-- 不要在没被 `dtc` 验证过的情况下使用任何 DT 数值。
