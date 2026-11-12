@@ -25,7 +25,7 @@
 sudo sh /usr/local/lib/kebab-modem/sim-preflight.sh
 ```
 
-它会检查：开机链是否 enable、三个支撑 unit 是否在、`KEBAB_SDX55_ONLINE=auto`、`sim-provision.sh` 与 PIN 文件权限（0600）、数据面工具、data.service 是否误 enable、MM 的 4 个 .deb 及其校验和，**当前 boot 里是否已经能看见卡**（若是，说明卡是开机后插的，必须现在重启），以及 SIM 当天的等待标志是否就位。无卡、无标志时实测输出 **26 passed, 0 warnings, 0 failed** + 两行 `INFO`（3b/3c/3d 三组检查 runbook 会敲的工具、QMAP 备选与打补丁的 MM 是否就位，见[数据面文档](sdx55-modemmanager-20261112.md) §4.31）。
+它会检查：开机链是否 enable、三个支撑 unit 是否在、`KEBAB_SDX55_ONLINE=auto`、`sim-provision.sh` 与 PIN 文件权限（0600）、数据面工具、data.service 是否误 enable、MM 的 4 个 .deb 及其校验和，**当前 boot 里是否已经能看见卡**（若是，说明卡是开机后插的，必须现在重启），以及 SIM 当天的等待标志是否就位。无卡、无标志时实测输出 **26 passed, 0 warnings, 0 failed** + 两行 `INFO`（第 56 轮彩排时标志已在位，同一份检查给 **27 passed** —— 标志那条从 `INFO` 变 `PASS`）（3b/3c/3d 三组检查 runbook 会敲的工具、QMAP 备选与打补丁的 MM 是否就位，见[数据面文档](sdx55-modemmanager-20261112.md) §4.31）。
 
 **先跑这一条**（本轮新增：把下面的步骤串起来并留下证据包；无卡时会明确回 `verdict: FAIL reason: no SIM card...` 并以 1 退出，不会假装成功）：
 
