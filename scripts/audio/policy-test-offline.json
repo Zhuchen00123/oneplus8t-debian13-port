@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "status": "offline_negative_test_policy",
+  "purpose": "Tight caps so budget refusals are reachable in a few seconds",
+  "scope": {
+    "kernel_release": "test",
+    "reboot": false
+  },
+  "experiment_budget": {
+    "run_deadline_seconds": 1800,
+    "max_module_load_cycles": 2,
+    "max_reviewed_route_variants": 6,
+    "max_consecutive_same_fault": 2,
+    "max_trial_install_transactions": 1,
+    "max_same_manifest_commit_replays": 1,
+    "max_rollback_transactions_total": 2,
+    "max_rollback_attempts_per_transaction": 1,
+    "max_validation_audio_session_restarts": 1
+  },
+  "acoustic_probe": {
+    "max_nonzero_playback_seconds_total": 3,
+    "max_playback_attempts": 2,
+    "max_stream_open_seconds_per_probe": 2,
+    "inter_probe_quiet_seconds": 5
+  },
+  "capture_probe": {
+    "max_seconds_per_capture": 5,
+    "max_captures": 2,
+    "max_capture_seconds_total": 40
+  },
+  "guard": {
+    "lease_heartbeat_ms": 250,
+    "lease_expiry_ms": 1500,
+    "hard_probe_deadline_seconds": 8
+  }
+}
