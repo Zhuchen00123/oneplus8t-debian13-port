@@ -1823,6 +1823,44 @@ Nov 12 08:43:20 ... Finished kebab-sdx55-modem     (跳变后，实际只过了 
 ### 4.39.4 彩排结论
 
 **开机链在「插卡当天」的配置下自洽**：modem 15 s 起 QMI、31 s online、43 s 单元结束并 `success`，GNSS 与 MM 随后就位，`sim-day` 立刻可用，全程零残留、零 errfatal。插卡那天唯一的新变量就是那张卡。
+## 4.40 「承载真的起来了」那一段，在没有卡的时候也要先跑一遍
+
+`kebab-sim-day` 有几段代码**只有承载真的起来才会执行**：等地址的循环、探针（ping/DNS/TCP/PMTU）、`bearer_ok` 的判定、把 `data-up` SIGTERM 掉之后的清理（地址 + MTU）。无卡时 `data-up` 在 `start` 就失败，这些分支一次都跑不到；插卡当天第一次跑就是它们的处女航。
+
+`--fake-bearer` 用一个**合成承载**（`10.99.13.2/30`、MTU 1500、**零 QMI**、不起呼叫）把这一段完整走一遍。第 57 轮实测：
+
+```
+verdict: REHEARSAL
+elapsed_s: 107          <- 整个脚本
+probes_s: 79            <- 其中探针花掉的时间
+bearer_source: fake (no QMI, plumbing test)
+addr: 10.99.13.2/30
+held: 6s
+sample_trend: 26 samples, idle -> idle (0 change(s)), rx 0 B/s tx 46 B/s
+residue_after_stop: none
+```
+
+退出后 `addr=[] mtu=16384 state=down`、无 `data-up` 孤儿、默认路由未动、`errfatal 0`、stderr 空。这说明：
+
+1. **等地址循环**在真有地址时能立刻继续（不必等满超时）；
+2. **探针顺序与超时**是对的（假承载全失败 → `ping: no dns: no tcp: no`，`bearer_ok` 判不通）；
+3. **清理**在「有地址 + MTU 被改过 + 有个活着的 data-up」时也把 MTU 还原成 16384、地址删干净；
+4. **假承载永远不会写 `verdict: PASS`**（写 `REHEARSAL`，`next_steps` 也明说「这只证明流程」）。
+
+### 4.40.1 一个耗时事实：死承载的探针要 ~80 s
+
+`--hold 6` 的一轮跑了 **107 s**，其中 **79 s 花在探针上** —— 假承载一个包都不通，于是三个 ICMP 目标（每个 `-c 3 -W 2`）、两个 DNS（各 5 s 超时）、三个 TCP（各 6 s）全部吃满超时。插卡当天若「承载起来了但完全不通」，同样要等近一分半才出结论，**这不是卡住**。为此 summary 新增两行：
+
+```
+elapsed_s: 107
+probes_s: 79
+```
+
+用它们分辨「时间花在按住承载上」还是「花在探针超时上」；`held:` 只表示按住时长，不含探针。
+
+### 4.40.2 顺带修掉：`--help` 一直在骗人
+
+`usage()` 是 `head -18 "$0"`，而第 40 轮之后加的选项（`--wait-reg`、`--wait-sim`、`--sample-every`、`--fake-bearer`、`--dry-run`、`--qmap`）全在 18 行之后 ⇒ **`kebab-sim-day --help` 从来不出这些选项**。插卡当天有人想确认 `--qmap` 怎么拼，看到的是一份缺了六项的用法。改成打印整个文件头注释块（`sed -n '2,/^set -u/p'`），并加 4 条离线断言（`--help` 必须列出 `--qmap`/`--fake-bearer`/`--wait-sim`/`--sample-every`），测试总数 **85 项**。
 ## 5. ModemManager 已装并实测：控制面完全可用（2026-11-13）## 5. ModemManager 已装并实测：控制面完全可用（2026-11-13）
 
 §5 原来是「为什么本轮不装」。这一轮装了 —— 因为**无卡也能验证控制面**，而控制面是否可用决定插卡当天要不要走 MM。

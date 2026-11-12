@@ -59,6 +59,8 @@ sudo kebab-sim-day --fake-bearer --hold 20 --out /tmp/fake-bearer
 
 期望 `verdict: REHEARSAL`、`bearer_source: fake (no QMI, plumbing test)`、`addr: 10.99.13.2/30`、`sample_trend: N samples`，收尾 `addr=[] mtu=16384 state=down`。它验证的是**中段**：等地址 → 探针 → summary → 清理。假承载永远不会写出 `verdict: PASS`。
 
+第 57 轮实测（`--hold 6`）：`elapsed_s: 107`、`probes_s: 79`、`held: 6s`、`residue_after_stop: none`、`rc=1`、stderr 空。**两个数字要记住**：假承载（以及插卡当天「承载起来了但一个包都不通」）的探针本身要花 **约 80 s**（三个 ICMP 目标 + 两个 DNS + 三个 TCP 各自吃满超时），所以 `--hold 6` 也要跑近两分钟；`elapsed_s`/`probes_s` 就是用来分辨「时间花在按住上还是花在探针上」。
+
 ## 0.5 文档与设备对一遍（可选，30 秒）
 
 `sudo python3 /usr/local/lib/kebab-modem/runbook-lint.py <文档>` 会把文档里所有 `kebab-*` 命令抽出来，逐个确认程序/子命令存在、以及已安装的 `kebab-*` 单元的 `ExecStart` 真的可执行。**文档漂移在插卡当天代价最高**，而读一遍页面证明不了它（§4.31 抓到过：某单元的安装步骤只装了 `.service`、没装它启动的脚本）。
@@ -226,7 +228,7 @@ sudo ip addr flush dev mhi_hwip0 && sudo ip link set mhi_hwip0 down
 - `nas:` —— 起承载那一刻的 RF 上下文：`rat=gsm plmn=460/0 state=limited sig=RSSI=-95 dBm`。**`rat=` 不是 `lte` 就说明还没上 LTE**（这时 WDS 报 error 14 与 APN 无关），原始 qmicli 输出在证据目录的 `nas.txt`（[数据面文档](sdx55-modemmanager-20261112.md) §4.25）；
 - `serving_before_data:` —— 拉起承载**之前**那一刻的注册状态（`registered` / `not-registered-searching` / …）。它是「error 14 到底是没注册还是 APN 错」的分水岭：这里不是 `registered*` 而 `next_steps` 却说改 APN，说明脚本判断有 bug。
 
-分支逻辑本身有离线测试：`sudo sh /usr/local/lib/kebab-modem/test-sim-day.sh`（无卡也能跑，**81 项断言**：`derive_next` 8 项、QMAP 闸门 5 项、`registration_ok` 5 项、`sim_slots_from_status` 4 项、`wait_sim_default` 1 项、`bearer_ok` 4 项、`sample_trend` 4 项、NAS 解析 6 项、`wedge_dump` 5 项、`probe_bearer` 2 项、`gw_candidate` 3 项、`elapsed_since`/`first_epoch` 6 项、modem 消失 2 项、`residue_cleanup` 3 项、locale 1 项、链路名回读 2 项）。
+分支逻辑本身有离线测试：`sudo sh /usr/local/lib/kebab-modem/test-sim-day.sh`（无卡也能跑，**85 项断言**：`derive_next` 8 项、QMAP 闸门 5 项、`registration_ok` 5 项、`sim_slots_from_status` 4 项、`wait_sim_default` 1 项、`bearer_ok` 4 项、`sample_trend` 4 项、NAS 解析 6 项、`wedge_dump` 5 项、`probe_bearer` 2 项、`gw_candidate` 3 项、`elapsed_since`/`first_epoch` 6 项、modem 消失 2 项、`residue_cleanup` 3 项、locale 1 项、链路名回读 2 项）。
 
 ## 4.5 如果数据起来后 wedge（raw-IP 的已知故障形态）
 

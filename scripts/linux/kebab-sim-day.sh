@@ -365,8 +365,13 @@ residue_cleanup() {
   fi
   printf "%s" "$_msg"
 }
+# Probe wall time: on a dead bearer every probe burns its own timeout (five
+# targets x their timeouts), so a 8 s hold can take ~100 s.  Report it instead
+# of leaving the operator to guess where the time went.
+P_START=
 probe_bearer() {
   _if=$IFACE; _out=$OUT
+  [ -n "$P_START" ] || P_START=$(date +%s)
   _label=${1:-}
   if [ -z "$_label" ]; then
     : >"$_out/probes.txt"
@@ -455,6 +460,7 @@ probe_bearer() {
   fi
   _ping_after=$(grep -c ' 0% packet loss' "$_out/probes.txt" 2>/dev/null || true)
   if [ "${_ping_after:-0}" -gt "${_ping_before:-0}" ] 2>/dev/null; then PING_OK=yes; else PING_OK=no; fi
+  [ -n "$P_START" ] && PROBES_S=$(( $(date +%s) - P_START ))
 }
 # Sourcing with SIMDAY_LIB_ONLY=1 defines derive_next()/qmap_gate() only; it runs nothing.
 if [ "${SIMDAY_LIB_ONLY:-0}" = 1 ]; then
@@ -483,7 +489,10 @@ TOOL=$LIB/kebab-qmi-wds.py
 STATUS=/usr/local/sbin/kebab-modem-status
 
 usage() {
-  head -18 "$0" | cut -c3-
+  # The whole header: every option added after round 40 (--wait-reg,
+  # --wait-sim, --sample-every, --fake-bearer, --qmap) lives past line 18, and
+  # `head -18` silently omitted them from --help (measured, round 57).
+  sed -n '2,/^set -u/p' "$0" | sed '$d' | cut -c3-
 }
 
 while [ $# -gt 0 ]; do
@@ -509,6 +518,7 @@ TS=$(date -u +%Y%m%dT%H%M%SZ)
 [ -n "$OUT" ] || OUT=/srv/modem-$(date -u +%Y%m%d)/simday-$TS
 mkdir -p "$OUT" || { echo "cannot create $OUT" >&2; exit 2; }
 OUT=$(cd "$OUT" && pwd)
+WALL_START=$(date +%s)
 
 # Defined here, before anything that logs: three separate blocks (disk space,
 # MTU baseline, the single-instance lock) all log early, and an early `log` call
@@ -979,6 +989,8 @@ fi
 {
   printf 'verdict: %s\n' "$VERDICT"
   printf 'reason: %s\n' "$REASON"
+  printf 'elapsed_s: %s\n' "$([ -n "${WALL_START:-}" ] && echo $(( $(date +%s) - WALL_START )) || echo unknown)"
+  printf 'probes_s: %s\n' "${PROBES_S:-0}"
   printf 'bearer_source: %s\n' "$([ "${FAKE:-0}" = 1 ] && echo 'fake (no QMI, plumbing test)' || echo real)"
   printf 'sim_present: %s\n' "$SIM"
   printf 'sim_slots_at_start: %s\n' "${SIM_SLOTS_AT_START:-unknown}"

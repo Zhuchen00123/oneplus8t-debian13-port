@@ -302,6 +302,16 @@ _rt2="default via 10.99.13.1 dev mhi_hwip0 metric 1000"
 gcheck "a bearer default route is counted" "1" "$(bearer_default_route "$_rt2" mhi_hwip0)"
 gcheck "no bearer default route on a normal box" "0" "$(bearer_default_route "$_rt" mhi_hwip0)"
 
+# --help must list every option: usage() used to be `head -18`, which silently
+# cut off --qmap/--fake-bearer/--wait-sim/--sample-every (measured, round 57).
+_help=$(sh "$SCRIPT" --help 2>&1)
+for _opt in --qmap --fake-bearer --wait-sim --sample-every; do
+  case "$_help" in
+    *"$_opt"*) pass=$((pass + 1)); printf 'ok   help lists %s\n' "$_opt" ;;
+    *) fail=$((fail + 1)); printf 'FAIL help does not list %s\n' "$_opt" ;;
+  esac
+done
+
 # bearer_lost(): the difference between "never worked" and "worked then died".
 # Only the second one is the QMAP case, so it must not be folded into the first.
 gcheck "bearer_lost(no,no)" no "$(bearer_lost no no)"
@@ -475,5 +485,5 @@ if [ -z "$got" ]; then pass=$((pass + 1)); printf 'ok   %s\n' "an empty qmap log
 else fail=$((fail + 1)); printf 'FAIL %s\n  want: empty\n  got: %s\n' "an empty qmap log yields no name (arming skipped)" "$got"; fi
 rm -f "$TMPLOG"
 
-[ "$pass" -ge 81 ] || { echo "FAIL: expected 81 checks" >&2; exit 1; }
+[ "$pass" -ge 85 ] || { echo "FAIL: expected 85 checks" >&2; exit 1; }
 echo "PASS"
