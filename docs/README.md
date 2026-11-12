@@ -8,6 +8,8 @@ MC最新修复交接在 `local/worktree-mc/mc/FIXES-20261005.md`；`local/ssh443
 
 ## 当前入口
 
+- [11/12 音频适配：流程设计](audio-agent-workflow-20261112.md)与[完整执行 prompt](audio-agent-autopilot-prompt-20261112.md)；执行记录见[第五轮·采集侧与双向端到端](audio-agent-execution-round5-20261112.md)、[第四轮·PipeWire 桌面栈与播放](audio-agent-execution-round4-20261112.md)、[第三轮·左声道与 UCM](audio-agent-execution-round3-20261112.md)。保留 r4、未重启未刷写；扬声器与麦克风在裸 ALSA 与 PipeWire 两条路径上均有声学证据，`unattended_ready` 仍 fail（功放 stage-1 DSP-bypass，无行程/热保护）。
+
 - [11/10 项目目的扩展：主线内核 Android 分析与自动化实验环境（Waydroid）路线图](android-lab-roadmap-20261110.md)
 
 - [11/10 Android 实验环境 P0 执行计划（待审核，含硬件矩阵与 GPS 方案）](android-lab-p0-plan-20261110.md)
