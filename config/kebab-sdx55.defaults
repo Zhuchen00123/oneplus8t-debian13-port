@@ -1,0 +1,7 @@
+# SDX55 operating-mode policy applied by kebab-sdx55-modem.service.
+# auto    -> online only when a SIM card is present (default)
+# online  -> always bring the radio online
+# offline -> always keep the radio offline (GNSS still works)
+# none    -> leave the firmware default
+KEBAB_SDX55_ONLINE=auto
+

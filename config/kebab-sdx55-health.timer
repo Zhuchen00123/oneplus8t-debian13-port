@@ -1,0 +1,11 @@
+[Unit]
+Description=kebab: periodic SDX55 health check
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=kebab-sdx55-health.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=kebab: make ModemManager notice the SDX55 once it is up
+Documentation=file:///usr/local/lib/kebab-mm/kebab-mm-restart-once.sh
+After=ModemManager.service kebab-sdx55-modem.service
+Wants=ModemManager.service
+ConditionPathExists=/sys/bus/pci/devices/0002:01:00.0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Nice=10
+ExecStart=/usr/local/lib/kebab-mm/kebab-mm-restart-once.sh
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

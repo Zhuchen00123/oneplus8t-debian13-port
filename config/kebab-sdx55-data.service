@@ -1,0 +1,24 @@
+[Unit]
+Description=Kebab SDX55 cellular data (raw-IP WDS session)
+Documentation=file:///usr/local/lib/kebab-modem/README.md
+# Only meaningful once a SIM is inserted and the modem has registered.
+# Deliberately NOT enabled by default: without a card "WDS Start Network"
+# returns error 14 (call failed) and this unit would just flap.
+After=kebab-sdx55-modem.service
+Wants=kebab-sdx55-modem.service
+
+[Service]
+Type=simple
+# profile 3 is the modem's own default 3GPP profile (CMNET, see
+# `kebab-qmi-wds.py info` / `qmicli --wds-get-profile-list=3gpp`).
+# Use --apn <APN> instead if you prefer; add --route to install a default
+# route via the bearer (off by default so the server uplink stays intact).
+ExecStart=/usr/local/lib/kebab-modem/kebab-qmi-wds.py data-up --profile 3
+Restart=on-failure
+RestartSec=30
+# data-up cleans up on SIGTERM: stop the call, remove the address, link down.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

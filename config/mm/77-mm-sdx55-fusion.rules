@@ -1,0 +1,30 @@
+# kebab: present the external SDX55 as one ModemManager device.
+#
+# Adapted from royka1/Xiaomi-Apollo-pmOS-packages (same SM8250 + external SDX55
+# over PCIe/MHI). PCI ids verified on this board:
+#   0002:01:00.0  vendor 0x17cb  device 0x0306  class 0xff0000
+#
+# Why this is needed: ModemManager's stock qcom-soc rules only match the data
+# drivers of SoC-internal modems (bam-dmux, ipa, qcom-q6v5-mss). kebab's ports
+# are mhi_net (net) and mhi_wwan_ctrl (wwan), so without these tags MM never
+# claims the device at all. The QRTR node already carries ID_MM_QCOM_SOC=1 and
+# the qcom-soc physdev UID, so tagging the kernel ports with the same UID is
+# what collapses the QRTR control plane and the mhi_net data plane into a
+# single MM device.
+
+ACTION!="add|change|move|bind", GOTO="mm_sdx55_kebab_end"
+
+# wwan ports (DIAG / MBIM / QMI) on the SDX55 PCIe modem
+SUBSYSTEM=="wwan", ATTRS{vendor}=="0x17cb", ATTRS{device}=="0x0306", ENV{ID_MM_QCOM_SOC}="1", ENV{ID_MM_PHYSDEV_UID}="qcom-soc"
+
+# The raw MHI QMI channel does not answer on this firmware: measured on
+# 2026-11-12, 'qmicli -d /dev/wwan0qmi0 --dms-get-manufacturer' times out after
+# 10 s. The working QMI path is QRTR over the IPCR channel, so tell MM to skip
+# this port instead of burning its probe timeout on it.
+SUBSYSTEM=="wwan", KERNEL=="*qmi*", ATTRS{vendor}=="0x17cb", ATTRS{device}=="0x0306", ENV{ID_MM_PORT_IGNORE}="1"
+
+# MHI net ports (IP_HW0 / IP_SW0) are orphaned in sysfs; match them by name.
+SUBSYSTEM=="net", KERNEL=="mhi_hwip*", ENV{ID_MM_CANDIDATE}="1", ENV{ID_MM_QCOM_SOC}="1", ENV{ID_MM_PHYSDEV_UID}="qcom-soc"
+SUBSYSTEM=="net", KERNEL=="mhi_swip*", ENV{ID_MM_CANDIDATE}="1", ENV{ID_MM_QCOM_SOC}="1", ENV{ID_MM_PHYSDEV_UID}="qcom-soc"
+
+LABEL="mm_sdx55_kebab_end"

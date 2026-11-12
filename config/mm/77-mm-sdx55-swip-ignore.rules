@@ -1,0 +1,21 @@
+# ModemManager: do not let the idle IP_SW0 netdev compete with IP_HW0 for bearers
+#
+# This board exposes TWO net ports from mhi_net:
+#   mhi_swip0  <- MHI channel 46/47  (IP_SW0),  ifindex 5
+#   mhi_hwip0  <- MHI channel 100/101 (IP_HW0), ifindex 6
+#
+# ModemManager picks a data port with mm_base_modem_peek_best_data_port(),
+# which returns the FIRST not-connected port of the requested type.  That is
+# enumeration order, not "the channel the modem actually uses": IP_SW0 is
+# registered before IP_HW0, so a bearer could be created on mhi_swip0 and then
+# silently carry nothing.
+#
+# Everything we have measured says the data path is IP_HW0: the WDA data format
+# is queried/applied on endpoint pcie/4, kebab-qmi-wds.py binds and starts the
+# call on mhi_hwip0, and kebab-modem-tx-probe proves packets reach the IP_HW0
+# UL ring.  So mark the SW port as ignored for MM and make the choice
+# deterministic.
+#
+# Applied after 77-mm-sdx55-fusion.rules (udev runs these files in lexical
+# order), so the ignore flag wins over the candidate tagging there.
+SUBSYSTEM=="net", KERNEL=="mhi_swip*", ENV{ID_MM_PORT_IGNORE}="1"

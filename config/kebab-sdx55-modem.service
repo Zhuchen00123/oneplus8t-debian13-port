@@ -1,0 +1,28 @@
+[Unit]
+Description=Kebab SDX55 external modem bring-up (MHI + remote EFS)
+Documentation=file:///usr/local/lib/kebab-modem/bringup.sh
+After=systemd-udevd.service network.target
+Wants=systemd-udevd.service
+ConditionPathExists=/sys/bus/pci/devices/0002:01:00.0
+# The modem is powered by the AP: never leave it half-initialised on shutdown.
+Before=kebab-gps.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/kebab-sdx55
+ExecStart=/usr/local/lib/kebab-modem/bringup.sh
+# Deliberately only stops the remote-EFS daemon. Unloading mhi_pci_generic here
+# was measured to leave the modem without a QRTR node until the next reboot
+# (qcom_mhi_qrtr does not re-register the endpoint after a child module reload),
+# so a "systemctl restart" on this unit must stay a no-op for the MHI stack.
+# Full teardown: /usr/local/lib/kebab-modem/teardown.sh (then reboot to restore).
+ExecStop=/bin/sh -c 'systemctl stop mhi-efs-sync.service || true'
+TimeoutStartSec=150
+TimeoutStopSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,8 @@
+# kebab: never let ModemManager touch the SDX55 remote-EFS channel.
+#
+# The EFS port is the modem's remote-storage transport, not a control port.
+# ModemManager probes unknown wwan ports with AT strings; the SDX55's rmts_srv
+# receives that as garbage, floods its F3 log and the firmware ERRFATALs.
+# This board already hit exactly that failure (2026-11-10), so this rule is a
+# hard prerequisite for installing ModemManager, not an optimisation.
+SUBSYSTEM=="wwan", KERNEL=="wwan0efs0", ENV{ID_MM_PORT_IGNORE}="1"

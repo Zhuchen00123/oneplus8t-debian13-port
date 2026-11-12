@@ -1,0 +1,8 @@
+[Unit]
+Description=kebab: SDX55 health check (publish state, keep the modem ONLINE)
+Documentation=file:///usr/local/lib/kebab-modem/health.sh
+
+[Service]
+Type=oneshot
+Nice=10
+ExecStart=/usr/local/lib/kebab-modem/health.sh
