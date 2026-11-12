@@ -63,6 +63,26 @@ sudo kebab-sim-day --fake-bearer --hold 20 --out /tmp/fake-bearer
 
 `sudo python3 /usr/local/lib/kebab-modem/runbook-lint.py <文档>` 会把文档里所有 `kebab-*` 命令抽出来，逐个确认程序/子命令存在、以及已安装的 `kebab-*` 单元的 `ExecStart` 真的可执行。**文档漂移在插卡当天代价最高**，而读一遍页面证明不了它（§4.31 抓到过：某单元的安装步骤只装了 `.service`、没装它启动的脚本）。
 
+## 0.8 开机时间线（第 56 轮实测，带 `/etc/kebab-modem-sim-expected`）
+
+插卡当天按这个对照，**慢不等于坏**：
+
+```
+[  5 s] modprobe mhi / mhi_sahara_modem / mhi_wwan_ctrl / mhi_pci_generic ok
+[ 15 s] modem QMI ready (qrtr node 3)
+[ 30 s] [sim] no SIM ... skipping        <- 无卡时 12 s 慢卡等待满
+[ 31 s] operating mode set to online
+[ 43 s] kebab-sdx55-modem.service Finished (Result=success)
+[ 70 s] GNSS 开始出星（先十几颗，再涨到 20+）
+[ ~90 s] mmcli -L 稳定出现 Modem/0
+```
+
+三条读日志的规矩：
+
+1. **看 `journalctl -o short-monotonic`**：这台机器没有 RTC，开机后时钟会向前跳几十分钟，墙钟时间不可比。
+2. MM 开机后前 10 s 会连报 `port qrtr3 timed out`，之后恢复正常——那是启动竞态，`qmicli`/`sim-day` 不受影响。
+3. 有卡时开机可能比上表多 12–24 s（两次 `sim-provision` 等卡），**这是设计**，为了不放过 MCFG 的 15 s/24 s 窗口。
+
 ## 1. 开机后 60 秒内的检查
 
 ```sh

@@ -1766,6 +1766,63 @@ bearer_default_route: no
 | 分支测试 | **79 passed, 0 failed + 2 项链路名回读 = 81 项 PASS** |
 
 **给插卡当天的建议**：先用 `--dry-run` 看那条命令，再加 `--route`；加完立刻 `ip route get 223.5.5.5` 确认走的还是 **usb0/wlan0**（`metric 1000` 的效果），只有在**确实想**让蜂窝当出口时才 `--route-metric 50` 之类地手动压过。
+## 4.39 插卡前的一次「完整开机链彩排」：时间线、GNSS、MM，以及一个会骗人的时钟
+
+插卡当天第一件事就是重启。重启后链路能不能自己回来，比任何单点功能都重要，所以第 56 轮**在无卡状态下按插卡当天完全相同的配置做了一次重启彩排**：`/etc/kebab-modem-sim-expected` 存在（`sim-provision` 会等慢卡 12 s），开机链、GNSS、ModemManager、`sim-day` 全部参与。
+
+### 4.39.1 实测时间线（以 kernel monotonic 为准）
+
+```
+[  5.4 s] modprobe mhi / mhi_sahara_modem / mhi_wwan_ctrl / mhi_pci_generic 全部 ok
+[ 14.8 s] modem QMI ready after 9s (qrtr node 3)
+[ 30.5 s] [sim] no SIM card present in either slot; skipping      <- 12 s 慢卡等待满
+[ 30.7 s] operating mode set to online (policy=auto, sim_cards_present=0)
+[ 43.3 s] done (qrtr node 3)  ->  systemd: Finished, Result=success
+[  ~70 s] GNSS 12 颗（继续涨；~90 s 21 颗）
+[  ~70 s] MM 已创建 Modem/0 但仍在初始化；~90 s 才在 `mmcli -L` 里稳定出现
+```
+
+四条可复现的事实：
+
+1. **带慢卡标志开机会比平时多 12–24 s**（两次 `sim-provision` 各等一次），换来「慢卡不会错过 MCFG 的 15 s/24 s 窗口」。插卡当天不要因为开机慢就以为卡坏了。
+2. 单元结束后 **`Result=success`**，`mhi1`/`mhi_hwip0`/QRTR node 3 全部在位，`dmesg errfatal|device died = 0`，`pstore records=0`。
+3. 重启后同一次启动里跑 `kebab-sim-day`：`rc=1`（无卡）、`sim_wait: 20s`、`nas: rat=gsm plmn=460/0 state=limited sig=RSSI=-93 dBm`、`diag: bearer-down`、`mm: active failed sim-missing --`、`default_routes: usb0/100 wlan0/600`、`bearer_default_route: no`、`residue_after_stop: none`、包自验 ok。
+4. 接口零残留：`addr=[] mtu=16384 state=down`，两条上联默认路由原样。
+
+### 4.39.2 一个会骗人的时钟（重要，读日志时必用 monotonic）
+
+这台机器**没有可用 RTC**，开机后 systemd-timesyncd 一拿到时间就把系统钟**向前跳了 34 分钟**。于是同一次启动的 journal 会出现这种「不可能」的时间：
+
+```
+Nov 12 08:08:55 ... modem QMI ready after 9s      (跳变前)
+Nov 12 08:09:10 ... operating mode set to online  (跳变前)
+Nov 12 08:43:20 ... Finished kebab-sdx55-modem     (跳变后，实际只过了 43 s)
+```
+
+**结论：在这台机器上比较「开机用了多久」「两个事件谁先」，一律看 `journalctl -o short-monotonic` 的 `[ 秒数 ]`，不要看墙钟。** 同样地，`sim-day` 目录名里的时间戳与 journal 的墙钟可能差几十分钟，别据此判断「证据包是上一次跑的还是这次的」——用 `boot_id`/`uptime` 对齐（`kebab-modem-status` 打印 `boot_id`）。
+
+### 4.39.3 ModemManager 在开机时会「先超时几次」，但最终结论正确
+
+本次彩排里 MM 的日志：
+
+```
+[modem0] port qrtr3 timed out 2 consecutive times   ... 一直到 5 次
+[modem0] state changed (unknown -> locked)
+[modem0] modem couldn't be initialized: Couldn't check unlock status:
+         QMI operation failed: GW primary session index unknown   <- 无卡的正确形态
+[modem0] state changed (locked -> failed)
+[device qcom-soc] error initializing: Modem in failed state: sim-missing
+```
+
+即：**MM 启动后约 10 s 内 QMI 不响（连续 5 次 1 s 超时），随后恢复正常并给出 `sim-missing`**。判读要点：
+
+- 这是**启动竞态**，不是 modem 故障：同一时刻用 `qmicli -d qrtr://3 --dms-get-operating-mode` 一直能拿到 `online`，`sim-day`（自带 QMI 客户端）全程正常。
+- **`sim-day` 不依赖 MM**，所以插卡当天 MM 这次超时不影响数据面验证；`summary.txt` 的 `mm:` 行只是旁证。
+- 若确实想用 MM 那条路（`mmcli --simple-connect`），先 `sudo systemctl restart ModemManager`，再等 ~40 s（MM 重新发现 modem 需要约 30 s），必要时 `sudo mmcli --scan-modems` 催一下。
+
+### 4.39.4 彩排结论
+
+**开机链在「插卡当天」的配置下自洽**：modem 15 s 起 QMI、31 s online、43 s 单元结束并 `success`，GNSS 与 MM 随后就位，`sim-day` 立刻可用，全程零残留、零 errfatal。插卡那天唯一的新变量就是那张卡。
 ## 5. ModemManager 已装并实测：控制面完全可用（2026-11-13）## 5. ModemManager 已装并实测：控制面完全可用（2026-11-13）
 
 §5 原来是「为什么本轮不装」。这一轮装了 —— 因为**无卡也能验证控制面**，而控制面是否可用决定插卡当天要不要走 MM。
