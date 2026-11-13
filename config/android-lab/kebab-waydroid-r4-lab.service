@@ -1,0 +1,22 @@
+[Unit]
+Description=Owned r4 Waydroid laboratory (manual runtime installation only)
+
+[Service]
+Type=dbus
+BusName=id.waydro.Container
+ExecStart=/usr/bin/python3 /srv/waydroid-r4-lab-20261112/bin/waydroid_lab_launcher.py container start
+Delegate=yes
+CPUQuota=200%
+MemoryHigh=2500M
+MemoryMax=3G
+MemorySwapMax=0
+TasksMax=2048
+RuntimeMaxSec=1800
+TimeoutStopSec=45
+Restart=no
+ProtectHome=yes
+ProtectSystem=full
+UMask=0077
+
+# No [Install]: place under /run/systemd/system and start explicitly.
+# Dedicated Wayland socket is bind-aliased under /srv, never expose /run/user.

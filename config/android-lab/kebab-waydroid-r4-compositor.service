@@ -1,0 +1,14 @@
+[Unit]
+Description=Independent headless FD650 Wayland compositor for r4 Android lab
+
+[Service]
+User=debian
+Group=debian
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/usr/bin/weston --backend=headless --renderer=gl --width=720 --height=1280 --socket=waydroid-lab --idle-time=0 --config=/srv/waydroid-r4-user-20261112/weston.ini --log=/srv/waydroid-r4-user-20261112/logs/weston.log
+CPUQuota=100%
+MemoryMax=512M
+RuntimeMaxSec=1800
+Restart=no
+
+# Manual runtime-only installation, never enable.

@@ -1,0 +1,435 @@
+{
+  "kernel": "7.2.0-kebab-debian13-r4-venus+",
+  "repositories": [
+    {
+      "suite": "trixie",
+      "inrelease_sha256": "0584fba32e13e0ab8285fb16c27adea1ec03a73669c18702821094fd6ca86675",
+      "index_sha256": "be16b37b2f740f066ea93d35d56f04f94d63693e5a3eb421b052bf86fae75bcd"
+    },
+    {
+      "suite": "trixie-backports",
+      "inrelease_sha256": "d8dfb4beddf98bf7973d5574ed3d5cc3d2a9edbe2ac97f4d0f22fb3e8ee5be47",
+      "index_sha256": "07f643fcb9855d4f569cb47927d27ecaaacc8d7e01b92d18b64cced6724fad1c"
+    },
+    {
+      "suite": "trixie-security",
+      "inrelease_sha256": "2bc11d4df520005e2f2e47a16aa332f1754bf2b6bb56f184050dc466df5ad3db",
+      "index_sha256": "a1140e969c04fcd2f249b520976a5492f10b8941cfcef47658405dd035a5c998"
+    }
+  ],
+  "packages": [
+    {
+      "package": "android-liblog",
+      "version": "1:34.0.5-12",
+      "filename": "pool/main/a/android-platform-tools/android-liblog_34.0.5-12_arm64.deb",
+      "sha256": "7ce80b00c4592d0021ce2973d922f1c014fbbe33a289690732dfb556bfbbec96",
+      "size": 39088,
+      "installed_size_kib": 114
+    },
+    {
+      "package": "android-libbase",
+      "version": "1:34.0.5-12",
+      "filename": "pool/main/a/android-platform-tools/android-libbase_34.0.5-12_arm64.deb",
+      "sha256": "1b1460faa12cf04611cb58ff02808608fd2e3be642b72752a189c4ab84112a20",
+      "size": 94316,
+      "installed_size_kib": 369
+    },
+    {
+      "package": "android-libboringssl",
+      "version": "14.0.0+r45-2",
+      "filename": "pool/main/a/android-platform-external-boringssl/android-libboringssl_14.0.0+r45-2_arm64.deb",
+      "sha256": "6dd20f2d7ad3cdff7c80d8076feea6258c8e9f0a0a23ad85d447eeb3e7f11c36",
+      "size": 567612,
+      "installed_size_kib": 1881
+    },
+    {
+      "package": "android-libcutils",
+      "version": "1:34.0.5-12",
+      "filename": "pool/main/a/android-platform-tools/android-libcutils_34.0.5-12_arm64.deb",
+      "sha256": "683ec66783e0d54e91bee661af7f758528b2c85163d585ae936d1cfd5bf8d661",
+      "size": 39940,
+      "installed_size_kib": 125
+    },
+    {
+      "package": "android-libziparchive",
+      "version": "1:34.0.5-12",
+      "filename": "pool/main/a/android-platform-tools/android-libziparchive_34.0.5-12_arm64.deb",
+      "sha256": "fe92ec46af11b26bcb51d107d7e016fdaa9fa60186bcda7289ada0be05e67b11",
+      "size": 48708,
+      "installed_size_kib": 148
+    },
+    {
+      "package": "libprotobuf32t64",
+      "version": "3.21.12-11+deb13u1",
+      "filename": "pool/main/p/protobuf/libprotobuf32t64_3.21.12-11+deb13u1_arm64.deb",
+      "sha256": "51bf38fcca667be0deef732a903563ee6ffa9bfc04433310c2c49e4c92d06b09",
+      "size": 858432,
+      "installed_size_kib": 3496
+    },
+    {
+      "package": "android-udev-rules",
+      "version": "0~20250314+ds-5",
+      "filename": "pool/main/a/android-udev-rules/android-udev-rules_0~20250314+ds-5_all.deb",
+      "sha256": "e4c0cebcac41b83f3d4ebbf66344fecfdc0f3fce717ea2d0b6997df151903191",
+      "size": 11316,
+      "installed_size_kib": 53
+    },
+    {
+      "package": "adb",
+      "version": "1:34.0.5-12",
+      "filename": "pool/main/a/android-platform-tools/adb_34.0.5-12_arm64.deb",
+      "sha256": "1c9bc121a1d30a5c86b9624da3743e240266014f5030ecd463208cdb31d83d50",
+      "size": 251232,
+      "installed_size_kib": 772
+    },
+    {
+      "package": "libnfnetlink0",
+      "version": "1.0.2-3",
+      "filename": "pool/main/libn/libnfnetlink/libnfnetlink0_1.0.2-3_arm64.deb",
+      "sha256": "327e3137c7a454a1fcd0eb1369745a94c3170dc075ff9d0d438d9470526ee298",
+      "size": 13888,
+      "installed_size_kib": 83
+    },
+    {
+      "package": "libnetfilter-conntrack3",
+      "version": "1.1.0-1",
+      "filename": "pool/main/libn/libnetfilter-conntrack/libnetfilter-conntrack3_1.1.0-1_arm64.deb",
+      "sha256": "25593af074c89564f903aa34acb7828a47171e232dfb4ea3457f5319c98d0a4c",
+      "size": 39704,
+      "installed_size_kib": 152
+    },
+    {
+      "package": "dnsmasq-base",
+      "version": "2.91-1+deb13u2",
+      "filename": "pool/main/d/dnsmasq/dnsmasq-base_2.91-1+deb13u2_arm64.deb",
+      "sha256": "9dd677936f718aeb7afc30d064c7116a7057257f94a522e5ce22f36d1834e5e4",
+      "size": 483428,
+      "installed_size_kib": 1153
+    },
+    {
+      "package": "libaml0t64",
+      "version": "0.3.0-3",
+      "filename": "pool/main/a/aml/libaml0t64_0.3.0-3_arm64.deb",
+      "sha256": "39c4b5e92ea0000b45ff77061d440937c91b55ae736df4a318f4e95d362d8b98",
+      "size": 10824,
+      "installed_size_kib": 84
+    },
+    {
+      "package": "libjson-c5",
+      "version": "0.18+ds-1",
+      "filename": "pool/main/j/json-c/libjson-c5_0.18+ds-1_arm64.deb",
+      "sha256": "f631829107005b15c2ca5c48ac74bc2df437c7eb608756eb865b147985f7bb45",
+      "size": 45216,
+      "installed_size_kib": 168
+    },
+    {
+      "package": "liburiparser1",
+      "version": "0.9.8+dfsg-2",
+      "filename": "pool/main/u/uriparser/liburiparser1_0.9.8+dfsg-2_arm64.deb",
+      "sha256": "5159450f4f1d14a4a604d9727e9291474b3bdd36952d32b28b9a6817913704dc",
+      "size": 42544,
+      "installed_size_kib": 163
+    },
+    {
+      "package": "libwinpr3-3",
+      "version": "3.15.0+dfsg-2.1+deb13u3",
+      "filename": "pool/main/f/freerdp3/libwinpr3-3_3.15.0+dfsg-2.1+deb13u3_arm64.deb",
+      "sha256": "c97d4bf5d4aaf7474424688b9a2192b87b9a45f7d8f47595719b540659765f64",
+      "size": 336860,
+      "installed_size_kib": 1510
+    },
+    {
+      "package": "libfreerdp3-3",
+      "version": "3.15.0+dfsg-2.1+deb13u3",
+      "filename": "pool/main/f/freerdp3/libfreerdp3-3_3.15.0+dfsg-2.1+deb13u3_arm64.deb",
+      "sha256": "9d7d3c47b0e3b781e2e1c743fdb7786746fa8604b092190fb6a8c3e3f5889028",
+      "size": 662264,
+      "installed_size_kib": 2193
+    },
+    {
+      "package": "libfreerdp-server3-3",
+      "version": "3.15.0+dfsg-2.1+deb13u3",
+      "filename": "pool/main/f/freerdp3/libfreerdp-server3-3_3.15.0+dfsg-2.1+deb13u3_arm64.deb",
+      "sha256": "fc122a69c6c1c91cb2b75f7d6db427bb467ac74c86ea364b3130274dc48a3d71",
+      "size": 123312,
+      "installed_size_kib": 427
+    },
+    {
+      "package": "libglibutil1",
+      "version": "1.0.83-1~bpo13+1",
+      "filename": "pool/main/libg/libglibutil/libglibutil1_1.0.83-1~bpo13+1_arm64.deb",
+      "sha256": "836c86a48107885036ccfcf3604eea2f76e280332afd2f5b6091a4ef81f9cc2a",
+      "size": 28804,
+      "installed_size_kib": 154
+    },
+    {
+      "package": "libgbinder1",
+      "version": "1.1.54-1~bpo13+1",
+      "filename": "pool/main/libg/libgbinder/libgbinder1_1.1.54-1~bpo13+1_arm64.deb",
+      "sha256": "b24ca333b3f9428a99facace6a6fea16679c6228014d88c08d7d0e3730bafa48",
+      "size": 56688,
+      "installed_size_kib": 227
+    },
+    {
+      "package": "libgstreamer1.0-0",
+      "version": "1.26.2-2",
+      "filename": "pool/main/g/gstreamer1.0/libgstreamer1.0-0_1.26.2-2_arm64.deb",
+      "sha256": "77d44e8bc93793f815ea7b8cdb9c1b0b0bf6fd5797e2e69a7ef95bb37f249a86",
+      "size": 1294408,
+      "installed_size_kib": 5455
+    },
+    {
+      "package": "liborc-0.4-0t64",
+      "version": "1:0.4.41-1",
+      "filename": "pool/main/o/orc/liborc-0.4-0t64_0.4.41-1_arm64.deb",
+      "sha256": "e69ee68606246657ff19bfe13058a9aef177e686b97638728f9e0e911af07680",
+      "size": 170796,
+      "installed_size_kib": 887
+    },
+    {
+      "package": "libgstreamer-plugins-base1.0-0",
+      "version": "1.26.2-1+deb13u2",
+      "filename": "pool/updates/main/g/gst-plugins-base1.0/libgstreamer-plugins-base1.0-0_1.26.2-1+deb13u2_arm64.deb",
+      "sha256": "fa937f08b9a1c7f868a8c6e997b0d7205440bf85429ad1f9a87e62cba99c748e",
+      "size": 897596,
+      "installed_size_kib": 3981
+    },
+    {
+      "package": "liblxc1t64",
+      "version": "1:6.0.4-4+deb13u4",
+      "filename": "pool/main/l/lxc/liblxc1t64_6.0.4-4+deb13u4_arm64.deb",
+      "sha256": "5f0728e7d1f06ef8db169f42b36ffb4765e603a5dbb36d82189d5bf941410180",
+      "size": 359752,
+      "installed_size_kib": 1327
+    },
+    {
+      "package": "liblxc-common",
+      "version": "1:6.0.4-4+deb13u4",
+      "filename": "pool/main/l/lxc/liblxc-common_6.0.4-4+deb13u4_arm64.deb",
+      "sha256": "92df82bc0516731a8b4ef1e9162446c8fa76aed707e20faae5218522971bf719",
+      "size": 340976,
+      "installed_size_kib": 1230
+    },
+    {
+      "package": "libturbojpeg0",
+      "version": "1:2.1.5-4",
+      "filename": "pool/main/libj/libjpeg-turbo/libturbojpeg0_2.1.5-4_arm64.deb",
+      "sha256": "bfce9b617b7de2e313b701de3ad3611b764613820d690592e3e96f3a62f02cdf",
+      "size": 210680,
+      "installed_size_kib": 542
+    },
+    {
+      "package": "libneatvnc0",
+      "version": "0.9.1+dfsg-1",
+      "filename": "pool/main/n/neatvnc/libneatvnc0_0.9.1+dfsg-1_arm64.deb",
+      "sha256": "038fdf94ccadac9c915cbfd795a31c323f3962c42f89f22ab0233a5431449735",
+      "size": 67364,
+      "installed_size_kib": 216
+    },
+    {
+      "package": "libweston-14-0",
+      "version": "14.0.2-1",
+      "filename": "pool/main/w/weston/libweston-14-0_14.0.2-1_arm64.deb",
+      "sha256": "ba8447c7bfdb2be32300709164a86be95fcfc669287390263b5febf09e460cf0",
+      "size": 380596,
+      "installed_size_kib": 1769
+    },
+    {
+      "package": "lxc",
+      "version": "1:6.0.4-4+deb13u4",
+      "filename": "pool/main/l/lxc/lxc_6.0.4-4+deb13u4_arm64.deb",
+      "sha256": "cec8e5a4e76d1bf2350474966f785401097a78d1d6cec9e28da918b27e76d862",
+      "size": 394252,
+      "installed_size_kib": 2014
+    },
+    {
+      "package": "pkexec",
+      "version": "126-2",
+      "filename": "pool/main/p/policykit-1/pkexec_126-2_arm64.deb",
+      "sha256": "29a6271aee0fcb927a95dc77769e2bc80af07650c0868ac58486a1a37b5a5244",
+      "size": 24392,
+      "installed_size_kib": 97
+    },
+    {
+      "package": "python3-gbinder",
+      "version": "1.3.1+ds-1~bpo13+1",
+      "filename": "pool/main/p/python-gbinder/python3-gbinder_1.3.1+ds-1~bpo13+1_arm64.deb",
+      "sha256": "b123bbe8e2ae32e600a167bf623f24ad1c430144813e9d5fee94519c2ed10589",
+      "size": 121276,
+      "installed_size_kib": 487
+    },
+    {
+      "package": "waydroid",
+      "version": "1.6.3+ds-2~bpo13+1",
+      "filename": "pool/main/w/waydroid/waydroid_1.6.3+ds-2~bpo13+1_all.deb",
+      "sha256": "87a7bc92476d72819d96d1969c0edb890d7923f3e7a7ed7ad97cad1477125d58",
+      "size": 225720,
+      "installed_size_kib": 474
+    },
+    {
+      "package": "weston",
+      "version": "14.0.2-1",
+      "filename": "pool/main/w/weston/weston_14.0.2-1_arm64.deb",
+      "sha256": "712a752afbef1c0b75fd199ed2de87f9c225ffe4f03845bbf601add3df89a5a3",
+      "size": 874972,
+      "installed_size_kib": 6271
+    }
+  ],
+  "images": [
+    {
+      "datetime": 1790477549,
+      "filename": "lineage-20.0-20260927-VANILLA-waydroid_arm64-system.zip",
+      "id": "5fb8179ed4455f45919c5a2bfbfdd1591619295994ad321217f03bb1dcfc53a7",
+      "romtype": "VANILLA",
+      "size": 912267974,
+      "url": "https://sourceforge.net/projects/waydroid/files/images/system/lineage/waydroid_arm64/lineage-20.0-20260927-VANILLA-waydroid_arm64-system.zip/download",
+      "version": "20.0",
+      "kind": "system",
+      "metadata_url": "https://ota.waydro.id/system/lineage/waydroid_arm64/VANILLA.json",
+      "sha256": "5fb8179ed4455f45919c5a2bfbfdd1591619295994ad321217f03bb1dcfc53a7",
+      "fetched_utc": "2026-11-12T16:44:15.907376+00:00",
+      "extracted_bytes": 1994985472,
+      "extracted_sha256": "ba4da2882999bc09a63eab5f2b02a77cdce13df0b72b98fea58a4d7ccb125f4d"
+    },
+    {
+      "datetime": 1792664309,
+      "filename": "lineage-20.0-20261022-MAINLINE-waydroid_arm64-vendor.zip",
+      "id": "89d5fb9a5c977adcc9fc7755483d3762c397b9c8579524f9d1df052b51c83fb3",
+      "romtype": "MAINLINE",
+      "size": 147676229,
+      "url": "https://sourceforge.net/projects/waydroid/files/images/vendor/waydroid_arm64/lineage-20.0-20261022-MAINLINE-waydroid_arm64-vendor.zip/download",
+      "version": "20.0",
+      "kind": "vendor",
+      "metadata_url": "https://ota.waydro.id/vendor/waydroid_arm64/MAINLINE.json",
+      "sha256": "89d5fb9a5c977adcc9fc7755483d3762c397b9c8579524f9d1df052b51c83fb3",
+      "fetched_utc": "2026-11-12T16:39:32.543515+00:00",
+      "extracted_bytes": 421629952,
+      "extracted_sha256": "6dbf79ef655804c3f5d6eebbcac13108fe3bb8c2448bae4c04528a63920ff533"
+    }
+  ],
+  "tools": [
+    {
+      "name": "OpenJDK17U-jdk_x64_windows_hotspot_17.0.21_9.zip",
+      "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.21%2B9/OpenJDK17U-jdk_x64_windows_hotspot_17.0.21_9.zip",
+      "sha256": "98518ecf554465057ee5509462631deeee374bc368c12a411d225cd29381f84b",
+      "bytes": 191117380
+    },
+    {
+      "name": "build-tools_r35_windows.zip",
+      "url": "https://dl.google.com/android/repository/build-tools_r35_windows.zip",
+      "sha256": "5753c679a1b90bcf6fbc9945a2ce39dfb9e74f1df0831a1e1866ae5b594326f0",
+      "bytes": 59878107
+    },
+    {
+      "name": "android-4.1.1.4.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/google/android/android/4.1.1.4/android-4.1.1.4.jar",
+      "sha256": "84072541cbb711eff89f7277100ff854929a446dba7ceb1b195c340e0b4fd3cb",
+      "bytes": 12947757
+    },
+    {
+      "name": "frida-16.7.19-cp37-abi3-manylinux2014_aarch64.whl",
+      "url": "https://files.pythonhosted.org/packages/ff/af/5d974433326b2a3dd3240973a04c98f3a897c49c166dfb298e3d00cd9678/frida-16.7.19-cp37-abi3-manylinux2014_aarch64.whl",
+      "sha256": "cff82e459b3c4edc6af4336280b2b1d52774387a9d6f614d9e4ed5eb66e21a67",
+      "bytes": 15476964
+    },
+    {
+      "name": "frida-server-16.7.19-android-arm64.xz",
+      "url": "https://github.com/frida/frida/releases/download/16.7.19/frida-server-16.7.19-android-arm64.xz",
+      "sha256": "36ec3d7474b1ac69c4e7ec985612fae771d37ffb71cb94858bc6978f69f5e581",
+      "bytes": 15972776
+    },
+    {
+      "kind": "strace",
+      "Package": "strace",
+      "Version": "6.13+ds-1",
+      "Filename": "pool/main/s/strace/strace_6.13+ds-1_arm64.deb",
+      "SHA256": "d793af70a104eb0bd5be466c3043b512f549e7cb27971320a7c9b8f4c6165e55",
+      "Size": "1295248",
+      "Depends": "libc6 (>= 2.38)",
+      "installation": "signed Debian package extracted to data-disk tools only; bounded init syscall diagnosis completed"
+    }
+  ],
+  "apk": {
+    "apk_sha256": "6da2295a941abc34daffb9673824b903634aecc630f8306de148600302c5a128",
+    "bytes": 12746,
+    "source_sha256": {
+      "AndroidManifest.xml": "eb3ed7d19a744439e45da2eccade16da9a7f1a1ab286b5e62a18a650ef29d552",
+      "res\\layout\\main.xml": "da40b25a84246e438fecb037e8ac2149c907c1525aff09aecb48ddddd052ceda",
+      "src\\org\\oneplus8t\\agentlab\\MainActivity.java": "65bd1efc31ccb3b893ac18bb27f287341bfe61ea6f84c5e46dc9f2f3dcfbd309"
+    },
+    "permissions": [],
+    "debuggable": true,
+    "package": "org.oneplus8t.agentlab"
+  },
+  "verification": {
+    "debian": "apt signature-verified InRelease -> Packages SHA256 -> deb SHA256",
+    "images": "Official OTA metadata SHA256/length verified on both PC and actual phone; extracted image SHA256/length recorded; init selected MAINLINE traditional Binder",
+    "google_sdk": "repository XML SHA1 af059bb67cf7786f45ee0db85e2d24985df1b4b6 matches, SHA256 recorded",
+    "jdk": "Adoptium package metadata SHA256 matches",
+    "frida_library": "PyPI SHA256 matches; imported 16.7.19 on actual arm64 host",
+    "frida_server": "official GitHub release via gh verified name/size; no upstream asset digest on this historical release, TLS download SHA256 recorded",
+    "apk": "Build2 signature verified; actually installed and exercised in 8 real UI loops, three matching Frida observations; zero app permissions",
+    "android": "Real Android13 arm64-v8a: sys.boot_completed=1 and authenticated ADB in three complete success cycles; FD650 hardware GLES, Android DNS/HTTPS and 180s Android-required soak verified",
+    "frida": "Actual Frida16.7.19 client/server observation of own MainActivity.transform(String) in three distinct UI action windows, with each cleanup verified"
+  },
+  "apk_history": [
+    {
+      "apk_sha256": "6812b97871e23d1c04d5877013ace4c76222cfc3d1ebdb80e347f7691094dc50",
+      "bytes": 12746,
+      "source_sha256": {
+        "AndroidManifest.xml": "eb3ed7d19a744439e45da2eccade16da9a7f1a1ab286b5e62a18a650ef29d552",
+        "res\\layout\\main.xml": "cbef52985146089d597ab172c941e87939db7253168799cdca718979e66e01ac",
+        "src\\org\\oneplus8t\\agentlab\\MainActivity.java": "65bd1efc31ccb3b893ac18bb27f287341bfe61ea6f84c5e46dc9f2f3dcfbd309"
+      },
+      "permissions": [],
+      "debuggable": true,
+      "package": "org.oneplus8t.agentlab"
+    }
+  ],
+  "acceptance": {
+    "status": "verified_android_software_loop_modem_existing_failure_not_recovered",
+    "report": "docs/android-lab-r4-boot-20261113.md",
+    "kernel": "7.2.0-kebab-debian13-r4-venus+",
+    "android_release": "13",
+    "abi": "arm64-v8a",
+    "framework_boot_completed": true,
+    "adb_authenticated": true,
+    "ro_adb_secure": "1",
+    "successful_container_cycles": 3,
+    "standalone_ui_successes": 5,
+    "frida_ui_and_method_successes": 3,
+    "total_real_ui_closed_loops": 8,
+    "android_gles": "freedreno, FD650, OpenGL ES 3.2 Mesa 26.0.8",
+    "offline_tests": 23,
+    "same_host_boot_since_authorized_resume": true,
+    "android_soak": {
+      "requested_seconds": 180,
+      "actual_span_seconds": 180.00013748399942,
+      "samples": 36,
+      "boot_unchanged": true,
+      "framework_ready_samples": 36,
+      "mem_available_min": 8695533568,
+      "battery_temperature_max_C": 37.5,
+      "thermal_max_mC": 46897,
+      "charge_all_owned_noerror": true,
+      "cpu_busy_max_percent": 17.7
+    },
+    "experiment_cleaned_and_nodes_restored": true,
+    "modem_recovered": false,
+    "modem_failure": "pre-resume failed/Sahara secondary bootloader; one bounded consumer rebind restored original binding, did not recover; no controller unload, PCI reset, host reboot, NV write or startup-chain change",
+    "prior_unexpected_reset_root_cause": "undetermined; historical incident retained, not claimed resolved",
+    "share_archive_sha256": "f7c643e3a49b0bf32230a94c213849b2960436b2f91aa66c1471a8f78adb594f"
+  },
+  "acceptance_history": [
+    {
+      "status": "not_accepted_host_reset_and_android_init_exit",
+      "framework_boot_completed": false,
+      "adb_connected": false,
+      "real_agent_rounds": 0,
+      "frida_observed_calls": 0,
+      "host_no_reboot": false,
+      "experiment_runtime_cleaned": true,
+      "hold": "HOLD_UNEXPECTED_RESET"
+    }
+  ]
+}
