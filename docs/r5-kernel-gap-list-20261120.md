@@ -86,16 +86,16 @@ CONFIG_ANDROID_BINDER_IPC=y    CONFIG_ANDROID_BINDER_DEVICES="binder,hwbinder,vn
   1. **参数位置错**：把 `reply(0/1)` 当指针解引用，`0x5F5A5F67` 这种垃圾必然出现。这条要**更正** FINDINGS §2.2 的表述：不是“字段偏移要复核”，而是 raw tracepoint 的第一个参数根本不是 `t`。
   2. **没有 reply 关联**：`reply` 标志与 `debug_id` 都在，但观测器没存、也没和 `binder_transaction_received` 的 `debug_id` 配对 ⇒ 无法回答“谁收了谁的回包”。
   3. **服务名缺失**：`to_proc` 只是 pid；map 到“system_server / 某 SDK 服务”需要外部快照。
-- **r5 改动（内核）**：无。tracepoint 已经给出配对所需的一切（`debug_id` 双向 + `reply` + `to_proc` + `to_thread` + `code` + `flags`）。
+- **r5 改动（内核）**：无。参数修正后 tracepoint 已给出 `debug_id`/`reply`/`to_proc`/`to_thread`/`code`/`flags`。**但单侧身份过滤下 tx↔rx 不可能配对**（t11 实测：tx 与 rx 的 `debug_id` 差 1，rx 是投递给目标的回复、属另一笔 transaction）；要因果必须把发送方与接收方同时纳入过滤（本轮未实现）。
   - **不建议**给 `drivers/android/binder.c` 加 interface-descriptor 的新 tracepoint：侵入上游、且 debugfs `state` 已能提供 pid↔服务名映射。
 - **r5 改动（工具，必须做）**：
   - 修 raw args：`args[0]=reply`、`args[1]=t`（CO-RE 取 `debug_id/to_proc/to_thread/code/flags`）、`args[2]=target_node`。
-  - 加配对：以 `debug_id` 为键把 tx（发方=当前 task）与 rx（收方=当前 task）连起来；`reply=1` 的事务单独标出。
+  - 加配对：仅在**双侧过滤**（发送方与接收方都在 scope 内）时以 `debug_id` 为键连 tx 与 rx；单侧时只记方向（`tx_from_target`/`rx_to_target`/`reply_tx`）并标 `pairing_scope=single_side`、`paired=null`，不得报“配对失败”。`reply=1` 的事务单独标出。
   - 采集时同步一次 `debugfs state` 快照（`sudo cat /sys/kernel/debug/binder/state`）落到会话目录，事后把 `to_proc` 映射成 `proc <pid> <cmdline>` 与 context 名。
   - 记录 `causality=debug_id|time_only|none`，明确强度。
 - **验证命令**
   - 离线：无法造 Binder（WSL 内核 BTF 无 `struct binder_transaction`，两程序被 verifier 拒；`evidence` 见 t3 交付说明）⇒ **必须在真机窗口验**。
-  - 真机（窗口内，read-only 采集）：dump 一次 `format` 确认索引（`sudo cat /sys/kernel/tracing/events/binder/binder_transaction/format`，本轮已确认字段顺序 `debug_id@8 … code@28 flags@32`），再跑 30 s 会话，断言：`code` 全部 ∈ {已知 Binder code 集}、`tx/rx` 的 `debug_id` 配对率 >0、`reply` 计数 >0。
+  - 真机（窗口内，read-only 采集）：dump 一次 `format` 确认索引（`sudo cat /sys/kernel/tracing/events/binder/binder_transaction/format`，本轮已确认字段顺序 `debug_id@8 … code@28 flags@32`），再跑 30 s 会话，断言：`code` 全部 ∈ {已知 Binder code 集}、`reply` 计数 >0；配对率 >0 只在双侧过滤时断言，单侧必须给出 `pairing_scope=single_side` 且不出现“配对失败”措辞。
 - **风险与回退**：debugfs `state` 在容器运行时的稳定性**未验证**（本轮容器停机，`state` 为空）；回退为只用 `debug_id` 配对、服务名留空并在报告里标注。
 
 ### G3 uprobe 可检测性与替代观测点：**内核零改动**，缺的是“自哈希 A/B”
@@ -187,7 +187,7 @@ CONFIG_FPROBE_EVENTS=y
 
 ## 3. 实施顺序（建议）
 
-1. **先做零内核改动的三项**（G1 夹具、G2 参数修复 + debug_id 配对、G6 标识/容量）——它们能在 r4 上直接验证，且不引入新内核风险。
+1. **先做零内核改动的三项**（G1 夹具、G2 参数修复 + 方向统计、G6 标识/容量）——它们能在 r4 上直接验证，且不引入新内核风险；G2 的双侧配对需另加 peer 过滤，单侧不承诺。
 2. **再做 G5**（`FTRACE_SYSCALLS` + `FPROBE/FPROBE_EVENTS`）：这是唯一能补上 `exit(28)` 归因的路径；用独立 r5 内核 + 独立模块目录，一次 `fastboot boot` 试机，失败即回 r4。
 3. **G4（binderfs）最后做，且只做一次**：单容器场景无收益，等真的需要多实例再开；开启代价是 lxc bind 配置同步。
 4. G3 的自哈希夹具与三组 A/B 与第 1 步并行，结论进 r5 的“检测面”章节。
