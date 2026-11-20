@@ -1,0 +1,5 @@
+fffe172d7000-fffe173e9000 r-xp 03ddc000 103:0c 1443630                   /data/app/~~afaqdCUQMaggBHpDQL-O9A==/com.zjwh.android_wh_physicalfitness-uQi311IFRIGfrGjaD-_EuA==/base.apk
+fffe173ec000-fffe173ee000 r--p 03eed000 103:0c 1443630                   /data/app/~~afaqdCUQMaggBHpDQL-O9A==/com.zjwh.android_wh_physicalfitness-uQi311IFRIGfrGjaD-_EuA==/base.apk
+fffe173f1000-fffe173f9000 rw-p 03eee000 103:0c 1443630                   /data/app/~~afaqdCUQMaggBHpDQL-O9A==/com.zjwh.android_wh_physicalfitness-uQi311IFRIGfrGjaD-_EuA==/base.apk
+1443630 /data/app/~~afaqdCUQMaggBHpDQL-O9A==/com.zjwh.android_wh_physicalfitness-uQi311IFRIGfrGjaD-_EuA==/base.apk /data/app/~~afaqdCUQMaggBHpDQL-O9A==/com.zjwh.android_wh_physicalfitness-uQi311IFRIGfrGjaD-_EuA==/base.apk
+3388 /system/lib64/libssl.so /system/lib64/libssl.so

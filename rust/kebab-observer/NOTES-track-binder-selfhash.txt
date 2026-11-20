@@ -1,0 +1,46 @@
+kebab-observer: t12 修复（load bias + Binder 配对语义），2026-11-20
+
+一、tls-attach 的 load bias（真 bug，t11 的 B 被它挡住）
+   旧判据要求「所有已映射 PT_LOAD 推出的 bias 必须一致」，静态可执行（t11 的 selfhash：
+   ET_EXEC、静态 musl）各段 (p_vaddr - p_offset) 本来就不同，于是报告
+   "load bias disagreement: segment at 0x23c000 implies 0x0, this one implies 0x10000"
+   并拒绝——夹具明明没被改，却拿不到检测证据。
+   现在：
+   - bias 只由「包含该探针文件偏移的那一个 PT_LOAD」推导（每个探针各推各的，
+     write/read 在不同段也各自正确）；
+   - 其余段只做交叉检查，不一致写进 load_bias_warnings（warning，不再拒绝），
+     并在 session/target JSON 里带 load_bias_source="segment"、load_bias_cross_checked；
+   - 新增 --load-bias N：给定后跳过推导，但仍用 resolve_va 校验落点必须在目标的可执行映射内，
+     落点不对照样拒绝（"not inside an executable mapping"）。
+   实测（真机 aarch64、同一 boot、未接触 waydroid）：
+     report: load_bias=0 source=segment cross_checked=3 warnings=1
+             （正是 t11 那条 "segment at 0x23c000 ... implies 0x10000"）
+             maps_verified=true runtime_va=2169204（=0x211974，SSL_write 文件偏移 6516 的正确 VA）
+     attach: rc=0，attached_probes=4，closeout passed=true failures=[]
+     夹具自己打印 {"record":"detected","first_diff_offset":0,
+                  "before_sha256":"f0f38fbe…","after_sha256":"a34fad93…"}
+     ⇒ 探针在目标进程里可见，t11 缺的那条证据补上了（只挂在自己的夹具上）。
+
+二、Binder 配对语义（先看清事实再改）
+   内核源码：binder_transaction 与 binder_transaction_received 的 debug_id 都取 t->debug_id，
+   字段读取没错。t11 里 tx/rx 的 debug_id 差 1 不是 bug：单侧身份过滤只看 app 的 uid+cgroup 时，
+   tx 是 app 发出的请求（reply=false），rx 是**另一笔** transaction（投递给 app 的回复），
+   两者本来就不共享 debug_id。
+   现在不再把单侧场景说成“配对失败”：
+   - 事件：pairing_scope="single_side"，paired=null（不是 false——单侧下这个问题没有答案）；
+   - closeout.binder_pairs：pairing_scope / pairing_note（明写“单侧无法跨侧配对”）/
+     tx_from_target / rx_to_target / reply_tx / non_reply_tx /
+     reply_rx=null + reply_rx_note（received 事件不带 reply 标志，不能编）/
+     debug_id_matches=0 + 说明“未尝试”；
+   - session 记录 binder_pairing_scope="single_side"（原 binder_pairing_window 取消，
+     因为不再缓存等待）；
+   - 双侧（--peer-uid 等）**未实现**：gate 在 BPF 里是单个 CFG_UID+CFG_CGROUP，
+     扩成双槽需要改已验证的内核门，且当前没有真机窗口能证明 paired>0，故如实记为 not_implemented。
+
+三、复现
+   cargo test --locked --offline            # 87 passed
+   cargo clippy --locked --offline --all-targets -- -D warnings
+   cargo clippy ... --target x86_64-unknown-linux-musl / aarch64-unknown-linux-musl
+   wsl bash scripts/track-smoke.sh          # 行为回归，SMOKE PASS
+   wsl bash scripts/selfhash-smoke.sh       # 6 段全过（符号形态也能挂上、warning 不拒绝、--load-bias）
+   真机：scp scripts/t12-device-check.sh kebab:/tmp/ && ssh kebab 'sudo -n bash /tmp/t12-device-check.sh'
